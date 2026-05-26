@@ -1,11 +1,5 @@
 {
-	"appId": "io.ionic.starter",
-	"appName": "Melodio",
-	"webDir": "dist",
-	"server": {
-		"allowNavigation": [
-			"blog.skrepy.dpdns.org",
-			"*.skrepy.dpdns.org"
-		]
-	}
+  "appId": "com.skrepy.melodio",
+  "appName": "Melodio",
+  "webDir": "dist"
 }
