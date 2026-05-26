@@ -1,15 +1,8 @@
 <script setup lang="ts">
 import { Icon } from '@iconify/vue'
+import type { CircleButtonProps } from '@/utils/interface.ts'
 
-interface Props {
-  icon: string // 图标名称（Iconify 格式，如 'mdi:heart'）
-  size?: number | string // 按钮尺寸（宽高），默认 48px
-  bgColor?: string // 背景色，默认使用主题的 --bg-header 或当前背景
-  iconColor?: string // 图标颜色，默认使用主题的 --text-color
-  disabled?: boolean // 是否禁用
-}
-
-const props = withDefaults(defineProps<Props>(), {
+const props = withDefaults(defineProps<CircleButtonProps>(), {
   size: 48,
   bgColor: 'var(--bg-color, #e0e0e0)',
   iconColor: 'var(--text-color, #333)',
