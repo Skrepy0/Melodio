@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from '@ionic/vue-router'
 import { RouteRecordRaw } from 'vue-router'
 import HomePage from '../views/HomePage.vue'
 import SettingsPage from '../views/SettingsPage.vue'
+import PlayerView from '../views/PlayerView.vue'
 const routes: Array<RouteRecordRaw> = [
   {
     path: '/',
@@ -13,6 +14,7 @@ const routes: Array<RouteRecordRaw> = [
     component: HomePage,
   },
   { path: '/settings', name: 'Settings', component: SettingsPage },
+  { path: '/player-view', name: 'PlayerView', component: PlayerView },
 ]
 
 const router = createRouter({

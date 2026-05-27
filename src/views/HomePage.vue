@@ -106,8 +106,7 @@ const currentSong = ref({
   audioUrl: '',
 })
 const showFullPlayer = () => {
-  // 例如：打开一个全屏的播放器模态框、跳转到播放详情页、或展开更多控制面板
-  console.log('打开全屏播放器')
+  router.push('/player-view')
 }
 
 const playlists = ref([
