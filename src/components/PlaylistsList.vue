@@ -16,7 +16,6 @@
       />
     </div>
 
-    <!-- 底部操作栏 -->
     <Transition name="slide-up">
       <div v-if="isSelectMode" class="bottom-actions">
         <div class="actions-container">
@@ -46,6 +45,7 @@
 import { ref } from 'vue'
 import { Icon } from '@iconify/vue'
 import PlaylistItemSelectable from '@/components/lists/PlaylistItemSelectable.vue'
+import { useDropdownManager } from '@/composables/useDropdownManager'
 import type { Playlist } from '@/utils/interface'
 
 interface Props {
@@ -62,7 +62,7 @@ const emit = defineEmits<{
 
 const isSelectMode = ref(false)
 const selectedIds = ref<Set<string | number>>(new Set())
-const openDropdownId = ref<string | number | null>(null)
+const { openDropdownId, handleDropdownToggle } = useDropdownManager()
 
 const enterSelectMode = (id?: string | number) => {
   if (isSelectMode.value) return
@@ -100,18 +100,6 @@ const exitSelectMode = () => {
   isSelectMode.value = false
   selectedIds.value.clear()
   openDropdownId.value = null
-}
-
-const handleDropdownToggle = (playlistId: string | number, isOpen: boolean) => {
-  if (isOpen) {
-    // 打开新的下拉框时，关闭其他所有下拉框
-    openDropdownId.value = playlistId
-  } else {
-    // 关闭当前下拉框
-    if (openDropdownId.value === playlistId) {
-      openDropdownId.value = null
-    }
-  }
 }
 
 const onPlaylistClick = (playlist: Playlist) => {

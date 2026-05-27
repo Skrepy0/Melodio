@@ -44,6 +44,7 @@
 import { ref } from 'vue'
 import { Icon } from '@iconify/vue'
 import SongItemSelectable from '@/components/song/SongItemSelectable.vue'
+import { useDropdownManager } from '@/composables/useDropdownManager'
 import type { Song } from '@/utils/interface.ts'
 
 interface Props {
@@ -59,7 +60,7 @@ const emit = defineEmits<{
 
 const isSelectMode = ref(false)
 const selectedIds = ref<Set<string | number>>(new Set())
-const openDropdownId = ref<string | number | null>(null)
+const { openDropdownId, handleDropdownToggle } = useDropdownManager()
 
 const enterSelectMode = (songId?: string | number) => {
   if (isSelectMode.value) return
@@ -100,18 +101,7 @@ const batchDelete = () => {
 const exitSelectMode = () => {
   isSelectMode.value = false
   selectedIds.value.clear()
-}
-
-const handleDropdownToggle = (songId: string | number, isOpen: boolean) => {
-  if (isOpen) {
-    // 打开新的下拉框时，关闭其他所有下拉框
-    openDropdownId.value = songId
-  } else {
-    // 关闭当前下拉框
-    if (openDropdownId.value === songId) {
-      openDropdownId.value = null
-    }
-  }
+  openDropdownId.value = null
 }
 
 const handleSongClick = (song: Song) => {

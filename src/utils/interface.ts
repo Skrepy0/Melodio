@@ -56,11 +56,6 @@ export interface SongItemSelectableProps {
   dropdownOpen?: boolean
 }
 
-export interface PlaylistItemProps {
-  playlist: Playlist
-  dropdownOpen?: boolean
-}
-
 export interface NowPlayingSong {
   id: string | number
   name: string

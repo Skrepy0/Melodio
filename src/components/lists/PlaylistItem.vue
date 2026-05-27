@@ -1,18 +1,13 @@
 <template>
   <div class="playlist-item" @click="onCardClick">
-    <!-- 左侧封面 -->
     <div class="playlist-cover">
       <img v-if="playlist.coverUrl" :src="playlist.coverUrl" :alt="playlist.name" />
       <Icon v-else icon="mdi:playlist-music" :width="36" class="default-cover" />
     </div>
-
-    <!-- 中间信息 -->
     <div class="playlist-info">
       <div class="playlist-name">{{ playlist.name }}</div>
       <div class="playlist-desc">{{ playlist.description || `${playlist.songCount}首歌曲` }}</div>
     </div>
-
-    <!-- 右侧：歌曲数量 + 下拉按钮 -->
     <div class="playlist-actions">
       <span class="song-count">{{ playlist.songCount }}首</span>
       <DropdownButton
@@ -35,9 +30,14 @@
 import { Icon } from '@iconify/vue'
 import { computed } from 'vue'
 import DropdownButton from '@/components/button/DropdownButton.vue'
-import type { PlaylistItemProps, DropdownItem, Playlist } from '@/utils/interface'
+import type { DropdownItem, Playlist } from '@/utils/interface'
 
-const props = defineProps<PlaylistItemProps>()
+interface Props {
+  playlist: Playlist
+  dropdownOpen?: boolean
+}
+
+const props = defineProps<Props>()
 
 const emit = defineEmits<{
   (e: 'click', playlist: Playlist): void
@@ -50,7 +50,6 @@ const dropdownVisible = computed({
   set: (val) => emit('update:dropdownOpen', val),
 })
 
-// 下拉菜单选项（可根据需要扩展）
 const menuOptions: DropdownItem[] = [
   { icon: 'mdi:play', description: '播放', value: 'play' },
   { icon: 'mdi:pencil', description: '编辑', value: 'edit' },
@@ -143,7 +142,6 @@ const onMenuItemSelect = (item: DropdownItem) => {
   }
 }
 
-// 暗色模式适配
 .dark {
   .playlist-item {
     background-color: var(--bg-card, #1e1e1e);

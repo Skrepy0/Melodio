@@ -32,8 +32,8 @@
 <script setup lang="ts">
 import { Icon } from '@iconify/vue'
 import DropdownButton from '@/components/button/DropdownButton.vue'
+import { useDropdownControl } from '@/composables/useDropdownControl'
 import type { DropdownItem, Song } from '@/utils/interface'
-import { computed } from 'vue'
 
 interface Props {
   song: Song
@@ -42,15 +42,13 @@ interface Props {
 
 const props = defineProps<Props>()
 
-const dropdownVisible = computed({
-  get: () => props.dropdownOpen ?? false,
-  set: (val) => emit('update:dropdownOpen', val),
-})
 const emit = defineEmits<{
   (e: 'click', song: Song): void
   (e: 'menuSelect', action: string, song: Song): void
   (e: 'update:dropdownOpen', value: boolean): void
 }>()
+
+const { dropdownVisible } = useDropdownControl(props, emit)
 
 const menuOptions: DropdownItem[] = [
   { icon: 'mdi:play', description: '播放', value: 'play' },

@@ -9,35 +9,31 @@
       :disabled="disabled"
       @click="toggleDropdown"
     />
-    <Transition name="dropdown-fade">
-      <div
-        v-if="showDropdown"
-        ref="dropdownRef"
-        class="dropdown-menu"
-        :class="placement"
-        :style="{ maxHeight, transform: `translate(${dx}px, ${dy}px)` }"
-      >
-        <div class="dropdown-list">
-          <div
-            v-for="(item, index) in options"
-            :key="index"
-            class="dropdown-item"
-            :class="{ disabled: item.disabled }"
-            @click="selectItem(item)"
-          >
-            <Icon v-if="item.icon" :icon="item.icon" class="item-icon" :width="itemIconSize" />
-            <span class="item-description">{{ item.description }}</span>
+    <Teleport to="body">
+      <Transition name="dropdown-fade">
+        <div v-if="showDropdown" ref="dropdownRef" class="dropdown-menu" :style="dropdownStyle">
+          <div class="dropdown-list">
+            <div
+              v-for="(item, index) in options"
+              :key="index"
+              class="dropdown-item"
+              :class="{ disabled: item.disabled }"
+              @click="selectItem(item)"
+            >
+              <Icon v-if="item.icon" :icon="item.icon" class="item-icon" :width="itemIconSize" />
+              <span class="item-description">{{ item.description }}</span>
+            </div>
           </div>
         </div>
-      </div>
-    </Transition>
+      </Transition>
+    </Teleport>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch } from 'vue'
+import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { Icon } from '@iconify/vue'
-import CircleButton from './CircleButton.vue' // 导入基础圆形按钮
+import CircleButton from './CircleButton.vue'
 import type { DropdownButtonProps, DropdownItem } from '@/utils/interface.ts'
 
 const props = withDefaults(defineProps<DropdownButtonProps>(), {
@@ -64,9 +60,105 @@ const showDropdown = ref(props.visible ?? false)
 const buttonRef = ref<InstanceType<typeof CircleButton> | null>(null)
 const dropdownRef = ref<HTMLElement | null>(null)
 
-const toggleDropdown = () => {
+const dropdownStyle = ref<{ top?: string; left?: string; right?: string; bottom?: string }>({})
+
+const calculatePosition = async () => {
+  if (!showDropdown.value || !buttonRef.value?.$el) return
+  await nextTick()
+  const button = buttonRef.value.$el
+  const buttonRect = button.getBoundingClientRect()
+  const dropdown = dropdownRef.value
+  if (!dropdown) return
+
+  const dropdownRect = dropdown.getBoundingClientRect()
+  const viewportWidth = window.innerWidth
+  const viewportHeight = window.innerHeight
+
+  const [verticalPref, horizontalPref] = props.placement.split('-')
+  const isBottomPref = verticalPref === 'bottom'
+  const isEndPref = horizontalPref === 'end'
+
+  const spaceAbove = buttonRect.top
+  const spaceBelow = viewportHeight - buttonRect.bottom
+  const spaceLeft = buttonRect.left
+  const spaceRight = viewportWidth - buttonRect.right
+
+  let useTop = false
+  if (isBottomPref) {
+    if (spaceBelow >= dropdownRect.height + (props.dy || 0)) {
+      useTop = false
+    } else if (spaceAbove >= dropdownRect.height + (props.dy || 0)) {
+      useTop = true
+    } else {
+      useTop = false
+    }
+  } else {
+    if (spaceAbove >= dropdownRect.height + (props.dy || 0)) {
+      useTop = true
+    } else if (spaceBelow >= dropdownRect.height + (props.dy || 0)) {
+      useTop = false
+    } else {
+      useTop = true
+    }
+  }
+
+  let leftAlign = !isEndPref
+  if (isEndPref) {
+    if (spaceRight >= dropdownRect.width + (props.dx || 0)) {
+      leftAlign = false
+    } else if (spaceLeft >= dropdownRect.width + (props.dx || 0)) {
+      leftAlign = true
+    } else {
+      leftAlign = false
+    }
+  } else {
+    if (spaceLeft >= dropdownRect.width + (props.dx || 0)) {
+      leftAlign = true
+    } else if (spaceRight >= dropdownRect.width + (props.dx || 0)) {
+      leftAlign = false
+    } else {
+      leftAlign = true
+    }
+  }
+
+  let top = 0
+  let left = 0
+  if (useTop) {
+    top = buttonRect.top - dropdownRect.height - (props.dy || 0)
+  } else {
+    top = buttonRect.bottom + (props.dy || 0)
+  }
+  if (leftAlign) {
+    left = buttonRect.left + (props.dx || 0)
+  } else {
+    left = buttonRect.right - dropdownRect.width - (props.dx || 0)
+  }
+
+  top = Math.max(8, Math.min(top, viewportHeight - dropdownRect.height - 8))
+  left = Math.max(8, Math.min(left, viewportWidth - dropdownRect.width - 8))
+
+  dropdownStyle.value = {
+    top: `${top}px`,
+    left: `${left}px`,
+    right: 'auto',
+    bottom: 'auto',
+  }
+}
+
+const handleResizeOrScroll = () => {
+  if (showDropdown.value) {
+    calculatePosition()
+  }
+}
+
+const toggleDropdown = async () => {
   if (props.disabled) return
-  showDropdown.value = !showDropdown.value
+  const newVal = !showDropdown.value
+  showDropdown.value = newVal
+  if (newVal) {
+    await nextTick()
+    calculatePosition()
+  }
 }
 
 const selectItem = (item: DropdownItem) => {
@@ -87,11 +179,16 @@ const handleClickOutside = (event: MouseEvent) => {
 
 onMounted(() => {
   document.addEventListener('click', handleClickOutside)
+  window.addEventListener('resize', handleResizeOrScroll)
+  window.addEventListener('scroll', handleResizeOrScroll, true)
 })
 
 onUnmounted(() => {
   document.removeEventListener('click', handleClickOutside)
+  window.removeEventListener('resize', handleResizeOrScroll)
+  window.removeEventListener('scroll', handleResizeOrScroll, true)
 })
+
 watch(
   () => props.visible,
   (val) => {
@@ -101,6 +198,7 @@ watch(
 watch(showDropdown, (val) => {
   emit('update:visible', val)
   emit('visibleChange', val)
+  if (val) calculatePosition()
 })
 </script>
 
@@ -111,36 +209,15 @@ watch(showDropdown, (val) => {
 }
 
 .dropdown-menu {
-  position: absolute;
-  z-index: 1000;
+  position: fixed;
+  z-index: 2000;
   min-width: 180px;
   background-color: var(--bg-color, #fff);
   border: 1px solid rgba(0, 0, 0, 0.1);
   border-radius: 12px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
   overflow-y: auto;
-  margin-top: 8px;
-
-  &.bottom-start {
-    top: 100%;
-    left: 0;
-  }
-  &.bottom-end {
-    top: 100%;
-    right: 0;
-  }
-  &.top-start {
-    bottom: 100%;
-    left: 0;
-    margin-top: 0;
-    margin-bottom: 8px;
-  }
-  &.top-end {
-    bottom: 100%;
-    right: 0;
-    margin-top: 0;
-    margin-bottom: 8px;
-  }
+  max-height: v-bind(maxHeight);
 }
 
 .dropdown-list {
@@ -182,8 +259,8 @@ watch(showDropdown, (val) => {
 .dropdown-fade-enter-active,
 .dropdown-fade-leave-active {
   transition:
-    opacity 0.45s,
-    transform 0.45s;
+    opacity 0.2s,
+    transform 0.2s;
 }
 .dropdown-fade-enter-from {
   opacity: 0;
