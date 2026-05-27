@@ -13,11 +13,14 @@
     <div class="song-actions">
       <span class="song-duration">{{ formatDuration(song.duration) }}</span>
       <DropdownButton
+        v-model:visible="dropdownVisible"
         :button-icon="'mdi:dots-vertical'"
         :size="32"
         :options="menuOptions"
         :offset-x="0"
         :offset-y="4"
+        :dx="-40"
+        :dy="-60"
         placement="bottom-end"
         @select="onMenuItemSelect"
         @click.stop
@@ -30,16 +33,23 @@
 import { Icon } from '@iconify/vue'
 import DropdownButton from '@/components/button/DropdownButton.vue'
 import type { DropdownItem, Song } from '@/utils/interface'
+import { computed } from 'vue'
 
 interface Props {
   song: Song
+  dropdownOpen?: boolean
 }
 
 const props = defineProps<Props>()
 
+const dropdownVisible = computed({
+  get: () => props.dropdownOpen ?? false,
+  set: (val) => emit('update:dropdownOpen', val),
+})
 const emit = defineEmits<{
   (e: 'click', song: Song): void
   (e: 'menuSelect', action: string, song: Song): void
+  (e: 'update:dropdownOpen', value: boolean): void
 }>()
 
 const menuOptions: DropdownItem[] = [

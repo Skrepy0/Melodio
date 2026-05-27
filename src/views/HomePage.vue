@@ -1,46 +1,49 @@
 <template>
-  <div class="header">
-    <div class="search-box-container">
-      <SearchBox v-model="keyword" autofocus @search="onSearch" size="small" :clearable="false" />
+  <ion-page>
+    <div class="header">
+      <div class="search-box-container">
+        <SearchBox v-model="keyword" autofocus @search="onSearch" size="small" :clearable="false" />
+      </div>
+      <div class="button-container">
+        <CircleButton icon="stash:play-duotone" :size="36" @click="handleClick" />
+        <DropdownButton
+          button-icon="mingcute:more-2-line"
+          :size="36"
+          :options="operations"
+          @select="onSelectOperation"
+          :dx="-100"
+        />
+      </div>
     </div>
-    <div class="button-container">
-      <CircleButton icon="stash:play-duotone" :size="36" @click="handleClick" />
-      <DropdownButton
-        button-icon="mingcute:more-2-line"
-        :size="36"
-        :options="operations"
-        @select="onSelectOperation"
-        :dx="-100"
+    <div class="body">
+      <div class="select-container">
+        <HorizontalSelect
+          v-model="selectedCategory"
+          :options="categoryOptions"
+          icon-size="18"
+          @select="onCategorySelect"
+        />
+      </div>
+      <PlayList
+        v-if="selectedCategory === 'tracks'"
+        :songs="songs"
+        @batch-delete="handleBatchDelete"
+        @song-click="playSong"
       />
-    </div>
-  </div>
-  <div class="body">
-    <div class="select-container">
-      <HorizontalSelect
-        v-model="selectedCategory"
-        :options="categoryOptions"
-        icon-size="18"
-        @select="onCategorySelect"
+      <PlaylistsList
+        v-else-if="selectedCategory === 'play-lists'"
+        :playlists="playlists"
+        @batch-delete="handleBatchDeletePlaylists"
+        @playlist-click="onPlaylistClick"
+        @menu-select="onPlaylistMenuSelect"
       />
+      <NowPlayingBar :song="currentSong" auto-play @expand="showFullPlayer" />
     </div>
-    <PlayList
-      v-if="selectedCategory === 'tracks'"
-      :songs="songs"
-      @batch-delete="handleBatchDelete"
-      @song-click="playSong"
-    />
-    <PlaylistsList
-      v-else-if="selectedCategory === 'play-lists'"
-      :playlists="playlists"
-      @batch-delete="handleBatchDeletePlaylists"
-      @playlist-click="onPlaylistClick"
-      @menu-select="onPlaylistMenuSelect"
-    />
-    <NowPlayingBar :song="currentSong" auto-play @expand="showFullPlayer" />
-  </div>
+  </ion-page>
 </template>
 
 <script setup lang="ts">
+import { IonPage } from '@ionic/vue'
 import SearchBox from '@/components/SearchBox.vue'
 import CircleButton from '@/components/button/CircleButton.vue'
 import DropdownButton from '@/components/button/DropdownButton.vue'
@@ -48,11 +51,12 @@ import HorizontalSelect from '@/components/HorizontalSelect.vue'
 import PlayList from '@/components/PlayList.vue'
 import PlaylistsList from '@/components/PlaylistsList.vue'
 import NowPlayingBar from '@/components/NowPlayingBar.vue'
-// import SongItem from '@/components/SongItem.vue'
 import toast from '@/utils/createToast'
+import { useRouter } from 'vue-router'
 import { DropdownItem, HorizontalSelectOption, Playlist, Song } from '@/utils/interface'
 import { ref } from 'vue'
 
+const router = useRouter()
 const keyword = ref('')
 
 const onSearch = () => {}
@@ -67,7 +71,7 @@ const operations: DropdownItem[] = [
 
 const onSelectOperation = (item: DropdownItem) => {
   console.log('选中:', item.description, item.value)
-  // 根据 item.value 执行不同操作
+  if (item.value === 'settings') router.push('/settings')
 }
 const selectedCategory = ref('tracks')
 
@@ -110,6 +114,12 @@ const playlists = ref([
   { id: 1, name: '我喜欢的音乐', description: '全部红心歌曲', songCount: 42, coverUrl: '' },
   { id: 2, name: '跑步歌单', description: '节奏明快', songCount: 18, coverUrl: '' },
   { id: 3, name: '深夜安静', songCount: 9 },
+  { id: 4, name: '深夜安静', songCount: 9 },
+  { id: 5, name: '深夜安静', songCount: 9 },
+  { id: 6, name: '深夜安静', songCount: 9 },
+  { id: 7, name: '深夜安静', songCount: 9 },
+  { id: 8, name: '深夜安静', songCount: 9 },
+  { id: 9, name: '深夜安静', songCount: 9 },
 ])
 
 const handleBatchDeletePlaylists = (ids: any) => {

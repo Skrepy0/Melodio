@@ -7,10 +7,12 @@
         :playlist="playlist"
         :selectable="isSelectMode"
         :selected="selectedIds.has(playlist.id)"
+        :dropdown-open="openDropdownId === playlist.id"
         @long-press="enterSelectMode"
         @toggle-select="toggleSelect"
         @click="onPlaylistClick"
         @menu-select="onMenuSelect"
+        @update:dropdown-open="(open) => handleDropdownToggle(playlist.id, open)"
       />
     </div>
 
@@ -60,6 +62,7 @@ const emit = defineEmits<{
 
 const isSelectMode = ref(false)
 const selectedIds = ref<Set<string | number>>(new Set())
+const openDropdownId = ref<string | number | null>(null)
 
 const enterSelectMode = (id?: string | number) => {
   if (isSelectMode.value) return
@@ -96,6 +99,19 @@ const batchDelete = () => {
 const exitSelectMode = () => {
   isSelectMode.value = false
   selectedIds.value.clear()
+  openDropdownId.value = null
+}
+
+const handleDropdownToggle = (playlistId: string | number, isOpen: boolean) => {
+  if (isOpen) {
+    // 打开新的下拉框时，关闭其他所有下拉框
+    openDropdownId.value = playlistId
+  } else {
+    // 关闭当前下拉框
+    if (openDropdownId.value === playlistId) {
+      openDropdownId.value = null
+    }
+  }
 }
 
 const onPlaylistClick = (playlist: Playlist) => {

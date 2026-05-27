@@ -13,6 +13,7 @@ export interface DropdownItem {
 }
 export interface DropdownButtonProps {
   // 圆形按钮相关属性（透传）
+  visible?: boolean
   buttonIcon?: string // 圆形按钮上的图标，默认 'mdi:dots-horizontal'
   size?: number | string // 按钮尺寸
   bgColor?: string // 按钮背景色
@@ -52,6 +53,12 @@ export interface SongItemSelectableProps {
   song: Song
   selectable: boolean
   selected: boolean
+  dropdownOpen?: boolean
+}
+
+export interface PlaylistItemProps {
+  playlist: Playlist
+  dropdownOpen?: boolean
 }
 
 export interface NowPlayingSong {

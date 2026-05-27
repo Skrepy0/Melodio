@@ -17,15 +17,17 @@
     </div>
     <PlaylistItem
       :playlist="playlist"
+      :dropdown-open="dropdownOpen"
       :class="{ 'select-mode-offset': selectable }"
       @click="onItemClick"
       @menu-select="onMenuSelect"
+      @update:dropdown-open="(open) => emit('update:dropdownOpen', open)"
     />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { Icon } from '@iconify/vue'
 import PlaylistItem from './PlaylistItem.vue'
 import type { Playlist } from '@/utils/interface'
@@ -34,6 +36,7 @@ interface Props {
   playlist: Playlist
   selectable: boolean
   selected: boolean
+  dropdownOpen?: boolean
 }
 
 const props = defineProps<Props>()
@@ -43,7 +46,13 @@ const emit = defineEmits<{
   (e: 'toggle-select', playlistId: string | number): void
   (e: 'click', playlist: Playlist): void
   (e: 'menuSelect', action: string, playlist: Playlist): void
+  (e: 'update:dropdownOpen', value: boolean): void
 }>()
+
+const dropdownOpen = computed({
+  get: () => props.dropdownOpen ?? false,
+  set: (val) => emit('update:dropdownOpen', val),
+})
 
 let longPressTimer: ReturnType<typeof setTimeout> | null = null
 const isLongPressed = ref(false)

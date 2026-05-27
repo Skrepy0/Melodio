@@ -16,12 +16,18 @@
         @click.stop="toggleSelect"
       />
     </div>
-    <SongItem :song="song" :class="{ 'select-mode-offset': selectable }" @click="onSongClick" />
+    <SongItem
+      :song="song"
+      :class="{ 'select-mode-offset': selectable }"
+      v-model:dropdownOpen="dropdownOpen"
+      @click="onSongClick"
+      @menu-select="onMenuSelect"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { Icon } from '@iconify/vue'
 import SongItem from './SongItem.vue'
 import type { Song, SongItemSelectableProps } from '@/utils/interface.ts'
@@ -32,8 +38,13 @@ const emit = defineEmits<{
   (e: 'long-press', songId: string | number): void
   (e: 'toggle-select', songId: string | number): void
   (e: 'click', song: Song): void
+  (e: 'menuSelect', action: string, song: Song): void
+  (e: 'update:dropdownOpen', value: boolean): void // 新增
 }>()
-
+const dropdownOpen = computed({
+  get: () => props.dropdownOpen ?? false,
+  set: (val) => emit('update:dropdownOpen', val),
+})
 // 长按定时器
 let longPressTimer: ReturnType<typeof setTimeout> | null = null
 const isLongPressed = ref(false)

@@ -16,11 +16,14 @@
     <div class="playlist-actions">
       <span class="song-count">{{ playlist.songCount }}首</span>
       <DropdownButton
+        v-model:visible="dropdownVisible"
         :button-icon="'mdi:dots-vertical'"
         :size="32"
         :options="menuOptions"
         placement="bottom-end"
         :offset-y="-4"
+        :dx="-40"
+        :dy="-60"
         @select="onMenuItemSelect"
         @click.stop
       />
@@ -30,19 +33,22 @@
 
 <script setup lang="ts">
 import { Icon } from '@iconify/vue'
+import { computed } from 'vue'
 import DropdownButton from '@/components/button/DropdownButton.vue'
-import type { Playlist, DropdownItem } from '@/utils/interface'
+import type { PlaylistItemProps, DropdownItem, Playlist } from '@/utils/interface'
 
-interface Props {
-  playlist: Playlist
-}
-
-const props = defineProps<Props>()
+const props = defineProps<PlaylistItemProps>()
 
 const emit = defineEmits<{
   (e: 'click', playlist: Playlist): void
   (e: 'menuSelect', action: string, playlist: Playlist): void
+  (e: 'update:dropdownOpen', value: boolean): void
 }>()
+
+const dropdownVisible = computed({
+  get: () => props.dropdownOpen ?? false,
+  set: (val) => emit('update:dropdownOpen', val),
+})
 
 // 下拉菜单选项（可根据需要扩展）
 const menuOptions: DropdownItem[] = [

@@ -35,12 +35,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { Icon } from '@iconify/vue'
 import CircleButton from './CircleButton.vue' // 导入基础圆形按钮
 import type { DropdownButtonProps, DropdownItem } from '@/utils/interface.ts'
 
 const props = withDefaults(defineProps<DropdownButtonProps>(), {
+  visible: false,
   buttonIcon: 'mdi:dots-horizontal',
   size: 48,
   bgColor: 'var(--bg-color, #e0e0e0)',
@@ -54,38 +55,33 @@ const props = withDefaults(defineProps<DropdownButtonProps>(), {
 })
 
 const emit = defineEmits<{
+  (e: 'update:visible', value: boolean): void
   (e: 'select', item: DropdownItem): void
   (e: 'visibleChange', visible: boolean): void
 }>()
 
-const showDropdown = ref(false)
+const showDropdown = ref(props.visible ?? false)
 const buttonRef = ref<InstanceType<typeof CircleButton> | null>(null)
 const dropdownRef = ref<HTMLElement | null>(null)
 
 const toggleDropdown = () => {
   if (props.disabled) return
   showDropdown.value = !showDropdown.value
-  emit('visibleChange', showDropdown.value)
 }
 
 const selectItem = (item: DropdownItem) => {
   if (item.disabled) return
   emit('select', item)
   showDropdown.value = false
-  emit('visibleChange', false)
 }
 
 const handleClickOutside = (event: MouseEvent) => {
   if (!showDropdown.value) return
   const target = event.target as HTMLElement
-  if (
-    dropdownRef.value &&
-    !dropdownRef.value.contains(target) &&
-    buttonRef.value?.$el &&
-    !buttonRef.value.$el.contains(target)
-  ) {
+  const isInsideDropdown = dropdownRef.value?.contains(target)
+  const isInsideButton = buttonRef.value?.$el?.contains(target)
+  if (!isInsideDropdown && !isInsideButton) {
     showDropdown.value = false
-    emit('visibleChange', false)
   }
 }
 
@@ -95,6 +91,16 @@ onMounted(() => {
 
 onUnmounted(() => {
   document.removeEventListener('click', handleClickOutside)
+})
+watch(
+  () => props.visible,
+  (val) => {
+    if (val !== undefined) showDropdown.value = val
+  }
+)
+watch(showDropdown, (val) => {
+  emit('update:visible', val)
+  emit('visibleChange', val)
 })
 </script>
 
