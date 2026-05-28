@@ -90,7 +90,8 @@ import { IonPage } from '@ionic/vue'
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Icon } from '@iconify/vue'
-
+import { useAppStore } from '@/stores/app'
+const appStore = useAppStore()
 const router = useRouter()
 
 // 状态
@@ -107,12 +108,7 @@ const goBack = () => {
 
 // 深色模式切换
 const toggleDarkMode = () => {
-  if (isDarkMode.value) {
-    document.documentElement.classList.add('dark')
-  } else {
-    document.documentElement.classList.remove('dark')
-  }
-  localStorage.setItem('darkMode', String(isDarkMode.value))
+  appStore.toggleDarkMode()
 }
 
 const toggleNotifications = () => {

@@ -56,10 +56,11 @@ import { useRouter } from 'vue-router'
 import { DropdownItem, HorizontalSelectOption, Playlist, Song } from '@/utils/interface'
 import { ref } from 'vue'
 import { scanAllAudio } from '@/utils/audioScanner'
-
+import { useAppStore } from '@/stores/app'
+const appStore = useAppStore()
 const router = useRouter()
 const keyword = ref('')
-
+appStore.init()
 const onSearch = () => {}
 const handleClick = () => {
   toast.success('操作成功！')

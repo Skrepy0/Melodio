@@ -1,5 +1,7 @@
 import { CapacitorMediaStore } from '@odion-cloud/capacitor-mediastore'
 import type { Song } from '@/utils/interface'
+import { getCoverBase64 } from './functions'
+// import { getCoverUrl } from './functions'
 
 export interface ScanResult {
   success: boolean
@@ -7,79 +9,102 @@ export interface ScanResult {
   error?: string
 }
 
-// 使用 type assertions 来规避 TypeScript 类型检查
-const MediaStoreAPI = CapacitorMediaStore as any
+// 定义插件API的预期返回类型（根据实际文档调整）
+interface MediaStorePlugin {
+  requestPermissions(options: { types: string[] }): Promise<unknown>
+  checkPermissions(): Promise<unknown>
+  getMediasByType(options: {
+    mediaType: 'audio'
+    sortBy?: string
+    includeExternal?: boolean
+  }): Promise<{ media: Song[] }>
+}
 
+// 安全地断言插件类型（避免any）
+const MediaStoreAPI = CapacitorMediaStore as unknown as MediaStorePlugin
+
+/**
+ * 标准化权限状态，兼容不同返回格式
+ */
+const normalizePermissionStatus = (status: unknown): 'granted' | 'denied' | 'unknown' => {
+  if (status === 'granted') return 'granted'
+  if (status === 'denied') return 'denied'
+
+  // 处理对象格式：{ audio: 'granted', ... }
+  if (status && typeof status === 'object') {
+    const obj = status as Record<string, unknown>
+    const audioPerm = obj.audio ?? obj.mediaAudio ?? obj.read ?? obj.status
+    if (audioPerm === 'granted') return 'granted'
+    if (audioPerm === 'denied') return 'denied'
+  }
+
+  return 'unknown'
+}
+
+/**
+ * 请求音频读取权限
+ */
 export const requestAudioPermission = async (): Promise<boolean> => {
   try {
-    const permission = await MediaStoreAPI.requestPermissions({ types: ['audio'] })
-    console.log('权限请求结果 (完整):', permission)
-
-    // 尝试多种常见的权限字段名
-    const isGranted =
-      permission === 'granted' ||
-      permission?.audio === 'granted' ||
-      permission?.mediaAudio === 'granted' ||
-      permission?.read === 'granted' ||
-      permission?.status === 'granted'
-
-    if (!isGranted) {
-      console.warn('权限未被授予，实际返回:', permission)
-    }
-    return isGranted
+    const result = await MediaStoreAPI.requestPermissions({ types: ['audio'] })
+    const granted = normalizePermissionStatus(result) === 'granted'
+    if (!granted) console.warn('权限未被授予，原始返回:', result)
+    return granted
   } catch (error) {
     console.error('权限请求失败:', error)
     return false
   }
 }
 
+/**
+ * 检查音频读取权限状态
+ */
 export const checkAudioPermission = async (): Promise<boolean> => {
   try {
     const status = await MediaStoreAPI.checkPermissions()
-    console.log('权限检查结果 (完整):', status)
-
-    const isGranted =
-      status === 'granted' ||
-      status?.audio === 'granted' ||
-      status?.mediaAudio === 'granted' ||
-      status?.read === 'granted' ||
-      status?.status === 'granted'
-
-    return isGranted
+    return normalizePermissionStatus(status) === 'granted'
   } catch (error) {
     console.error('权限检查失败:', error)
     return false
   }
 }
 
-export const scanAllAudio = async (): Promise<ScanResult> => {
+export const scanAllAudio = async (retryOnPermission = true): Promise<ScanResult> => {
   try {
-    // 直接尝试扫描
     const result = await MediaStoreAPI.getMediasByType({
-      mediaType: 'audio' as any,
+      mediaType: 'audio',
       sortBy: 'TITLE',
       includeExternal: true,
     })
 
-    if (!result || !result.media) {
+    if (!result?.media?.length) {
       return { success: false, songs: [], error: '未找到任何音频文件' }
     }
-
-    console.log('media数组第一项:', JSON.stringify(result.media[0]))
+    for (const item of result.media) {
+      item.albumArtUri = await getCoverBase64(item.albumArtUri)
+    }
     const songs: Song[] = result.media
     return { success: true, songs }
-  } catch (error: any) {
-    // 如果错误与权限相关，则请求权限并重试一次
-    if (error.message?.includes('permission') || error.code === 'permission_denied') {
-      const granted = await requestAudioPermission()
-      if (granted) {
-        // 递归调用自身（注意避免死循环，最多重试一次）
-        return scanAllAudio()
-      } else {
-        return { success: false, songs: [], error: '未获得音频读取权限，请在设置中手动授予' }
-      }
+  } catch (error: unknown) {
+    const err = error as { message?: string; code?: string }
+    const isPermissionError =
+      err.message?.toLowerCase().includes('permission') || err.code === 'permission_denied'
+
+    // 仅当权限错误且允许重试时，尝试请求权限并直接重试扫描（不依赖权限API的返回值）
+    if (isPermissionError && retryOnPermission) {
+      // 请求权限（无论返回什么，都再试一次扫描）
+      await requestAudioPermission()
+
+      // 直接重试扫描，但禁止再次进入重试分支（避免无限循环）
+      // 注意：这次重试如果依然权限错误，会返回失败信息，不会再请求权限
+      return scanAllAudio(false)
     }
+
     console.error('扫描音频失败:', error)
-    return { success: false, songs: [], error: error.message || '扫描过程中发生未知错误' }
+    return {
+      success: false,
+      songs: [],
+      error: err.message || '扫描过程中发生未知错误',
+    }
   }
 }
