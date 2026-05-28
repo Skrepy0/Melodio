@@ -103,7 +103,8 @@ import { Icon } from '@iconify/vue'
 import CircleButton from '@/components/button/CircleButton.vue'
 import DropdownButton from '@/components/button/DropdownButton.vue'
 import type { Song, DropdownItem } from '@/utils/interface'
-
+import { useAppStore } from '@/stores/app'
+const appStore = useAppStore()
 type PlayMode = 'sequential' | 'repeatOne' | 'shuffle'
 const playMode = ref<PlayMode>('sequential')
 const playModeIcon = computed(() => {
@@ -131,7 +132,7 @@ const playModeText = computed(() => {
   }
 })
 
-const queue = ref<Song[]>([])
+const queue = ref<Song[]>(appStore.getPlayQueue())
 const currentSong = computed(() => queue.value[0] || null)
 
 const isPlaying = ref(false)
@@ -144,6 +145,7 @@ const togglePlay = () => {
   console.log('[UI] 播放/暂停', isPlaying.value)
   // TODO: 实际播放逻辑
 }
+
 const prevSong = () => console.log('[UI] 上一首')
 const nextSong = () => console.log('[UI] 下一首')
 const togglePlayMode = () => {
@@ -158,6 +160,7 @@ const shuffleQueue = () => {
     ;[rest[i], rest[j]] = [rest[j], rest[i]]
   }
   queue.value = [queue.value[0], ...rest]
+  appStore.setPlayQueue(queue.value)
 }
 const mockSeek = (e: MouseEvent) => {
   if (!progressBarRef.value) return
@@ -216,6 +219,7 @@ const onDragMove = (e: PointerEvent) => {
         const [movedItem] = newQueue.splice(dragStartIndex.value, 1)
         newQueue.splice(overIndex, 0, movedItem)
         queue.value = newQueue
+        appStore.setPlayQueue(queue.value)
         dragStartIndex.value = overIndex
         dragItem = document.querySelector(`.queue-item[data-index="${overIndex}"]`) as HTMLElement
         if (dragItem) dragItem.classList.add('dragging-source')

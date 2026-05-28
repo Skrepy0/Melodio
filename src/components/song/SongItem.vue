@@ -34,7 +34,9 @@ import { Icon } from '@iconify/vue'
 import DropdownButton from '@/components/button/DropdownButton.vue'
 import { useDropdownControl } from '@/composables/useDropdownControl'
 import type { DropdownItem, Song } from '@/utils/interface'
-
+import { useAppStore } from '@/stores/app'
+import toast from '@/utils/createToast'
+const appStore = useAppStore()
 interface Props {
   song: Song
   dropdownOpen?: boolean
@@ -54,14 +56,15 @@ const menuOptions: DropdownItem[] = [
   { icon: 'mdi:play', description: '播放', value: 'play' },
   { icon: 'mdi:playlist-plus', description: '添加到歌单', value: 'addToPlaylist' },
   { icon: 'mdi:heart-outline', description: '喜欢', value: 'like' },
-  { icon: 'mdi:download', description: '下载', value: 'download' },
+  { icon: 'mdi:queue', description: '添加到播放队列', value: 'queue' },
   { icon: 'mdi:delete', description: '删除', value: 'delete' },
 ]
 
-const formatDuration = (seconds: number): string => {
-  if (isNaN(seconds)) return '00:00'
-  const mins = Math.floor(seconds / 60)
-  const secs = seconds % 60
+const formatDuration = (milliseconds: number): string => {
+  if (isNaN(milliseconds) || milliseconds < 0) return '00:00'
+  const totalSeconds = Math.floor(milliseconds / 1000)
+  const mins = Math.floor(totalSeconds / 60)
+  const secs = totalSeconds % 60
   return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
 }
 
@@ -71,6 +74,10 @@ const onCardClick = () => {
 
 const onMenuItemSelect = (item: DropdownItem) => {
   emit('menuSelect', item.value as string, props.song)
+  if (item.value === 'queue') {
+    appStore.addToQueue(props.song)
+    toast.success('已经将1首歌加入播放队列')
+  }
 }
 </script>
 

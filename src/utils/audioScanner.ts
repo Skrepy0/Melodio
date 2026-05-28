@@ -1,7 +1,6 @@
 import { CapacitorMediaStore } from '@odion-cloud/capacitor-mediastore'
 import type { Song } from '@/utils/interface'
-import { getCoverBase64 } from './functions'
-// import { getCoverUrl } from './functions'
+import { getAccessibleUrl, getCoverBase64 } from './functions'
 
 export interface ScanResult {
   success: boolean
@@ -82,6 +81,7 @@ export const scanAllAudio = async (retryOnPermission = true): Promise<ScanResult
     }
     for (const item of result.media) {
       item.albumArtUri = await getCoverBase64(item.albumArtUri)
+      item.uri = await getAccessibleUrl(item.uri)
     }
     const songs: Song[] = result.media
     return { success: true, songs }

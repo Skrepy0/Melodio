@@ -87,12 +87,15 @@ const onCategorySelect = (option: HorizontalSelectOption) => {
   console.log('选中选项:', option)
 }
 
-const songsList = ref<any[]>([])
+const songsList = ref<Song[]>(appStore.getAllSongs())
 const loadAllSongs = async () => {
   const result = await scanAllAudio()
   if (result.success) {
     songsList.value = result.songs
     toast.success(`扫描完成，共 ${result.songs.length} 首歌曲`)
+    appStore.setAllSongs(songsList.value)
+    appStore.saveAllSongs()
+    selectedCategory.value = 'tracks'
   } else {
     toast.error(result.error || '扫描失败，请检查权限')
   }
