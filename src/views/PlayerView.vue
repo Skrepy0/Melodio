@@ -11,11 +11,15 @@
 
     <div class="player-header" :class="{ collapsed: isHeaderCollapsed }">
       <div class="album-cover">
-        <img v-if="currentSong?.coverUrl" :src="currentSong.coverUrl" :alt="currentSong.name" />
+        <img
+          v-if="currentSong?.albumArtUri"
+          :src="currentSong.albumArtUri"
+          :alt="currentSong.displayName"
+        />
         <Icon v-else icon="mdi:music" :width="120" color="var(--text-secondary)" />
       </div>
       <div class="song-info">
-        <div class="song-name">{{ currentSong?.name || '未播放' }}</div>
+        <div class="song-name">{{ currentSong?.displayName || '未播放' }}</div>
         <div class="song-artist">{{ currentSong?.artist || '未知艺术家' }}</div>
       </div>
 
@@ -71,7 +75,7 @@
           </div>
           <div class="queue-index">{{ getRelativeIndex(idx) }}</div>
           <div class="queue-song-info">
-            <div class="queue-song-name">{{ song.name }}</div>
+            <div class="queue-song-name">{{ song.displayName }}</div>
             <div class="queue-song-artist">{{ song.artist }}</div>
           </div>
           <DropdownButton
@@ -127,25 +131,7 @@ const playModeText = computed(() => {
   }
 })
 
-const queue = ref<Song[]>([
-  { id: 1, name: 'Blinding Lights', artist: 'The Weeknd', coverUrl: '', duration: 200 },
-  { id: 2, name: 'Shape of You', artist: 'Ed Sheeran', coverUrl: '', duration: 233 },
-  { id: 3, name: 'Dance Monkey', artist: 'Tones and I', coverUrl: '', duration: 210 },
-  { id: 4, name: 'Rockstar', artist: 'Post Malone', coverUrl: '', duration: 218 },
-  { id: 5, name: 'Bad Guy', artist: 'Billie Eilish', coverUrl: '', duration: 194 },
-  { id: 6, name: 'Bad Guy', artist: 'Billie Eilish', coverUrl: '', duration: 194 },
-  { id: 7, name: 'Bad Guy', artist: 'Billie Eilish', coverUrl: '', duration: 194 },
-  { id: 8, name: 'Bad Guy', artist: 'Billie Eilish', coverUrl: '', duration: 194 },
-  { id: 9, name: 'Bad Guy', artist: 'Billie Eilish', coverUrl: '', duration: 194 },
-  { id: 10, name: 'Bad Guy', artist: 'Billie Eilish', coverUrl: '', duration: 194 },
-  { id: 11, name: 'Bad Guy', artist: 'Billie Eilish', coverUrl: '', duration: 194 },
-  { id: 12, name: 'Bad Guy', artist: 'Billie Eilish', coverUrl: '', duration: 194 },
-  { id: 13, name: 'Bad Guy', artist: 'Billie Eilish', coverUrl: '', duration: 194 },
-  { id: 14, name: 'Bad Guy', artist: 'Billie Eilish', coverUrl: '', duration: 194 },
-  { id: 15, name: 'Bad Guy', artist: 'Billie Eilish', coverUrl: '', duration: 194 },
-  { id: 16, name: 'Bad Guy', artist: 'Billie Eilish', coverUrl: '', duration: 194 },
-  { id: 17, name: 'Bad Guy', artist: 'Billie Eilish', coverUrl: '', duration: 194 },
-])
+const queue = ref<Song[]>([])
 const currentSong = computed(() => queue.value[0] || null)
 
 const isPlaying = ref(false)
@@ -188,7 +174,7 @@ const menuOptions: DropdownItem[] = [
   { icon: 'mdi:delete', description: '从队列移除', value: 'remove' },
 ]
 const onMenuItemSelect = (item: DropdownItem, song: Song) => {
-  console.log('[UI] 对歌曲', song.name, '执行', item.value)
+  console.log('[UI] 对歌曲', song.displayName, '执行', item.value)
   // 根据 item.value 实现具体逻辑，例如：
   // if (item.value === 'remove') { queue.value = queue.value.filter(s => s.id !== song.id) }
   openDropdownId.value = null // 关闭菜单

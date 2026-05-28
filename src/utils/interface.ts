@@ -42,13 +42,24 @@ export interface HorizontalSelectProps {
   iconSize?: number | string
 }
 export interface Song {
-  id: string | number
-  name: string
+  id: string
+  displayName: string
+  uri: string
+  size: number
+  mimeType: string
+  dateAdded: number
+  dateModified: number
+  mediaType: string
+  duration: number
+  title: string
   artist: string
-  duration: number // 秒数
-  coverUrl?: string // 可选封面图
+  album: string
+  track: number
+  year: number
+  albumArtUri: string
 }
 
+//
 export interface SongItemSelectableProps {
   song: Song
   selectable: boolean

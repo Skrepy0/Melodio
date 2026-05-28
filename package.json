@@ -25,6 +25,7 @@
     "@capacitor/status-bar": "8.0.2",
     "@ionic/vue": "^8.0.0",
     "@ionic/vue-router": "^8.0.0",
+    "@odion-cloud/capacitor-mediastore": "^1.0.21",
     "ionicons": "^7.0.0",
     "prettier": "^3.8.3",
     "vue": "^3.3.0",

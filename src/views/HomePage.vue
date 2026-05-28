@@ -26,7 +26,7 @@
       </div>
       <PlayList
         v-if="selectedCategory === 'tracks'"
-        :songs="songs"
+        :songs="songsList"
         @batch-delete="handleBatchDelete"
         @song-click="playSong"
       />
@@ -55,6 +55,7 @@ import toast from '@/utils/createToast'
 import { useRouter } from 'vue-router'
 import { DropdownItem, HorizontalSelectOption, Playlist, Song } from '@/utils/interface'
 import { ref } from 'vue'
+import { scanAllAudio } from '@/utils/audioScanner'
 
 const router = useRouter()
 const keyword = ref('')
@@ -72,6 +73,7 @@ const operations: DropdownItem[] = [
 const onSelectOperation = (item: DropdownItem) => {
   console.log('选中:', item.description, item.value)
   if (item.value === 'settings') router.push('/settings')
+  else if (item.value === 'scan-songs') loadAllSongs()
 }
 const selectedCategory = ref('tracks')
 
@@ -84,12 +86,16 @@ const onCategorySelect = (option: HorizontalSelectOption) => {
   console.log('选中选项:', option)
 }
 
-const songs = [
-  { id: 1, name: 'Blinding Lights', artist: 'The Weeknd', duration: 200, coverUrl: '' },
-  { id: 2, name: 'Shape of You', artist: 'Ed Sheeran', duration: 233 },
-  // 更多歌曲...
-]
-
+const songsList = ref<any[]>([])
+const loadAllSongs = async () => {
+  const result = await scanAllAudio()
+  if (result.success) {
+    songsList.value = result.songs
+    toast.success(`扫描完成，共 ${result.songs.length} 首歌曲`)
+  } else {
+    toast.error(result.error || '扫描失败，请检查权限')
+  }
+}
 const handleBatchDelete = (ids: any) => {
   console.log('删除歌曲 IDs:', ids)
   // 调用 API 删除，并更新本地列表
