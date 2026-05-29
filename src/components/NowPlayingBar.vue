@@ -7,11 +7,11 @@
     <div class="bar-content">
       <div class="song-info" @click="onExpand">
         <div class="cover">
-          <img v-if="song.coverUrl" :src="song.coverUrl" :alt="song.name" />
+          <img v-if="song.albumArtUri" :src="song.albumArtUri" :alt="song.title" />
           <Icon v-else icon="mdi:music" :width="40" />
         </div>
         <div class="details">
-          <div class="name">{{ song.name }}</div>
+          <div class="name">{{ song.title }}</div>
           <div class="artist">{{ song.artist }}</div>
         </div>
       </div>
@@ -33,71 +33,110 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch } from 'vue'
+import { computed, onUnmounted, ref, watch } from 'vue'
 import { Icon } from '@iconify/vue'
-import type { NowPlayingSong } from '@/utils/interface.ts'
-
-interface Props {
-  song: NowPlayingSong | null
-  autoPlay?: boolean
-}
-
-const props = withDefaults(defineProps<Props>(), {
-  autoPlay: false,
-})
+import { emptySong, Song } from '@/utils/interface'
+import { useAppStore } from '@/stores/app'
+import { audio } from '@/utils/createAudio'
+import { MediaSession } from '@pejota14/capacitor-media-session'
+import toast from '@/utils/createToast'
+import { getNextSongIndex, getPrevSongIndex } from '@/utils/control'
+const appStore = useAppStore()
+const playData = appStore.getPlayData()
+const song = ref(appStore.getPlayQueue()[playData.currentIndex] || emptySong)
 
 const emit = defineEmits<{
-  (e: 'play', song: NowPlayingSong): void
-  (e: 'pause', song: NowPlayingSong): void
   (e: 'expand'): void
 }>()
-
-let audio: HTMLAudioElement | null = null
-const isPlaying = ref(false)
-const currentTime = ref(0)
-const duration = ref(0)
-const progressPercent = ref(0)
-
-const initAudio = () => {
-  if (!props.song?.audioUrl) return
-  if (audio) {
-    audio.pause()
-    audio.src = ''
-  }
-  audio = new Audio(props.song.audioUrl)
-  audio.addEventListener('loadedmetadata', () => {
-    duration.value = audio?.duration || 0
-  })
-  audio.addEventListener('timeupdate', () => {
-    if (audio) {
-      currentTime.value = audio.currentTime
-      progressPercent.value = (currentTime.value / duration.value) * 100 || 0
-    }
-  })
-  audio.addEventListener('ended', () => {
-    isPlaying.value = false
-    emit('pause', props.song!)
-  })
-  if (props.autoPlay) {
-    play()
-  }
-}
-
-const play = async () => {
-  if (!audio && props.song?.audioUrl) initAudio()
-  if (audio) {
-    await audio.play()
+const registerMediaSessionHandlers = () => {
+  MediaSession.setActionHandler({ action: 'play' }, () => {
+    console.log('[MediaSession] play')
+    audio.play()
     isPlaying.value = true
-    emit('play', props.song!)
-  }
-}
-
-const pause = () => {
-  if (audio) {
+  })
+  MediaSession.setActionHandler({ action: 'pause' }, () => {
+    console.log('[MediaSession] pause')
     audio.pause()
     isPlaying.value = false
-    emit('pause', props.song!)
+  })
+  MediaSession.setActionHandler({ action: 'nexttrack' }, () => {
+    console.log('[MediaSession] next')
+    nextSong()
+  })
+  MediaSession.setActionHandler({ action: 'previoustrack' }, () => {
+    console.log('[MediaSession] previous')
+    prevSong()
+  })
+}
+const updateMediaSession = (song: Song) => {
+  if (!song) return
+  MediaSession.setPlaybackState({ playbackState: isPlaying.value ? 'playing' : 'paused' })
+}
+
+registerMediaSessionHandlers()
+
+audio.addEventListener('play', () => {
+  MediaSession.setPlaybackState({ playbackState: 'playing' })
+})
+audio.addEventListener('pause', () => {
+  MediaSession.setPlaybackState({ playbackState: 'paused' })
+})
+const isPlaying = ref(playData.isPlaying)
+const currentTime = ref(playData.mockCurrentTime)
+const duration = ref(song.value.duration / 1000)
+const progressPercent = ref(computed(() => (currentTime.value / duration.value) * 100 || 0))
+audio.addEventListener('timeupdate', () => {
+  currentTime.value = audio.currentTime
+})
+const play = async () => {
+  isPlaying.value = true
+  audio.play().catch((e) => {
+    console.error(e)
+    toast.error('播放失败:' + e)
+  })
+  audio.setSong(song.value || emptySong)
+}
+const updateSongStatus = async () => {
+  currentTime.value = 0
+  const playData = appStore.getPlayData()
+  song.value = appStore.getPlayQueue()[playData.currentIndex] || null
+  if (!song.value) return
+  try {
+    await audio.setSrc(song.value.uri)
+    duration.value = song.value.duration / 1000 || 0
+    if (isPlaying.value) {
+      await audio.play()
+    }
+  } catch (e) {
+    console.error(e)
+    toast.error('播放失败')
   }
+}
+const nextSong = () => {
+  const currentIndex = appStore.getPlayData().currentIndex
+  const req = getNextSongIndex(currentIndex, appStore.getPlayQueue().length)
+  if (req.meg === 'error') {
+    toast.warning('当前队列里没有歌曲')
+  } else {
+    if (currentIndex === req.idx) return
+    appStore.setCurrentIndex(req.idx)
+    updateSongStatus()
+  }
+}
+const prevSong = () => {
+  const currentIndex = appStore.getPlayData().currentIndex
+  const req = getPrevSongIndex(currentIndex, appStore.getPlayQueue().length)
+  if (req.meg === 'error') {
+    toast.warning('当前队列里没有歌曲')
+  } else {
+    if (currentIndex === req.idx) return
+    appStore.setCurrentIndex(req.idx)
+    updateSongStatus()
+  }
+}
+const pause = () => {
+  audio.pause()
+  isPlaying.value = false
 }
 
 const togglePlay = () => {
@@ -119,36 +158,22 @@ const onExpand = () => {
   emit('expand')
 }
 
-watch(
-  () => props.song,
-  (newSong, oldSong) => {
-    if (newSong?.audioUrl !== oldSong?.audioUrl) {
-      initAudio()
-      if (props.autoPlay && newSong) {
-        play()
-      } else {
-        isPlaying.value = false
-        currentTime.value = 0
-        progressPercent.value = 0
-      }
-    }
-  },
-  { deep: true }
-)
+watch(song, (newSong) => {
+  duration.value = newSong.duration / 1000
 
-onMounted(() => {
-  if (props.song?.audioUrl) {
-    initAudio()
-    if (props.autoPlay) play()
-  }
+  if (newSong) updateMediaSession(newSong)
 })
-
+watch(isPlaying, () => {
+  appStore.setIsPlaying(isPlaying.value)
+})
+watch(currentTime, () => {
+  appStore.setMockCurrentTime(currentTime.value)
+})
 onUnmounted(() => {
-  if (audio) {
-    audio.pause()
-    audio.src = ''
-    audio = null
-  }
+  MediaSession.setActionHandler({ action: 'play' }, null)
+  MediaSession.setActionHandler({ action: 'pause' }, null)
+  MediaSession.setActionHandler({ action: 'nexttrack' }, null)
+  MediaSession.setActionHandler({ action: 'previoustrack' }, null)
 })
 </script>
 

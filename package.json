@@ -17,6 +17,7 @@
     "android:open": "npx cap open android"
   },
   "dependencies": {
+    "@capacitor-community/native-audio": "^8.0.0",
     "@capacitor/android": "^8.3.4",
     "@capacitor/app": "^8.1.0",
     "@capacitor/core": "8.3.4",
@@ -28,6 +29,8 @@
     "@ionic/vue": "^8.0.0",
     "@ionic/vue-router": "^8.0.0",
     "@odion-cloud/capacitor-mediastore": "^1.0.21",
+    "@pejota14/capacitor-media-session": "^5.0.0",
+    "cordova-plugin-media": "^7.0.0",
     "ionicons": "^7.0.0",
     "pinia": "^3.0.4",
     "prettier": "^3.8.3",

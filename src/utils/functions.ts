@@ -1,10 +1,19 @@
 import { Filesystem } from '@capacitor/filesystem'
-import { Capacitor } from '@capacitor/core'
-export const getAccessibleUrl = (path: string) => {
-  if (Capacitor.isNativePlatform() && path.startsWith('file://')) {
-    return (window as any)?.Ionic?.WebView?.convertFileSrc?.(path) || path
+
+export const getAccessibleUrl = (path: string): string => {
+  if (path.startsWith('file://')) {
+    return encodeURI(path)
   }
-  return path
+
+  if (path.startsWith('https://localhost/_capacitor_file_/')) {
+    const filePath = path.slice('https://localhost/_capacitor_file_'.length) // /storage/emulated/0/...
+    return encodeURI('file://' + filePath)
+  }
+
+  if (path.startsWith('/')) {
+    return encodeURI('file://' + path)
+  }
+  return encodeURI(path)
 }
 export async function getCoverBase64(uri: string): Promise<string> {
   try {

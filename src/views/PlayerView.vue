@@ -14,21 +14,31 @@
         <img
           v-if="currentSong?.albumArtUri"
           :src="currentSong.albumArtUri"
-          :alt="currentSong.displayName"
+          :alt="currentSong.title"
         />
         <Icon v-else icon="mdi:music" :width="120" color="var(--text-secondary)" />
       </div>
       <div class="song-info">
-        <div class="song-name">{{ currentSong?.displayName || '未播放' }}</div>
+        <div class="song-name">{{ currentSong?.title || '未播放' }}</div>
         <div class="song-artist">{{ currentSong?.artist || '未知艺术家' }}</div>
       </div>
 
       <div class="progress-section">
         <div class="time-current">{{ formatTime(mockCurrentTime) }}</div>
         <div class="progress-bar-container" @click="mockSeek">
-          <div class="progress-bar" ref="progressBarRef">
+          <div
+            class="progress-bar"
+            ref="progressBarRef"
+            @mousedown="startDragProgress"
+            @touchstart="startDragProgress"
+          >
             <div class="progress-fill" :style="{ width: mockProgress + '%' }"></div>
-            <div class="progress-handle" :style="{ left: mockProgress + '%' }"></div>
+            <div
+              class="progress-handle"
+              :style="{ left: mockProgress + '%' }"
+              @mousedown="startDragProgress"
+              @touchstart="startDragProgress"
+            ></div>
           </div>
         </div>
         <div class="time-duration">{{ formatTime(mockDuration) }}</div>
@@ -75,7 +85,7 @@
           </div>
           <div class="queue-index">{{ getRelativeIndex(idx) }}</div>
           <div class="queue-song-info">
-            <div class="queue-song-name">{{ song.displayName }}</div>
+            <div class="queue-song-name">{{ song.title }}</div>
             <div class="queue-song-artist">{{ song.artist }}</div>
           </div>
           <DropdownButton
@@ -98,13 +108,19 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onUnmounted } from 'vue'
+import { ref, computed, onUnmounted, watch } from 'vue'
 import { Icon } from '@iconify/vue'
 import CircleButton from '@/components/button/CircleButton.vue'
 import DropdownButton from '@/components/button/DropdownButton.vue'
-import type { Song, DropdownItem } from '@/utils/interface'
+import { type Song, type DropdownItem, emptySong } from '@/utils/interface'
 import { useAppStore } from '@/stores/app'
+import { MediaSession } from '@pejota14/capacitor-media-session'
+import toast from '@/utils/createToast'
+import { audio } from '@/utils/createAudio'
+import { getNextSongIndex, getPrevSongIndex } from '@/utils/control'
+
 const appStore = useAppStore()
+
 type PlayMode = 'sequential' | 'repeatOne' | 'shuffle'
 const playMode = ref<PlayMode>('sequential')
 const playModeIcon = computed(() => {
@@ -132,28 +148,172 @@ const playModeText = computed(() => {
   }
 })
 
+const playData = appStore.getPlayData()
 const queue = ref<Song[]>(appStore.getPlayQueue())
-const currentSong = computed(() => queue.value[0] || null)
-
-const isPlaying = ref(false)
-const mockCurrentTime = ref(65)
-const mockDuration = ref(200)
+const currentIndex = ref(playData.currentIndex)
+const currentSong = computed(() => queue.value[currentIndex.value] || null)
+const isPlaying = ref(playData.isPlaying)
+const mockCurrentTime = ref(playData.mockCurrentTime)
+const mockDuration = ref(0)
 const mockProgress = computed(() => (mockCurrentTime.value / mockDuration.value) * 100 || 0)
-
-const togglePlay = () => {
-  isPlaying.value = !isPlaying.value
-  console.log('[UI] 播放/暂停', isPlaying.value)
-  // TODO: 实际播放逻辑
+let isSwitchingSong = false
+const updateMeta = () => {
+  audio.setSong(currentSong.value || emptySong)
 }
 
-const prevSong = () => console.log('[UI] 上一首')
-const nextSong = () => console.log('[UI] 下一首')
+const loadCurrentSong = async () => {
+  const song = currentSong.value
+  if (!song) return
+  try {
+    await audio.setSrc(song.uri)
+    mockDuration.value = song.duration / 1000 || 0
+    await updateMeta()
+    if (isPlaying.value) {
+      await audio.play()
+    }
+  } catch (e) {
+    console.error(e)
+    toast.error('播放失败')
+  }
+}
+
+const registerMediaSessionHandlers = () => {
+  MediaSession.setActionHandler({ action: 'play' }, () => {
+    console.log('[MediaSession] play')
+    audio.play()
+    isPlaying.value = true
+  })
+  MediaSession.setActionHandler({ action: 'pause' }, () => {
+    console.log('[MediaSession] pause')
+    audio.pause()
+    isPlaying.value = false
+  })
+  MediaSession.setActionHandler({ action: 'nexttrack' }, () => {
+    console.log('[MediaSession] next')
+    nextSong()
+  })
+  MediaSession.setActionHandler({ action: 'previoustrack' }, () => {
+    console.log('[MediaSession] previous')
+    prevSong()
+  })
+}
+
+const updateMediaSession = (song: Song) => {
+  if (!song) return
+  MediaSession.setPlaybackState({ playbackState: isPlaying.value ? 'playing' : 'paused' })
+}
+
+registerMediaSessionHandlers()
+
+audio.addEventListener('play', () => {
+  MediaSession.setPlaybackState({ playbackState: 'playing' })
+})
+audio.addEventListener('pause', () => {
+  MediaSession.setPlaybackState({ playbackState: 'paused' })
+})
+
+audio.addEventListener('timeupdate', () => {
+  if (!isDraggingProgress) {
+    mockCurrentTime.value = audio.currentTime
+  }
+})
+audio.addEventListener('ended', () => {
+  if (!isSwitchingSong) {
+    nextSong()
+  }
+})
+
+let lastLoadedSongId: string | number | null = null
+
+watch(currentSong, async (newSong) => {
+  if (!newSong) return
+  if (lastLoadedSongId === newSong.id) return
+  lastLoadedSongId = newSong.id
+  mockCurrentTime.value = 0
+  await loadCurrentSong()
+})
+
+watch(currentIndex, () => {
+  appStore.setCurrentIndex(currentIndex.value)
+})
+
+watch(isPlaying, (newValue) => {
+  appStore.setIsPlaying(newValue)
+  if (newValue) {
+    const song = currentSong.value
+    if (song && lastLoadedSongId !== song.id) {
+      // 如果当前歌曲尚未加载，则由 currentSong 的 watch 负责加载，此处不重复调用
+    }
+    audio.updateMetadata(song || emptySong)
+  } else {
+    audio.pause()
+    mockCurrentTime.value = audio.currentTime
+  }
+})
+
+watch(mockCurrentTime, () => {
+  appStore.setMockCurrentTime(mockCurrentTime.value)
+})
+
+watch(currentSong, (newValue) => {
+  if (newValue) {
+    updateMediaSession(newValue)
+  }
+})
+
+const togglePlay = () => {
+  if (isPlaying.value) {
+    audio.pause()
+  } else {
+    audio.play().catch((e) => toast.error('播放失败:' + e))
+  }
+  isPlaying.value = !isPlaying.value
+}
+
+const prevSong = () => {
+  if (isSwitchingSong) return
+  isSwitchingSong = true
+
+  const req = getPrevSongIndex(currentIndex.value, queue.value.length)
+  if (req.meg === 'error') {
+    toast.warning('当前队列里没有歌曲')
+    isSwitchingSong = false
+    return
+  }
+  currentIndex.value = req.idx
+  console.log('[UI] 上一首')
+
+  setTimeout(() => {
+    isSwitchingSong = false
+  }, 100)
+}
+
+const nextSong = () => {
+  if (isSwitchingSong) return
+  isSwitchingSong = true
+
+  const req = getNextSongIndex(currentIndex.value, queue.value.length)
+  if (req.meg === 'error') {
+    toast.warning('当前队列里没有歌曲')
+    isSwitchingSong = false
+    return
+  }
+  currentIndex.value = req.idx
+  console.log('[UI] 下一首')
+
+  setTimeout(() => {
+    isSwitchingSong = false
+  }, 100)
+}
+
 const togglePlayMode = () => {
   const modes: PlayMode[] = ['sequential', 'repeatOne', 'shuffle']
   const idx = modes.indexOf(playMode.value)
   playMode.value = modes[(idx + 1) % modes.length]
 }
+
 const shuffleQueue = () => {
+  if (queue.value.length <= 1) return
   const rest = queue.value.slice(1)
   for (let i = rest.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1))
@@ -162,31 +322,129 @@ const shuffleQueue = () => {
   queue.value = [queue.value[0], ...rest]
   appStore.setPlayQueue(queue.value)
 }
-const mockSeek = (e: MouseEvent) => {
+
+const progressBarRef = ref<HTMLElement | null>(null)
+let isDraggingProgress = false
+
+const updateProgressByEvent = (e: MouseEvent | TouchEvent) => {
   if (!progressBarRef.value) return
   const rect = progressBarRef.value.getBoundingClientRect()
-  const clickX = Math.max(0, Math.min(e.clientX - rect.left, rect.width))
+  const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX
+  let clickX = clientX - rect.left
+  clickX = Math.max(0, Math.min(clickX, rect.width))
   const percent = clickX / rect.width
-  mockCurrentTime.value = percent * mockDuration.value
+  let newTime = percent * mockDuration.value
+  newTime = Math.max(0, Math.min(newTime, mockDuration.value))
+  mockCurrentTime.value = newTime
 }
 
-const openDropdownId = ref<string | number | null>(null) // 当前打开的菜单所属歌曲ID
+const startDragProgress = (e: MouseEvent | TouchEvent) => {
+  e.preventDefault()
+  isDraggingProgress = true
+  updateProgressByEvent(e)
+  document.addEventListener('mousemove', onDragProgress)
+  document.addEventListener('mouseup', stopDragProgress)
+  document.addEventListener('touchmove', onDragProgress)
+  document.addEventListener('touchend', stopDragProgress)
+}
+
+const onDragProgress = (e: MouseEvent | TouchEvent) => {
+  if (!isDraggingProgress) return
+  e.preventDefault()
+  updateProgressByEvent(e)
+}
+
+const stopDragProgress = async () => {
+  if (!isDraggingProgress) return
+  isDraggingProgress = false
+  const targetTime = Math.max(0, Math.min(mockCurrentTime.value, mockDuration.value))
+  mockCurrentTime.value = targetTime
+  await audio.seek(targetTime)
+  document.removeEventListener('mousemove', onDragProgress)
+  document.removeEventListener('mouseup', stopDragProgress)
+  document.removeEventListener('touchmove', onDragProgress)
+  document.removeEventListener('touchend', stopDragProgress)
+}
+
+const mockSeek = async (e: MouseEvent) => {
+  updateProgressByEvent(e)
+  const targetTime = Math.max(0, Math.min(mockCurrentTime.value, mockDuration.value))
+  await audio.seek(targetTime)
+}
+
+const openDropdownId = ref<string | number | null>(null)
 const menuOptions: DropdownItem[] = [
   { icon: 'mdi:play', description: '播放', value: 'play' },
   { icon: 'mdi:heart-outline', description: '喜欢', value: 'like' },
   { icon: 'mdi:delete', description: '从队列移除', value: 'remove' },
 ]
 const onMenuItemSelect = (item: DropdownItem, song: Song) => {
-  console.log('[UI] 对歌曲', song.displayName, '执行', item.value)
-  // 根据 item.value 实现具体逻辑，例如：
-  // if (item.value === 'remove') { queue.value = queue.value.filter(s => s.id !== song.id) }
-  openDropdownId.value = null // 关闭菜单
+  console.log('[UI] 对歌曲', song.title, '执行', item.value)
+
+  if (item.value === 'play') {
+    const targetIdx = queue.value.findIndex((s) => s.id === song.id)
+    if (targetIdx !== -1 && targetIdx !== currentIndex.value) {
+      currentIndex.value = targetIdx
+      lastLoadedSongId = null
+    } else if (targetIdx === currentIndex.value && isPlaying.value === false) {
+      audio.play()
+      isPlaying.value = true
+    }
+    openDropdownId.value = null
+    return
+  }
+
+  if (item.value === 'like') {
+    console.log('[UI] 喜欢歌曲', song.title)
+    toast.success(`已添加 ${song.title} 到“我喜欢的音乐”`)
+    openDropdownId.value = null
+    return
+  }
+
+  if (item.value === 'remove') {
+    const idx = queue.value.findIndex((s) => s.id === song.id)
+    if (idx === -1) {
+      openDropdownId.value = null``
+      return
+    }
+
+    queue.value.splice(idx, 1)
+    appStore.setPlayQueue(queue.value)
+
+    if (queue.value.length === 0) {
+      audio.pause()
+      isPlaying.value = false
+      mockCurrentTime.value = 0
+      mockDuration.value = 0
+      currentIndex.value = 0
+      lastLoadedSongId = null
+      openDropdownId.value = null
+      return
+    }
+
+    // 调整当前播放索引
+    if (idx < currentIndex.value) {
+      currentIndex.value--
+    } else if (idx === currentIndex.value) {
+      if (currentIndex.value >= queue.value.length) {
+        currentIndex.value = queue.value.length - 1
+      }
+      lastLoadedSongId = null
+    }
+    // idx > currentIndex 时不变
+
+    openDropdownId.value = null
+    return
+  }
+
+  console.warn('[UI] 未处理的菜单项:', item.value)
+  openDropdownId.value = null
 }
 
 const dragStartIndex = ref<number | null>(null)
 const dragOverIndex = ref<number | null>(null)
 let dragItem: HTMLElement | null = null
-let isDragging = false
+let isDraggingQueue = false
 let pointerId: number | null = null
 
 const startDrag = (e: PointerEvent, idx: number) => {
@@ -198,14 +456,14 @@ const startDrag = (e: PointerEvent, idx: number) => {
   dragItem = target as HTMLElement
   dragItem.setPointerCapture(e.pointerId)
   pointerId = e.pointerId
-  isDragging = true
+  isDraggingQueue = true
   dragItem.classList.add('dragging-source')
   document.addEventListener('pointermove', onDragMove)
   document.addEventListener('pointerup', stopDrag)
 }
 
 const onDragMove = (e: PointerEvent) => {
-  if (!isDragging || dragStartIndex.value === null) return
+  if (!isDraggingQueue || dragStartIndex.value === null) return
   if (e.pointerId !== pointerId) return
   e.preventDefault()
   const elements = document.elementsFromPoint(e.clientX, e.clientY)
@@ -219,7 +477,6 @@ const onDragMove = (e: PointerEvent) => {
         const [movedItem] = newQueue.splice(dragStartIndex.value, 1)
         newQueue.splice(overIndex, 0, movedItem)
         queue.value = newQueue
-        appStore.setPlayQueue(queue.value)
         dragStartIndex.value = overIndex
         dragItem = document.querySelector(`.queue-item[data-index="${overIndex}"]`) as HTMLElement
         if (dragItem) dragItem.classList.add('dragging-source')
@@ -229,7 +486,7 @@ const onDragMove = (e: PointerEvent) => {
 }
 
 const stopDrag = (e: PointerEvent) => {
-  if (!isDragging) return
+  if (!isDraggingQueue) return
   if (e.pointerId !== pointerId) return
   if (dragItem) {
     dragItem.classList.remove('dragging-source')
@@ -238,17 +495,18 @@ const stopDrag = (e: PointerEvent) => {
   dragStartIndex.value = null
   dragOverIndex.value = null
   dragItem = null
-  isDragging = false
+  isDraggingQueue = false
   pointerId = null
   document.removeEventListener('pointermove', onDragMove)
   document.removeEventListener('pointerup', stopDrag)
+  appStore.setPlayQueue(queue.value)
 }
 
-onUnmounted(() => {
-  if (isDragging) stopDrag(new PointerEvent('pointerup'))
-})
-
-const getRelativeIndex = (idx: number) => (idx === 0 ? '0' : `+${idx}`)
+const getRelativeIndex = (idx: number) => {
+  const diff = idx - currentIndex.value
+  if (diff === 0) return '0'
+  return diff > 0 ? `+${diff}` : `${diff}`
+}
 
 const queueListRef = ref<HTMLElement | null>(null)
 const isHeaderCollapsed = ref(false)
@@ -275,7 +533,13 @@ const formatTime = (seconds: number): string => {
   return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
 }
 
-const progressBarRef = ref<HTMLElement | null>(null)
+onUnmounted(() => {
+  if (isDraggingQueue) stopDrag(new PointerEvent('pointerup'))
+  MediaSession.setActionHandler({ action: 'play' }, null)
+  MediaSession.setActionHandler({ action: 'pause' }, null)
+  MediaSession.setActionHandler({ action: 'nexttrack' }, null)
+  MediaSession.setActionHandler({ action: 'previoustrack' }, null)
+})
 
 defineExpose({ queue, currentSong, playMode, togglePlay, prevSong, nextSong })
 </script>
@@ -387,7 +651,6 @@ defineExpose({ queue, currentSong, playMode, togglePlay, prevSong, nextSong })
     background: var(--primary-color, #007aff);
     border-radius: 50%;
     transform: translate(-50%, -50%);
-    pointer-events: none;
     opacity: 0;
     transition: opacity 0.2s;
   }

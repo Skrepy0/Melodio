@@ -83,3 +83,25 @@ export interface Playlist {
   coverUrl?: string
   songCount: number // 包含的歌曲数量
 }
+export interface playData {
+  currentIndex: number
+  isPlaying: boolean
+  mockCurrentTime: number
+}
+export const emptySong = {
+  id: 1,
+  displayName: '未知',
+  uri: '',
+  size: 0,
+  mimeType: '',
+  dateAdded: 0,
+  dateModified: 0,
+  mediaType: '',
+  duration: 0,
+  title: '',
+  artist: '未知艺术家',
+  album: '未知专辑',
+  track: 0,
+  year: 0,
+  albumArtUri: '',
+}

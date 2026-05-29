@@ -37,7 +37,7 @@
         @playlist-click="onPlaylistClick"
         @menu-select="onPlaylistMenuSelect"
       />
-      <NowPlayingBar :song="currentSong" auto-play @expand="showFullPlayer" />
+      <NowPlayingBar auto-play @expand="showFullPlayer" />
     </div>
   </ion-page>
 </template>
@@ -108,13 +108,6 @@ const handleBatchDelete = (ids: any) => {
 const playSong = (song: Song) => {
   console.log('播放歌曲:', song)
 }
-const currentSong = ref({
-  id: 1,
-  name: 'Blinding Lights',
-  artist: 'The Weeknd',
-  coverUrl: 'https://...',
-  audioUrl: '',
-})
 const showFullPlayer = () => {
   router.push('/player-view')
 }

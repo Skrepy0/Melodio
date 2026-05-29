@@ -37,7 +37,7 @@ watch(
 
 useBackButton(-1, () => {
   if (router.currentRoute.value.path === '/home') {
-    App.exitApp()
+    App.minimizeApp()
   }
 })
 </script>

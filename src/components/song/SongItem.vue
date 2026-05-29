@@ -1,12 +1,12 @@
 <template>
   <div class="song-item" @click="onCardClick">
     <div class="song-cover">
-      <img v-if="song.albumArtUri" :src="song.albumArtUri" :alt="song.displayName" />
+      <img v-if="song.albumArtUri" :src="song.albumArtUri" :alt="song.title" />
       <Icon v-else icon="mdi:music" :width="36" class="default-cover" />
     </div>
 
     <div class="song-info">
-      <div class="song-name">{{ song.displayName }}</div>
+      <div class="song-name">{{ song.title }}</div>
       <div class="song-artist">{{ song.artist }}</div>
     </div>
 

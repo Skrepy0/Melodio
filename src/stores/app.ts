@@ -1,16 +1,36 @@
 import { Song } from '@/utils/interface'
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
+import { playData } from '@/utils/interface'
+import { audio } from '@/utils/createAudio'
 
 export const useAppStore = defineStore('app', () => {
   const darkMode = ref(localStorage.getItem('darkMode') || false)
-
   const allSongs = ref<Song[]>([])
   const playQueue = ref<Song[]>([])
+  const initFlag = ref(false)
+  function setInitFlag(val: boolean) {
+    initFlag.value = val
+  }
+  function getInitFlag() {
+    return initFlag.value
+  }
   function init() {
-    loadInitialDarkMode()
-    initAllSongs()
-    initPlayQueue()
+    if (!initFlag.value) {
+      loadInitialDarkMode()
+      initAllSongs()
+      initPlayQueue()
+      initPlayData()
+      const playData = getPlayData()
+      const currentSong = getPlayQueue()[playData.currentIndex]
+      const playUri = currentSong?.uri || ''
+      if (playUri !== audio.src) {
+        audio.setSrc(playUri)
+      }
+      audio.seek(playData.mockCurrentTime)
+      audio.setSong(currentSong)
+      initFlag.value = true
+    }
   }
   function toggleDarkMode() {
     darkMode.value = !darkMode.value
@@ -37,6 +57,7 @@ export const useAppStore = defineStore('app', () => {
     }
   }
   function setAllSongs(songs: Song[]) {
+    if (allSongs.value === songs) return
     allSongs.value = songs
     saveAllSongs()
   }
@@ -78,7 +99,45 @@ export const useAppStore = defineStore('app', () => {
     savePlayQueue()
   }
 
+  const playData = ref<playData>({
+    currentIndex: 0,
+    isPlaying: false,
+    mockCurrentTime: 0,
+  })
+  function savePlayData() {
+    localStorage.setItem('playData', JSON.stringify(playData))
+  }
+  function initPlayData() {
+    const obj = localStorage.getItem('playData') || '{}'
+    const data = JSON.parse(obj)
+    if (data.isPlaying) {
+      playData.value = data
+    }
+  }
+  function setPlayData(obj: playData) {
+    if (playData.value === obj) return
+    playData.value = obj
+    savePlayData()
+  }
+  function setCurrentIndex(index: number) {
+    playData.value.currentIndex = index
+    savePlayData()
+  }
+  function setIsPlaying(status: boolean) {
+    playData.value.isPlaying = status
+    savePlayData()
+  }
+  function setMockCurrentTime(val: number) {
+    playData.value.mockCurrentTime = val
+    savePlayData()
+  }
+  function getPlayData() {
+    return playData.value
+  }
   return {
+    initFlag,
+    setInitFlag,
+    getInitFlag,
     darkMode,
     init,
     toggleDarkMode,
@@ -95,5 +154,15 @@ export const useAppStore = defineStore('app', () => {
     getPlayQueue,
     savePlayQueue,
     addToQueue,
+
+    playData,
+    initPlayData,
+    savePlayData,
+    setPlayData,
+
+    setMockCurrentTime,
+    setIsPlaying,
+    setCurrentIndex,
+    getPlayData,
   }
 })

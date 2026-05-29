@@ -36,10 +36,11 @@ import './theme/variables.css'
 import './theme/theme.scss'
 
 import toast from './utils/createToast'
+import { audio } from './utils/createAudio'
 const app = createApp(App).use(IonicVue).use(router)
 app.use(createPinia())
 app.config.globalProperties.$toast = toast
-
+app.config.globalProperties.$audio = audio
 router.isReady().then(() => {
   app.mount('#app')
 })
