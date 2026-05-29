@@ -26,6 +26,10 @@
             <Icon icon="mdi:select-off" :width="20" />
             <span>清空</span>
           </button>
+          <button class="action-btn" @click="addToQueue">
+            <Icon icon="ic:baseline-queue" :width="20" />
+            <span>添加到队列</span>
+          </button>
           <button class="action-btn danger" @click="batchDelete">
             <Icon icon="mdi:delete" :width="20" />
             <span>删除({{ selectedIds.size }})</span>
@@ -46,7 +50,9 @@ import { Icon } from '@iconify/vue'
 import SongItemSelectable from '@/components/song/SongItemSelectable.vue'
 import { useDropdownManager } from '@/composables/useDropdownManager'
 import type { Song } from '@/utils/interface.ts'
-
+import { useAppStore } from '@/stores/app'
+import toast from '@/utils/createToast'
+const appStore = useAppStore()
 interface Props {
   songs: Song[]
 }
@@ -86,7 +92,22 @@ const selectAll = () => {
     selectedIds.value.add(song.id)
   })
 }
-
+const addToQueue = () => {
+  const list: Song[] = []
+  const queue = appStore.getPlayQueue()
+  props.songs.forEach((song) => {
+    if (selectedIds.value.has(song.id) && !queue.includes(song)) {
+      list.push(song)
+    }
+  })
+  if (list.length !== 0) {
+    appStore.addListToQueue(list)
+    toast.success(`已添加${list.length}首歌至队列`)
+  } else {
+    toast.warning('队列中已存在这些歌曲')
+  }
+  exitSelectMode()
+}
 const clearSelection = () => {
   selectedIds.value.clear()
   exitSelectMode()

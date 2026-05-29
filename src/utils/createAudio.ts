@@ -27,9 +27,7 @@ export class NativeAudioPlayer {
     this.setupMediaSessionHandlers()
   }
 
-  // 底层 cordova-plugin-media 实例
   private media: Media | null = null
-
   private _src = ''
   private _duration = 0
   private _currentTime = 0
@@ -38,9 +36,9 @@ export class NativeAudioPlayer {
   private _volume = 1
   private _loop = false
   private _pendingSeek: number | null = null
+  private _pendingSeekResolver: (() => void) | null = null
   private seekingLock = false
   private currentSong: Song | null = null
-
   private timer: number | null = null
   private listeners = new Map<AudioEvent, Set<EventCallback>>()
 
@@ -51,13 +49,11 @@ export class NativeAudioPlayer {
   set src(val: string) {
     if (!val || this._src === val) return
     console.log('[Audio] set src:', val)
-
     this.stopTimer()
     this._src = val
     this._currentTime = 0
     this._duration = 0
     this._paused = true
-
     this.emit('loadstart')
     this.load().catch(console.error)
   }
@@ -121,12 +117,10 @@ export class NativeAudioPlayer {
 
   async updateMetadata(song: Song) {
     if (!this._loaded) return
-
     let cover = song.albumArtUri
     if (cover) {
       cover = getAccessibleUrl(cover)
     }
-
     try {
       if ('mediaSession' in navigator) {
         const artwork: MediaImage[] = []
@@ -136,7 +130,6 @@ export class NativeAudioPlayer {
           else if (/\.webp$/i.test(cover)) type = 'image/webp'
           artwork.push({ src: cover, sizes: '512x512', type })
         }
-
         navigator.mediaSession.metadata = new MediaMetadata({
           title: song.title,
           artist: song.artist || 'Unknown Artist',
@@ -162,9 +155,7 @@ export class NativeAudioPlayer {
   async load() {
     if (!this._src) return
     this.releaseMedia()
-
     console.log('[Audio] loading:', this._src)
-
     try {
       this.media = new Media(
         this._src,
@@ -187,7 +178,6 @@ export class NativeAudioPlayer {
           }
         }
       )
-
       this.media.setVolume(this._volume)
     } catch (e) {
       console.error('[Audio] load error:', e)
@@ -211,10 +201,22 @@ export class NativeAudioPlayer {
         if (this.currentSong) {
           this.updateMetadata(this.currentSong)
         }
+        // 处理延迟的 seek
         if (this._pendingSeek !== null) {
           const seekTime = this._pendingSeek
           this._pendingSeek = null
-          this.seek(seekTime)
+          const resolver = this._pendingSeekResolver
+          this._pendingSeekResolver = null
+          try {
+            // 直接执行 seek 操作，不再通过 this.seek 避免递归锁
+            this.media?.seekTo(seekTime * 1000)
+            this._currentTime = seekTime
+            this.emit('timeupdate')
+            if (resolver) resolver()
+          } catch (e) {
+            console.error('[Audio] delayed seek error:', e)
+            if (resolver) resolver() // 即使出错也要 resolve，避免外部等待挂起
+          }
         }
         return
       }
@@ -248,14 +250,11 @@ export class NativeAudioPlayer {
       await this.load()
     }
     if (!this.media) return
-
     try {
       this.media.play({ numberOfLoops: this._loop ? -1 : 0 })
       this._paused = false
       this.startTimer()
       this.emit('play')
-
-      // 确保锁屏信息及时显示
       if (this.currentSong) {
         this.updateMetadata(this.currentSong)
       }
@@ -267,7 +266,6 @@ export class NativeAudioPlayer {
 
   async pause() {
     if (!this.media) return
-
     this.media.pause()
     this._paused = true
     this.stopTimer()
@@ -279,7 +277,7 @@ export class NativeAudioPlayer {
     await this.load()
   }
 
-  async seek(time: number) {
+  async seek(time: number): Promise<void> {
     console.log('[Audio] seek called', {
       time,
       loaded: this._loaded,
@@ -296,9 +294,18 @@ export class NativeAudioPlayer {
 
     if (!this._loaded || this._duration <= 0) {
       console.log('[Audio] seek deferred (not ready)')
+      // 如果有旧的挂起 seek，先 resolve 它（表示被新 seek 覆盖）
+      if (this._pendingSeekResolver) {
+        this._pendingSeekResolver()
+        this._pendingSeekResolver = null
+      }
       this._pendingSeek = validTime
+      // 返回一个 Promise，等待真正 seek 完成
+      const promise = new Promise<void>((resolve) => {
+        this._pendingSeekResolver = resolve
+      })
       this.seekingLock = false
-      return
+      return promise
     }
 
     if (!this.media) {
@@ -315,6 +322,7 @@ export class NativeAudioPlayer {
       console.log('[Audio] seek success')
     } catch (e) {
       console.error('[Audio] seek error:', e)
+      throw e
     } finally {
       this.seekingLock = false
     }
@@ -322,7 +330,6 @@ export class NativeAudioPlayer {
 
   private startTimer() {
     if (this.timer) return
-
     this.timer = window.setInterval(() => {
       if (this._loaded && !this._paused && this.media) {
         this.media.getCurrentPosition(
@@ -335,7 +342,6 @@ export class NativeAudioPlayer {
           }
         )
       }
-
       if (this._loaded && this.currentSong) {
         this.updateMetadata(this.currentSong)
         this.setupMediaSessionHandlers()

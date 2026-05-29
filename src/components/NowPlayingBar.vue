@@ -33,7 +33,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onUnmounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { Icon } from '@iconify/vue'
 import { emptySong, Song } from '@/utils/interface'
 import { useAppStore } from '@/stores/app'
@@ -44,7 +44,6 @@ import { getNextSongIndex, getPrevSongIndex } from '@/utils/control'
 const appStore = useAppStore()
 const playData = appStore.getPlayData()
 const song = ref(appStore.getPlayQueue()[playData.currentIndex] || emptySong)
-
 const emit = defineEmits<{
   (e: 'expand'): void
 }>()
@@ -83,6 +82,11 @@ audio.addEventListener('pause', () => {
 })
 const isPlaying = ref(playData.isPlaying)
 const currentTime = ref(playData.mockCurrentTime)
+onMounted(() => {
+  if (appStore.getHomeFlag()) return
+  appStore.setHomeFlag(true)
+  isPlaying.value = false
+})
 const duration = ref(song.value.duration / 1000)
 const progressPercent = ref(computed(() => (currentTime.value / duration.value) * 100 || 0))
 audio.addEventListener('timeupdate', () => {

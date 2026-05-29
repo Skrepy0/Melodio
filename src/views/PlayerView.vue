@@ -32,10 +32,15 @@
             @mousedown="startDragProgress"
             @touchstart="startDragProgress"
           >
-            <div class="progress-fill" :style="{ width: mockProgress + '%' }"></div>
+            <div
+              class="progress-fill"
+              :style="{ width: progressPercent + '%' }"
+              @mousedown="startDragProgress"
+              @touchstart="startDragProgress"
+            ></div>
             <div
               class="progress-handle"
-              :style="{ left: mockProgress + '%' }"
+              :style="{ left: progressPercent + '%' }"
               @mousedown="startDragProgress"
               @touchstart="startDragProgress"
             ></div>
@@ -70,7 +75,10 @@
     <div class="queue-container">
       <div class="queue-header">
         <span>播放队列 ({{ queue.length }})</span>
-        <span class="drag-hint">拖动调整顺序</span>
+        <div class="queue-actions">
+          <span class="drag-hint">拖动调整顺序</span>
+          <button class="clear-queue-btn" @click="clearQueue" v-if="queue.length > 0">清空</button>
+        </div>
       </div>
       <div class="queue-list" ref="queueListRef" @scroll="handleScroll">
         <div
@@ -79,6 +87,7 @@
           class="queue-item"
           :data-index="idx"
           :class="{ 'drag-over': dragOverIndex === idx }"
+          @click="playSong(song)"
         >
           <div class="drag-handle" @pointerdown="startDrag($event, idx)" style="touch-action: none">
             <Icon icon="mdi:drag-vertical" :width="20" color="var(--text-color)" />
@@ -154,13 +163,29 @@ const currentIndex = ref(playData.currentIndex)
 const currentSong = computed(() => queue.value[currentIndex.value] || null)
 const isPlaying = ref(playData.isPlaying)
 const mockCurrentTime = ref(playData.mockCurrentTime)
-const mockDuration = ref(0)
-const mockProgress = computed(() => (mockCurrentTime.value / mockDuration.value) * 100 || 0)
+const mockDuration = ref(currentSong.value?.duration / 1000)
 let isSwitchingSong = false
+const progressPercent = ref(computed(() => (mockCurrentTime.value / mockDuration.value) * 100 || 0))
+
 const updateMeta = () => {
   audio.setSong(currentSong.value || emptySong)
 }
-
+const playSong = async (song: Song) => {
+  const targetIdx = queue.value.findIndex((s) => s.id === song.id)
+  if (targetIdx === -1) return
+  if (targetIdx === currentIndex.value) {
+    if (!isPlaying.value) {
+      await audio.play()
+      isPlaying.value = true
+    }
+    return
+  }
+  currentIndex.value = targetIdx
+  isSwitchingSong = true
+  setTimeout(() => {
+    isSwitchingSong = false
+  }, 100)
+}
 const loadCurrentSong = async () => {
   const song = currentSong.value
   if (!song) return
@@ -305,7 +330,17 @@ const nextSong = () => {
     isSwitchingSong = false
   }, 100)
 }
-
+const clearQueue = () => {
+  queue.value = []
+  appStore.setPlayQueue(queue.value)
+  audio.pause()
+  isPlaying.value = false
+  currentIndex.value = 0
+  mockCurrentTime.value = 0
+  mockDuration.value = 0
+  lastLoadedSongId = null
+  openDropdownId.value = null
+}
 const togglePlayMode = () => {
   const modes: PlayMode[] = ['sequential', 'repeatOne', 'shuffle']
   const idx = modes.indexOf(playMode.value)
@@ -380,18 +415,8 @@ const menuOptions: DropdownItem[] = [
 ]
 const onMenuItemSelect = (item: DropdownItem, song: Song) => {
   console.log('[UI] 对歌曲', song.title, '执行', item.value)
-
   if (item.value === 'play') {
-    const targetIdx = queue.value.findIndex((s) => s.id === song.id)
-    if (targetIdx !== -1 && targetIdx !== currentIndex.value) {
-      currentIndex.value = targetIdx
-      lastLoadedSongId = null
-    } else if (targetIdx === currentIndex.value && isPlaying.value === false) {
-      audio.play()
-      isPlaying.value = true
-    }
-    openDropdownId.value = null
-    return
+    playSong(song)
   }
 
   if (item.value === 'like') {
@@ -404,7 +429,7 @@ const onMenuItemSelect = (item: DropdownItem, song: Song) => {
   if (item.value === 'remove') {
     const idx = queue.value.findIndex((s) => s.id === song.id)
     if (idx === -1) {
-      openDropdownId.value = null``
+      openDropdownId.value = null
       return
     }
 
@@ -685,13 +710,40 @@ defineExpose({ queue, currentSong, playMode, togglePlay, prevSong, nextSong })
 }
 
 .queue-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   padding: 12px 16px;
   font-size: 14px;
   font-weight: 500;
   color: var(--text-secondary);
-  display: flex;
-  justify-content: space-between;
   border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.queue-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.drag-hint {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.clear-queue-btn {
+  background: none;
+  border: none;
+  font-size: 12px;
+  color: var(--danger-color, #ff4d4f);
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: background 0.2s;
+
+  &:hover {
+    background: rgba(255, 77, 79, 0.1);
+  }
 }
 
 .queue-list {

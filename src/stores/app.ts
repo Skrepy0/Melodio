@@ -3,11 +3,19 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { playData } from '@/utils/interface'
 import { audio } from '@/utils/createAudio'
+import { getAccessibleUrl } from '@/utils/functions'
 
 export const useAppStore = defineStore('app', () => {
   const darkMode = ref(localStorage.getItem('darkMode') || false)
   const allSongs = ref<Song[]>([])
   const playQueue = ref<Song[]>([])
+  const homeFlag = ref(false)
+  function getHomeFlag() {
+    return homeFlag.value
+  }
+  function setHomeFlag(val: boolean) {
+    homeFlag.value = val
+  }
   const initFlag = ref(false)
   function setInitFlag(val: boolean) {
     initFlag.value = val
@@ -15,7 +23,7 @@ export const useAppStore = defineStore('app', () => {
   function getInitFlag() {
     return initFlag.value
   }
-  function init() {
+  async function init() {
     if (!initFlag.value) {
       loadInitialDarkMode()
       initAllSongs()
@@ -25,9 +33,11 @@ export const useAppStore = defineStore('app', () => {
       const currentSong = getPlayQueue()[playData.currentIndex]
       const playUri = currentSong?.uri || ''
       if (playUri !== audio.src) {
-        audio.setSrc(playUri)
+        await audio.setSrc(getAccessibleUrl(playUri))
       }
-      audio.seek(playData.mockCurrentTime)
+      if (playData.isPlaying) {
+        setIsPlaying(false)
+      }
       audio.setSong(currentSong)
       initFlag.value = true
     }
@@ -98,6 +108,10 @@ export const useAppStore = defineStore('app', () => {
     playQueue.value.push(song)
     savePlayQueue()
   }
+  function addListToQueue(list: Song[]) {
+    playQueue.value = [...playQueue.value, ...list]
+    savePlayQueue()
+  }
 
   const playData = ref<playData>({
     currentIndex: 0,
@@ -105,18 +119,32 @@ export const useAppStore = defineStore('app', () => {
     mockCurrentTime: 0,
   })
   function savePlayData() {
-    localStorage.setItem('playData', JSON.stringify(playData))
+    localStorage.setItem(
+      'playData',
+      JSON.stringify({
+        currentIndex: playData.value.currentIndex,
+        isPlaying: playData.value.isPlaying,
+        mockCurrentTime: playData.value.mockCurrentTime,
+      })
+    )
   }
   function initPlayData() {
-    const obj = localStorage.getItem('playData') || '{}'
-    const data = JSON.parse(obj)
-    if (data.isPlaying) {
-      playData.value = data
+    const obj = localStorage.getItem('playData')
+    if (obj) {
+      try {
+        const data = JSON.parse(obj)
+        playData.value.currentIndex = data.currentIndex ?? 0
+        playData.value.isPlaying = data.isPlaying ?? false
+        playData.value.mockCurrentTime = data.mockCurrentTime ?? 0
+      } catch (e) {
+        console.error('解析 playData 失败', e)
+      }
     }
   }
   function setPlayData(obj: playData) {
-    if (playData.value === obj) return
-    playData.value = obj
+    playData.value.currentIndex = obj.currentIndex
+    playData.value.isPlaying = obj.isPlaying
+    playData.value.mockCurrentTime = obj.mockCurrentTime
     savePlayData()
   }
   function setCurrentIndex(index: number) {
@@ -128,6 +156,7 @@ export const useAppStore = defineStore('app', () => {
     savePlayData()
   }
   function setMockCurrentTime(val: number) {
+    console.log('修改时间:' + val)
     playData.value.mockCurrentTime = val
     savePlayData()
   }
@@ -135,6 +164,9 @@ export const useAppStore = defineStore('app', () => {
     return playData.value
   }
   return {
+    homeFlag,
+    setHomeFlag,
+    getHomeFlag,
     initFlag,
     setInitFlag,
     getInitFlag,
@@ -164,5 +196,6 @@ export const useAppStore = defineStore('app', () => {
     setIsPlaying,
     setCurrentIndex,
     getPlayData,
+    addListToQueue,
   }
 })

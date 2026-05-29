@@ -59,8 +59,8 @@ import { scanAllAudio } from '@/utils/audioScanner'
 import { useAppStore } from '@/stores/app'
 const appStore = useAppStore()
 const router = useRouter()
-const keyword = ref('')
 appStore.init()
+const keyword = ref('')
 const onSearch = () => {}
 const handleClick = () => {
   toast.success('操作成功！')
