@@ -131,6 +131,7 @@ import { type Song, type DropdownItem } from '@/utils/interface'
 import { useAppStore } from '@/stores/app'
 import { MediaSession } from '@pejota14/capacitor-media-session'
 import toast from '@/utils/createToast'
+import { showConfirm } from '@/utils/createConfirm'
 import { audio } from '@/utils/createAudio'
 
 const appStore = useAppStore()
@@ -242,13 +243,22 @@ const nextSong = () => {
   appStore.nextSong()
 }
 
-const clearQueue = () => {
-  appStore.setPlayQueue([])
-  audio.pause()
-  appStore.setIsPlaying(false)
-  appStore.setCurrentIndex(0)
-  appStore.setMockCurrentTime(0)
-  openDropdownId.value = null
+const clearQueue = async () => {
+  const result = await showConfirm({
+    title: '提示',
+    message: '确定要清空播放队列吗？',
+    confirmText: '删除',
+    cancelText: '取消',
+  })
+  if (result) {
+    appStore.setPlayQueue([])
+    audio.pause()
+    appStore.setIsPlaying(false)
+    appStore.setCurrentIndex(0)
+    appStore.setMockCurrentTime(0)
+    openDropdownId.value = null
+    toast.success('已清空播放队列')
+  }
 }
 
 const shuffleQueue = () => {

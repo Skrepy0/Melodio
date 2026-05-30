@@ -37,12 +37,14 @@ import './theme/theme.scss'
 
 import toast from './utils/createToast'
 import { audio } from './utils/createAudio'
-import { showPrompt } from './utils/createPrompt.js'
+import { showPrompt } from './utils/createPrompt'
+import { showConfirm } from './utils/createConfirm'
 const app = createApp(App).use(IonicVue).use(router)
 app.use(createPinia())
 app.config.globalProperties.$toast = toast
 app.config.globalProperties.$audio = audio
 app.config.globalProperties.$prompt = showPrompt
+app.config.globalProperties.$createConfirm = showConfirm
 router.isReady().then(() => {
   app.mount('#app')
 })

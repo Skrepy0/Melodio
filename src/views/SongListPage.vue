@@ -5,8 +5,9 @@ import { Icon } from '@iconify/vue'
 import type { Song } from '@/utils/interface'
 import { useAppStore } from '@/stores/app'
 import PlayList from '@/components/PlayList.vue'
+import toast from '@/utils/createToast'
 import NowPlayingBar from '@/components/NowPlayingBar.vue'
-
+import { showConfirm } from '@/utils/createConfirm'
 const appStore = useAppStore()
 const title = ref<string>('全部歌曲')
 const songsList = ref<Song[]>([])
@@ -16,6 +17,14 @@ if (appStore.getCurrentPlayListIndex() === 0) {
   title.value = likeList.name
 } else {
   // todo
+}
+const saveSongList = () => {
+  const index = appStore.getCurrentPlayListIndex()
+  if (index === 0) {
+    appStore.setLikeListData(songsList.value)
+  } else {
+    //TODO
+  }
 }
 const isLoading = ref(false) // 可扩展加载状态
 
@@ -27,14 +36,55 @@ const showFullPlayer = () => {
   router.push('/player-view')
 }
 
-const handleBatchDelete = (ids: any) => {
-  console.log('删除歌曲 IDs:', ids)
-  // 调用 API 删除，并更新本地列表
+const handleBatchDelete = async (ids: string[]) => {
+  const result = await showConfirm({
+    title: '提示',
+    message: `确定要将这${ids.length}首歌移出此歌曲列表吗？`,
+    confirmText: '确定',
+    cancelText: '取消',
+  })
+  if (!result) return
+  const list: Song[] = []
+  songsList.value.forEach((item) => {
+    if (!ids.includes(item.id)) list.push(item)
+  })
+  songsList.value = list
+  saveSongList()
+  toast.success(`已移除${ids.length}首歌曲`)
 }
 
-const playSong = (song: Song) => {
-  console.log('播放歌曲:', song)
-  // 实际播放逻辑可由父组件或 store 处理
+const playSong = async (song: Song) => {
+  if (songsList.value.length === 0) return
+  let index: number = -1
+  for (let i = 0; i < songsList.value.length; i++) {
+    if (song.id === songsList.value[i].id) {
+      index = i
+      break
+    }
+  }
+  if (index === -1) {
+    toast.error('未找到此歌曲')
+    return
+  }
+  appStore.setIsSwitchingSong(true)
+  appStore.setPlayQueue(songsList.value)
+  appStore.setCurrentIndex(index)
+  appStore.setMockCurrentTime(0)
+  let flag = false
+  if (appStore.getPlayData().isPlaying) {
+    flag = true
+  }
+  appStore.togglePlay()
+  appStore.setIsPlaying(true)
+  await appStore.loadCurrentSong()
+  setTimeout(() => {
+    appStore.setIsSwitchingSong(false)
+  }, 100)
+  if (flag) {
+    setTimeout(() => {
+      appStore.togglePlay()
+    }, 500)
+  }
 }
 </script>
 

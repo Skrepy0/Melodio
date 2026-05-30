@@ -28,11 +28,11 @@
           </button>
           <button class="action-btn" @click="addToQueue">
             <Icon icon="ic:baseline-queue" :width="20" />
-            <span>添加到队列</span>
+            <span>队列</span>
           </button>
           <button class="action-btn" @click="addToLike">
             <Icon icon="mdi:heart-outline" :width="20" />
-            <span>添加到喜欢</span>
+            <span>喜欢</span>
           </button>
           <button class="action-btn danger" @click="batchDelete">
             <Icon icon="mdi:delete" :width="20" />
@@ -65,15 +65,15 @@ interface Props {
 const props = defineProps<Props>()
 
 const emit = defineEmits<{
-  (e: 'batch-delete', songIds: (string | number)[]): void
+  (e: 'batch-delete', songIds: string[]): void
   (e: 'song-click', song: Song): void
 }>()
 
 const isSelectMode = ref(false)
-const selectedIds = ref<Set<string | number>>(new Set())
+const selectedIds = ref<Set<string>>(new Set())
 const { openDropdownId, handleDropdownToggle } = useDropdownManager()
 
-const enterSelectMode = (songId?: string | number) => {
+const enterSelectMode = (songId?: string) => {
   if (isSelectMode.value) return
   isSelectMode.value = true
   if (songId !== undefined) {
@@ -81,7 +81,7 @@ const enterSelectMode = (songId?: string | number) => {
   }
 }
 
-const toggleSelect = (id: string | number) => {
+const toggleSelect = (id: string) => {
   if (selectedIds.value.has(id)) {
     selectedIds.value.delete(id)
     if (selectedIds.value.size === 0) {
@@ -98,7 +98,7 @@ const selectAll = () => {
   })
 }
 const addToQueue = () => {
-  const queue = appStore.getPlayQueue() // 假设返回 Song[]
+  const queue = appStore.getPlayQueue()
   const newSongs: Song[] = []
   props.songs.forEach((song) => {
     if (selectedIds.value.has(song.id) && !isInList(song.id, queue)) {
@@ -114,7 +114,7 @@ const addToQueue = () => {
   exitSelectMode()
 }
 const addToLike = () => {
-  const likeList = appStore.getLikeList().data // 假设为 Song[]
+  const likeList = appStore.getLikeList().data
   const newSongs: Song[] = []
   props.songs.forEach((song) => {
     if (selectedIds.value.has(song.id) && !isInList(song.id, likeList)) {

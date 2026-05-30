@@ -35,8 +35,8 @@ import type { Song, SongItemSelectableProps } from '@/utils/interface.ts'
 const props = defineProps<SongItemSelectableProps>()
 
 const emit = defineEmits<{
-  (e: 'long-press', songId: string | number): void
-  (e: 'toggle-select', songId: string | number): void
+  (e: 'long-press', songId: string): void
+  (e: 'toggle-select', songId: string): void
   (e: 'click', song: Song): void
   (e: 'menuSelect', action: string, song: Song): void
   (e: 'update:dropdownOpen', value: boolean): void // 新增
@@ -45,7 +45,6 @@ const dropdownOpen = computed({
   get: () => props.dropdownOpen ?? false,
   set: (val) => emit('update:dropdownOpen', val),
 })
-// 长按定时器
 let longPressTimer: ReturnType<typeof setTimeout> | null = null
 const isLongPressed = ref(false)
 
@@ -56,12 +55,12 @@ const clearTimer = () => {
   }
 }
 
-const onTouchStart = (e: TouchEvent) => {
+const onTouchStart = () => {
   clearTimer()
   longPressTimer = setTimeout(() => {
     isLongPressed.value = true
     emit('long-press', props.song.id)
-  }, 500) // 长按阈值 500ms
+  }, 500)
 }
 
 const onTouchEnd = () => {
@@ -75,7 +74,7 @@ const onTouchMove = () => {
   clearTimer()
 }
 
-const onMouseDown = (e: MouseEvent) => {
+const onMouseDown = () => {
   clearTimer()
   longPressTimer = setTimeout(() => {
     isLongPressed.value = true
@@ -95,12 +94,15 @@ const onClick = (e: MouseEvent) => {
     e.stopPropagation()
     return
   }
-  // 普通点击，交由内部处理
 }
 
 const onSongClick = (song: Song) => {
   if (isLongPressed.value) return
-  emit('click', song)
+  if (props.selectable) {
+    toggleSelect()
+  } else {
+    emit('click', song)
+  }
 }
 
 const toggleSelect = () => {

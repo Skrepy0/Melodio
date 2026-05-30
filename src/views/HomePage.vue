@@ -58,6 +58,7 @@ import { ref } from 'vue'
 import { scanAllAudio } from '@/utils/audioScanner'
 import { useAppStore } from '@/stores/app'
 import { showPrompt } from '@/utils/createPrompt'
+import { showConfirm } from '@/utils/createConfirm'
 const appStore = useAppStore()
 const router = useRouter()
 const keyword = ref('')
@@ -113,13 +114,55 @@ const loadAllSongs = async () => {
     toast.error(result.error || '扫描失败，请检查权限')
   }
 }
-const handleBatchDelete = (ids: any) => {
-  console.log('删除歌曲 IDs:', ids)
-  // 调用 API 删除，并更新本地列表
+const handleBatchDelete = async (ids: string[]) => {
+  const result = await showConfirm({
+    title: '提示',
+    message: `确定要删除这${ids.length}首歌吗(并不会删除本地文件)？`,
+    confirmText: '删除',
+    cancelText: '取消',
+  })
+  if (!result) return
+  const list: Song[] = []
+  songsList.value.forEach((item) => {
+    if (!ids.includes(item.id)) list.push(item)
+  })
+  songsList.value = list
+  appStore.setAllSongs(songsList.value)
+  toast.success(`已删除${ids.length}首歌`)
 }
 
-const playSong = (song: Song) => {
-  console.log('播放歌曲:', song)
+const playSong = async (song: Song) => {
+  if (songsList.value.length === 0) return
+  let index: number = -1
+  for (let i = 0; i < songsList.value.length; i++) {
+    if (song.id === songsList.value[i].id) {
+      index = i
+      break
+    }
+  }
+  if (index === -1) {
+    toast.error('未找到此歌曲')
+    return
+  }
+  appStore.setIsSwitchingSong(true)
+  appStore.setPlayQueue(songsList.value)
+  appStore.setCurrentIndex(index)
+  appStore.setMockCurrentTime(0)
+  let flag = false
+  if (appStore.getPlayData().isPlaying) {
+    flag = true
+  }
+  appStore.togglePlay()
+  appStore.setIsPlaying(true)
+  await appStore.loadCurrentSong()
+  setTimeout(() => {
+    appStore.setIsSwitchingSong(false)
+  }, 100)
+  if (flag) {
+    setTimeout(() => {
+      appStore.togglePlay()
+    }, 500)
+  }
 }
 const showFullPlayer = () => {
   router.push('/player-view')

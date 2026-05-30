@@ -11,6 +11,14 @@ export const useAppStore = defineStore('app', () => {
   const playQueue = ref<Song[]>([])
   const homeFlag = ref(false)
   const initFlag = ref(false)
+  const currentPlayList = ref<number>(-1)
+
+  function setCurrentPlayList(val: number) {
+    currentPlayList.value = val
+  }
+  function getCurrentPlayList() {
+    return currentPlayList.value
+  }
 
   const playData = ref({
     currentIndex: 0,
@@ -362,9 +370,10 @@ export const useAppStore = defineStore('app', () => {
     return initFlag.value
   }
 
-  // ==================== 导出所有公开 API ====================
   return {
-    // 播放核心
+    setCurrentPlayList,
+    getCurrentPlayList,
+
     playQueue,
     playData,
     playMode,
