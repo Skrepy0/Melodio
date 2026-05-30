@@ -77,6 +77,9 @@ const onMenuItemSelect = (item: DropdownItem) => {
   if (item.value === 'queue') {
     appStore.addToQueue(props.song)
     toast.success('已经将1首歌加入播放队列')
+  } else if (item.value === 'like') {
+    appStore.mergeLikeListData([props.song])
+    toast.success('已经将1首歌加入喜欢')
   }
 }
 </script>

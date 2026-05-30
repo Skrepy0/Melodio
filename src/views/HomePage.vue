@@ -57,9 +57,9 @@ import { DropdownItem, HorizontalSelectOption, Playlist, Song } from '@/utils/in
 import { ref } from 'vue'
 import { scanAllAudio } from '@/utils/audioScanner'
 import { useAppStore } from '@/stores/app'
+import { showPrompt } from '@/utils/createPrompt'
 const appStore = useAppStore()
 const router = useRouter()
-appStore.init()
 const keyword = ref('')
 const onSearch = () => {}
 const handleClick = () => {
@@ -71,10 +71,24 @@ const operations: DropdownItem[] = [
   { icon: 'ri:settings-line', description: '设置', value: 'settings' },
 ]
 
-const onSelectOperation = (item: DropdownItem) => {
+const onSelectOperation = async (item: DropdownItem) => {
   console.log('选中:', item.description, item.value)
   if (item.value === 'settings') router.push('/settings')
   else if (item.value === 'scan-songs') loadAllSongs()
+  else if (item.value === 'new-songs-list') {
+    const name = await showPrompt({
+      title: '新建播放列表',
+      message: '请输入播放列表名称',
+      placeholder: '例如：我喜欢的音乐',
+      defaultValue: '新建歌单',
+    })
+    if (name) {
+      console.log('创建播放列表:', name)
+      // 执行创建逻辑
+    } else {
+      console.log('用户取消')
+    }
+  }
 }
 const selectedCategory = ref('tracks')
 
@@ -112,17 +126,7 @@ const showFullPlayer = () => {
   router.push('/player-view')
 }
 
-const playlists = ref([
-  { id: 1, name: '我喜欢的音乐', description: '全部红心歌曲', songCount: 42, coverUrl: '' },
-  { id: 2, name: '跑步歌单', description: '节奏明快', songCount: 18, coverUrl: '' },
-  { id: 3, name: '深夜安静', songCount: 9 },
-  { id: 4, name: '深夜安静', songCount: 9 },
-  { id: 5, name: '深夜安静', songCount: 9 },
-  { id: 6, name: '深夜安静', songCount: 9 },
-  { id: 7, name: '深夜安静', songCount: 9 },
-  { id: 8, name: '深夜安静', songCount: 9 },
-  { id: 9, name: '深夜安静', songCount: 9 },
-])
+const playlists = ref<Playlist[]>([appStore.getLikeList()])
 
 const handleBatchDeletePlaylists = (ids: any) => {
   console.log('删除播放列表IDs:', ids)
@@ -131,7 +135,8 @@ const handleBatchDeletePlaylists = (ids: any) => {
 
 const onPlaylistClick = (playlist: Playlist) => {
   console.log('点击播放列表:', playlist)
-  // 可能跳转详情或播放全部
+  appStore.setCurrentPlayListIndex(playlist.id)
+  router.push('/song-list')
 }
 
 const onPlaylistMenuSelect = (action: any, playlist: Playlist) => {

@@ -1,4 +1,4 @@
-import { Song } from '@/utils/interface'
+import { Playlist, Song } from '@/utils/interface'
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { playData } from '@/utils/interface'
@@ -29,6 +29,8 @@ export const useAppStore = defineStore('app', () => {
       initAllSongs()
       initPlayQueue()
       initPlayData()
+      initCurrentPlayListIndex()
+      initLikeList()
       const playData = getPlayData()
       const currentSong = getPlayQueue()[playData.currentIndex]
       const playUri = currentSong?.uri || ''
@@ -163,7 +165,100 @@ export const useAppStore = defineStore('app', () => {
   function getPlayData() {
     return playData.value
   }
+  const isSwitchingSong = ref<boolean>(false)
+  function setIsSwitchingSong(val:boolean) {
+    isSwitchingSong.value=val
+  }
+  function getIsSwitchingSong() {
+    return isSwitchingSong.value
+  }
+  const likeList = ref<Playlist>({
+    id: 0,
+    name: '喜欢',
+    description: '我喜欢',
+    coverUrl: '',
+    songCount: 0,
+    data: [],
+  })
+  // const addedPlayLists = ref<Playlist[]>([])
+  function initLikeList() {
+    const obj = localStorage.getItem('likeList')
+    if (obj) {
+      try {
+        const data = JSON.parse(obj)
+        likeList.value.id = data.id ?? 0
+        likeList.value.name = data.name ?? '喜欢'
+        likeList.value.description = data.description ?? '我喜欢'
+        likeList.value.coverUrl = data.coverUrl ?? ''
+        likeList.value.songCount = data.songCount ?? 0
+        likeList.value.data = data.data ?? []
+      } catch (e) {
+        console.error('解析 likeList 失败', e)
+      }
+    }
+  }
+  function savelikeList() {
+    localStorage.setItem(
+      'likeList',
+      JSON.stringify({
+        id: 0,
+        name: '喜欢',
+        description: '我喜欢',
+        coverUrl: likeList.value.coverUrl,
+        songCount: likeList.value.songCount,
+        data: likeList.value.data,
+      })
+    )
+  }
+  function setLikeListData(songs: Song[]) {
+    likeList.value.data = songs
+    likeList.value.songCount = likeList.value.data.length
+    savelikeList()
+  }
+  function mergeLikeListData(songs: Song[]) {
+    likeList.value.data = [...likeList.value.data, ...songs]
+    likeList.value.songCount = likeList.value.data.length
+    savelikeList()
+  }
+  function getLikeList() {
+    return likeList.value
+  }
+
+  const currentPlayListIndex = ref<number>(0)
+  function saveCurrentPlayListIndex() {
+    localStorage.setItem(
+      'currentPlayListIndex',
+      JSON.stringify({
+        data: currentPlayListIndex.value,
+      })
+    )
+  }
+
+  function initCurrentPlayListIndex() {
+    const obj = localStorage.getItem('currentPlayListIndex')
+    if (obj && JSON.parse(obj).data) {
+      currentPlayListIndex.value = JSON.parse(obj).data
+    } else {
+      currentPlayListIndex.value = 0
+    }
+  }
+  function getCurrentPlayListIndex() {
+    return currentPlayListIndex.value
+  }
+  function setCurrentPlayListIndex(val: number) {
+    currentPlayListIndex.value = val
+    saveCurrentPlayListIndex()
+  }
   return {
+    setIsSwitchingSong,
+    getIsSwitchingSong,
+    getCurrentPlayListIndex,
+    setCurrentPlayListIndex,
+
+    getLikeList,
+    setLikeListData,
+    mergeLikeListData,
+
     homeFlag,
     setHomeFlag,
     getHomeFlag,

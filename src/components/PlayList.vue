@@ -30,6 +30,10 @@
             <Icon icon="ic:baseline-queue" :width="20" />
             <span>添加到队列</span>
           </button>
+          <button class="action-btn" @click="addToLike">
+            <Icon icon="mdi:heart-outline" :width="20" />
+            <span>添加到喜欢</span>
+          </button>
           <button class="action-btn danger" @click="batchDelete">
             <Icon icon="mdi:delete" :width="20" />
             <span>删除({{ selectedIds.size }})</span>
@@ -52,6 +56,7 @@ import { useDropdownManager } from '@/composables/useDropdownManager'
 import type { Song } from '@/utils/interface.ts'
 import { useAppStore } from '@/stores/app'
 import toast from '@/utils/createToast'
+import { isInList } from '@/utils/functions'
 const appStore = useAppStore()
 interface Props {
   songs: Song[]
@@ -93,21 +98,38 @@ const selectAll = () => {
   })
 }
 const addToQueue = () => {
-  const list: Song[] = []
-  const queue = appStore.getPlayQueue()
+  const queue = appStore.getPlayQueue() // 假设返回 Song[]
+  const newSongs: Song[] = []
   props.songs.forEach((song) => {
-    if (selectedIds.value.has(song.id) && !queue.includes(song)) {
-      list.push(song)
+    if (selectedIds.value.has(song.id) && !isInList(song.id, queue)) {
+      newSongs.push(song)
     }
   })
-  if (list.length !== 0) {
-    appStore.addListToQueue(list)
-    toast.success(`已添加${list.length}首歌至队列`)
+  if (newSongs.length > 0) {
+    appStore.addListToQueue(newSongs)
+    toast.success(`已添加 ${newSongs.length} 首歌至队列`)
   } else {
-    toast.warning('队列中已存在这些歌曲')
+    toast.warning('所选歌曲已在队列中')
   }
   exitSelectMode()
 }
+const addToLike = () => {
+  const likeList = appStore.getLikeList().data // 假设为 Song[]
+  const newSongs: Song[] = []
+  props.songs.forEach((song) => {
+    if (selectedIds.value.has(song.id) && !isInList(song.id, likeList)) {
+      newSongs.push(song)
+    }
+  })
+  if (newSongs.length > 0) {
+    appStore.mergeLikeListData(newSongs)
+    toast.success(`已添加 ${newSongs.length} 首歌曲至“我喜欢的音乐”`)
+  } else {
+    toast.warning('所选歌曲已在喜欢列表中')
+  }
+  exitSelectMode()
+}
+
 const clearSelection = () => {
   selectedIds.value.clear()
   exitSelectMode()

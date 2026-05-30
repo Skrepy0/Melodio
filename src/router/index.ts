@@ -3,6 +3,7 @@ import { RouteRecordRaw } from 'vue-router'
 import HomePage from '../views/HomePage.vue'
 import SettingsPage from '../views/SettingsPage.vue'
 import PlayerView from '../views/PlayerView.vue'
+import SongListPage from '@/views/SongListPage.vue'
 const routes: Array<RouteRecordRaw> = [
   {
     path: '/',
@@ -15,6 +16,7 @@ const routes: Array<RouteRecordRaw> = [
   },
   { path: '/settings', name: 'Settings', component: SettingsPage },
   { path: '/player-view', name: 'PlayerView', component: PlayerView },
+  { path: '/song-list', name: 'SongList', component: SongListPage },
 ]
 
 const router = createRouter({

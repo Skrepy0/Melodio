@@ -2,9 +2,11 @@
   <ion-app>
     <div class="router-view-wrapper">
       <router-view v-slot="{ Component }">
-        <transition :name="transitionName" mode="out-in">
-          <component :is="Component" />
-        </transition>
+        <keep-alive :include="['PlayerView']">
+          <transition :name="transitionName" mode="out-in">
+            <component :is="Component" />
+          </transition>
+        </keep-alive>
       </router-view>
     </div>
   </ion-app>
@@ -15,12 +17,12 @@ import { IonApp, useBackButton } from '@ionic/vue'
 import { App } from '@capacitor/app'
 import { useRouter, useRoute } from 'vue-router'
 import { ref, watch } from 'vue'
-
+import { useAppStore } from '@/stores/app'
+const appStore = useAppStore()
 const router = useRouter()
 const route = useRoute()
-
+appStore.init()
 const transitionName = ref('zoom')
-
 watch(
   () => route.path,
   (newPath, oldPath) => {

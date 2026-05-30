@@ -77,11 +77,12 @@ export interface NowPlayingSong {
 
 // 播放列表数据结构
 export interface Playlist {
-  id: string | number
+  id: number
   name: string
   description?: string // 描述（如“我的最爱”）
   coverUrl?: string
   songCount: number // 包含的歌曲数量
+  data: Song[]
 }
 export interface playData {
   currentIndex: number

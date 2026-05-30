@@ -160,31 +160,31 @@ const playModeText = computed(() => {
 const playData = appStore.getPlayData()
 const queue = ref<Song[]>(appStore.getPlayQueue())
 const currentIndex = ref(playData.currentIndex)
-const currentSong = computed(() => queue.value[currentIndex.value] || null)
+const currentSong = ref(queue.value[currentIndex.value] || emptySong)
 const isPlaying = ref(playData.isPlaying)
 const mockCurrentTime = ref(playData.mockCurrentTime)
 const mockDuration = ref(currentSong.value?.duration / 1000)
-let isSwitchingSong = false
 const progressPercent = ref(computed(() => (mockCurrentTime.value / mockDuration.value) * 100 || 0))
 
 const updateMeta = () => {
   audio.setSong(currentSong.value || emptySong)
 }
-const playSong = async (song: Song) => {
+const playSong = (song: Song) => {
   const targetIdx = queue.value.findIndex((s) => s.id === song.id)
   if (targetIdx === -1) return
   if (targetIdx === currentIndex.value) {
     if (!isPlaying.value) {
-      await audio.play()
       isPlaying.value = true
+      audio.play()
     }
     return
   }
+  appStore.setIsSwitchingSong(true)
   currentIndex.value = targetIdx
-  isSwitchingSong = true
+  isPlaying.value = true
   setTimeout(() => {
-    isSwitchingSong = false
-  }, 100)
+    appStore.setIsSwitchingSong(false)
+  }, 500)
 }
 const loadCurrentSong = async () => {
   const song = currentSong.value
@@ -242,11 +242,6 @@ audio.addEventListener('timeupdate', () => {
     mockCurrentTime.value = audio.currentTime
   }
 })
-audio.addEventListener('ended', () => {
-  if (!isSwitchingSong) {
-    nextSong()
-  }
-})
 
 let lastLoadedSongId: string | number | null = null
 
@@ -258,18 +253,25 @@ watch(currentSong, async (newSong) => {
   await loadCurrentSong()
 })
 
-watch(currentIndex, () => {
+watch(currentIndex, (newIndex, oldIndex) => {
+  if (newIndex===oldIndex) return
   appStore.setCurrentIndex(currentIndex.value)
+  console.log('当前索引:' + currentIndex.value)
+  currentSong.value = queue.value[currentIndex.value]
+  audio.setSong(currentSong.value)
+  audio.setSrc(currentSong.value.uri)
 })
 
 watch(isPlaying, (newValue) => {
+  //console.log(`信息idx:${currentIndex.value},song${currentSong.value.title},playSrc:${audio.src},queue:${queue.value.toString()}`);
   appStore.setIsPlaying(newValue)
   if (newValue) {
     const song = currentSong.value
     if (song && lastLoadedSongId !== song.id) {
       // 如果当前歌曲尚未加载，则由 currentSong 的 watch 负责加载，此处不重复调用
+    } else {
+      audio.play()
     }
-    audio.updateMetadata(song || emptySong)
   } else {
     audio.pause()
     mockCurrentTime.value = audio.currentTime
@@ -296,38 +298,41 @@ const togglePlay = () => {
 }
 
 const prevSong = () => {
-  if (isSwitchingSong) return
-  isSwitchingSong = true
+  if (appStore.getIsSwitchingSong()) return
+  appStore.setIsSwitchingSong(true)
 
   const req = getPrevSongIndex(currentIndex.value, queue.value.length)
   if (req.meg === 'error') {
     toast.warning('当前队列里没有歌曲')
-    isSwitchingSong = false
+    appStore.setIsSwitchingSong(false)
     return
   }
   currentIndex.value = req.idx
   console.log('[UI] 上一首')
 
   setTimeout(() => {
-    isSwitchingSong = false
+    appStore.setIsSwitchingSong(false)
   }, 100)
 }
 
 const nextSong = () => {
-  if (isSwitchingSong) return
-  isSwitchingSong = true
+  if (appStore.getIsSwitchingSong()) return
+  appStore.setIsSwitchingSong(true)
 
   const req = getNextSongIndex(currentIndex.value, queue.value.length)
   if (req.meg === 'error') {
     toast.warning('当前队列里没有歌曲')
-    isSwitchingSong = false
+    appStore.setIsSwitchingSong(false)
     return
   }
   currentIndex.value = req.idx
   console.log('[UI] 下一首')
-
+  console.log('索引:'+req.idx)
+  queue.value.forEach(item=>{
+    console.log(item.title)
+  })
   setTimeout(() => {
-    isSwitchingSong = false
+    appStore.setIsSwitchingSong(false)
   }, 100)
 }
 const clearQueue = () => {

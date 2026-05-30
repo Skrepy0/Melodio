@@ -1,4 +1,5 @@
 import { Filesystem } from '@capacitor/filesystem'
+import { Song } from './interface'
 
 export const getAccessibleUrl = (path: string): string => {
   if (path.startsWith('file://')) {
@@ -24,3 +25,4 @@ export async function getCoverBase64(uri: string): Promise<string> {
     return ''
   }
 }
+export const isInList = (id: string, queue: Song[]) => queue.some((song) => song.id === id)

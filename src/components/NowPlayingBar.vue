@@ -60,11 +60,15 @@ const registerMediaSessionHandlers = () => {
   })
   MediaSession.setActionHandler({ action: 'nexttrack' }, () => {
     console.log('[MediaSession] next')
-    nextSong()
+    if (!appStore.getIsSwitchingSong()) {
+      nextSong()
+    }
   })
   MediaSession.setActionHandler({ action: 'previoustrack' }, () => {
     console.log('[MediaSession] previous')
-    prevSong()
+    if (!appStore.getIsSwitchingSong()) {
+      prevSong()
+    }
   })
 }
 const updateMediaSession = (song: Song) => {
@@ -79,6 +83,11 @@ audio.addEventListener('play', () => {
 })
 audio.addEventListener('pause', () => {
   MediaSession.setPlaybackState({ playbackState: 'paused' })
+})
+audio.addEventListener('ended', () => {
+  if (!appStore.getIsSwitchingSong()) {
+    nextSong()
+  }
 })
 const isPlaying = ref(playData.isPlaying)
 const currentTime = ref(playData.mockCurrentTime)
@@ -117,26 +126,38 @@ const updateSongStatus = async () => {
   }
 }
 const nextSong = () => {
+  if (appStore.getIsSwitchingSong()) return
+  appStore.setIsSwitchingSong(true)
   const currentIndex = appStore.getPlayData().currentIndex
   const req = getNextSongIndex(currentIndex, appStore.getPlayQueue().length)
   if (req.meg === 'error') {
     toast.warning('当前队列里没有歌曲')
+    appStore.setIsSwitchingSong(false)
   } else {
     if (currentIndex === req.idx) return
     appStore.setCurrentIndex(req.idx)
     updateSongStatus()
   }
+  setTimeout(() => {
+    appStore.setIsSwitchingSong(false)
+  }, 100)
 }
 const prevSong = () => {
+  if (appStore.getIsSwitchingSong()) return
+  appStore.setIsSwitchingSong(true)
   const currentIndex = appStore.getPlayData().currentIndex
   const req = getPrevSongIndex(currentIndex, appStore.getPlayQueue().length)
   if (req.meg === 'error') {
     toast.warning('当前队列里没有歌曲')
+    appStore.setIsSwitchingSong(false)
   } else {
     if (currentIndex === req.idx) return
     appStore.setCurrentIndex(req.idx)
     updateSongStatus()
   }
+  setTimeout(() => {
+    appStore.setIsSwitchingSong(false)
+  }, 100)
 }
 const pause = () => {
   audio.pause()
@@ -164,7 +185,6 @@ const onExpand = () => {
 
 watch(song, (newSong) => {
   duration.value = newSong.duration / 1000
-
   if (newSong) updateMediaSession(newSong)
 })
 watch(isPlaying, () => {
