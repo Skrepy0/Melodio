@@ -265,13 +265,17 @@ const clearQueue = async () => {
 }
 
 const shuffleQueue = () => {
-  if (localQueue.value.length <= 1) return
-  const rest = localQueue.value.slice(1)
-  for (let i = rest.length - 1; i > 0; i--) {
+  const cur = appStore.getPlayData().currentIndex
+  const queueLength = localQueue.value.length
+  if (queueLength <= 1 || cur + 1 >= queueLength) return
+  const head = localQueue.value.slice(0, cur + 1)
+  const tail = localQueue.value.slice(cur + 1)
+  for (let i = tail.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1))
-    ;[rest[i], rest[j]] = [rest[j], rest[i]]
+    ;[tail[i], tail[j]] = [tail[j], tail[i]]
   }
-  const newQueue = [localQueue.value[0], ...rest]
+  const newQueue = [...head, ...tail]
+  localQueue.value = newQueue
   appStore.setPlayQueue(newQueue)
 }
 
