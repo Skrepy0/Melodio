@@ -79,7 +79,7 @@ export interface NowPlayingSong {
 export interface Playlist {
   id: number
   name: string
-  description?: string // 描述（如“我的最爱”）
+  description: string // 描述（如“我的最爱”）
   coverUrl?: string
   songCount: number // 包含的歌曲数量
   data: Song[]

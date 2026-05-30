@@ -13,72 +13,48 @@
       <div class="settings-content">
         <!-- 深色模式 -->
         <div class="setting-item">
-          <div class="item-left">
-            <Icon icon="mdi:weather-night" :width="22" class="item-icon" />
-            <span class="item-label">深色模式</span>
+          <div class="setting-row">
+            <div class="item-left">
+              <Icon icon="mdi:weather-night" :width="22" class="item-icon" />
+              <span class="item-label">深色模式</span>
+            </div>
+            <label class="switch">
+              <input type="checkbox" v-model="isDarkMode" @change="toggleDarkMode" />
+              <span class="slider round"></span>
+            </label>
           </div>
-          <label class="switch">
-            <input type="checkbox" v-model="isDarkMode" @change="toggleDarkMode" />
-            <span class="slider round"></span>
-          </label>
+          <div class="setting-desc">开启后界面将切换为深色主题。</div>
         </div>
 
         <!-- 接收通知 -->
         <div class="setting-item">
-          <div class="item-left">
-            <Icon icon="mdi:bell-outline" :width="22" class="item-icon" />
-            <span class="item-label">接收通知</span>
+          <div class="setting-row">
+            <div class="item-left">
+              <Icon icon="material-symbols-light:language-pinyin" :width="22" class="item-icon" />
+              <span class="item-label">拼音搜索</span>
+            </div>
+            <label class="switch">
+              <input type="checkbox" :checked="pinyinSearch" @change="togglePinyinSearch" />
+              <span class="slider round"></span>
+            </label>
           </div>
-          <label class="switch">
-            <input type="checkbox" v-model="notificationsEnabled" @change="toggleNotifications" />
-            <span class="slider round"></span>
-          </label>
-        </div>
-
-        <!-- 显示歌词 -->
-        <div class="setting-item">
-          <div class="item-left">
-            <Icon icon="mdi:music-note" :width="22" class="item-icon" />
-            <span class="item-label">显示歌词</span>
-          </div>
-          <label class="switch">
-            <input type="checkbox" v-model="showLyrics" @change="toggleLyrics" />
-            <span class="slider round"></span>
-          </label>
-        </div>
-
-        <!-- 音质选择 -->
-        <div class="setting-item clickable" @click="selectQuality">
-          <div class="item-left">
-            <Icon icon="mdi:quality-high" :width="22" class="item-icon" />
-            <span class="item-label">音质选择</span>
-          </div>
-          <div class="item-right">
-            <span class="item-value">{{ currentQuality }}</span>
-            <Icon icon="mdi:chevron-right" :width="20" />
-          </div>
-        </div>
-
-        <!-- 清理缓存 -->
-        <div class="setting-item clickable" @click="clearCache">
-          <div class="item-left">
-            <Icon icon="mdi:delete-outline" :width="22" class="item-icon" />
-            <span class="item-label">清理缓存</span>
-          </div>
-          <div class="item-right">
-            <span class="item-value">{{ cacheSize }}</span>
+          <div class="setting-desc">
+            开启后,所有搜索功能都会用拼音搜索处理(无法通过字母和单词进行搜索)
           </div>
         </div>
 
         <!-- 关于 -->
         <div class="setting-item clickable" @click="goToAbout">
-          <div class="item-left">
-            <Icon icon="mdi:information-outline" :width="22" class="item-icon" />
-            <span class="item-label">关于</span>
+          <div class="setting-row">
+            <div class="item-left">
+              <Icon icon="mdi:information-outline" :width="22" class="item-icon" />
+              <span class="item-label">关于(todo)</span>
+            </div>
+            <div class="item-right">
+              <Icon icon="mdi:chevron-right" :width="20" />
+            </div>
           </div>
-          <div class="item-right">
-            <Icon icon="mdi:chevron-right" :width="20" />
-          </div>
+          <div class="setting-desc">查看应用的有关信息。</div>
         </div>
       </div>
     </div>
@@ -91,61 +67,35 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Icon } from '@iconify/vue'
 import { useAppStore } from '@/stores/app'
+
 const appStore = useAppStore()
 const router = useRouter()
 
-// 状态
 const isDarkMode = ref(false)
-const notificationsEnabled = ref(true)
-const showLyrics = ref(true)
-const currentQuality = ref('标准')
-const cacheSize = ref('128MB')
+const pinyinSearch = ref(appStore.getPinyinSearch())
 
-// 返回上一页
 const goBack = () => {
   router.back()
 }
 
-// 深色模式切换
 const toggleDarkMode = () => {
   appStore.toggleDarkMode()
+  isDarkMode.value = appStore.darkMode
 }
 
-const toggleNotifications = () => {
-  console.log('通知开关:', notificationsEnabled.value)
-}
-
-const toggleLyrics = () => {
-  console.log('显示歌词:', showLyrics.value)
-}
-
-const selectQuality = () => {
-  console.log('打开音质选择弹窗')
-}
-
-const clearCache = () => {
-  console.log('清理缓存')
-  cacheSize.value = '0MB'
+const togglePinyinSearch = (e: Event) => {
+  const target = e.target as HTMLInputElement
+  pinyinSearch.value = target.checked
+  appStore.setPinyinSearch(pinyinSearch.value)
+  console.log(pinyinSearch.value)
 }
 
 const goToAbout = () => {
   router.push('/about')
 }
 
-// 初始化深色模式
 onMounted(() => {
-  const savedDarkMode = localStorage.getItem('darkMode')
-  if (savedDarkMode === 'true') {
-    isDarkMode.value = true
-    document.documentElement.classList.add('dark')
-  } else if (savedDarkMode === 'false') {
-    isDarkMode.value = false
-    document.documentElement.classList.remove('dark')
-  } else {
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
-    isDarkMode.value = prefersDark
-    if (prefersDark) document.documentElement.classList.add('dark')
-  }
+  isDarkMode.value = appStore.darkMode
 })
 </script>
 
@@ -157,6 +107,7 @@ onMounted(() => {
     opacity: 1;
   }
 }
+
 .settings-page {
   display: flex;
   flex-direction: column;
@@ -203,22 +154,28 @@ onMounted(() => {
   padding: 16px;
 }
 
-/* 设置项 */
+/* 设置项容器（垂直布局） */
 .setting-item {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column;
   padding: 14px 0;
   border-bottom: 1px solid rgba(0, 0, 0, 0.05);
   background-color: transparent;
   transition: background 0.2s;
+
+  &.clickable {
+    cursor: pointer;
+    &:hover {
+      background-color: rgba(0, 0, 0, 0.02);
+    }
+  }
 }
 
-.setting-item.clickable {
-  cursor: pointer;
-  &:hover {
-    background-color: rgba(0, 0, 0, 0.02);
-  }
+/* 每一行的横向布局 */
+.setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .item-left {
@@ -247,6 +204,17 @@ onMounted(() => {
 
 .item-value {
   color: var(--text-secondary, #666);
+}
+
+/* 描述文字 */
+.setting-desc {
+  font-size: 12px;
+  color: var(--text-secondary, #888);
+  margin-top: 6px;
+  padding-left: 34px; // 与图标+文字对齐
+  line-height: 1.4;
+  white-space: normal;
+  word-break: break-word;
 }
 
 /* 自定义开关样式（模拟 iOS 风格） */
@@ -304,5 +272,8 @@ input:checked + .slider:before {
 }
 .dark .setting-item.clickable:hover {
   background-color: rgba(255, 255, 255, 0.03);
+}
+.dark .setting-desc {
+  color: rgba(255, 255, 255, 0.6);
 }
 </style>

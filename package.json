@@ -33,6 +33,7 @@
     "cordova-plugin-media": "^7.0.0",
     "ionicons": "^7.0.0",
     "pinia": "^3.0.4",
+    "pinyin-match": "^1.2.10",
     "prettier": "^3.8.3",
     "vue": "^3.3.0",
     "vue-router": "^4.2.0"

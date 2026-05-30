@@ -5,7 +5,7 @@
         <SearchBox v-model="keyword" autofocus @search="onSearch" size="small" :clearable="false" />
       </div>
       <div class="button-container">
-        <CircleButton icon="stash:play-duotone" :size="36" @click="handleClick" />
+        <CircleButton icon="stash:play-duotone" :size="36" @click="playShownSongs" />
         <DropdownButton
           button-icon="mingcute:more-2-line"
           :size="36"
@@ -26,13 +26,13 @@
       </div>
       <PlayList
         v-if="selectedCategory === 'tracks'"
-        :songs="songsList"
+        :songs="showSongsList"
         @batch-delete="handleBatchDelete"
         @song-click="playSong"
       />
       <PlaylistsList
         v-else-if="selectedCategory === 'play-lists'"
-        :playlists="playlists"
+        :playlists="showPlaylists"
         @batch-delete="handleBatchDeletePlaylists"
         @playlist-click="onPlaylistClick"
         @menu-select="onPlaylistMenuSelect"
@@ -59,12 +59,18 @@ import { scanAllAudio } from '@/utils/audioScanner'
 import { useAppStore } from '@/stores/app'
 import { showPrompt } from '@/utils/createPrompt'
 import { showConfirm } from '@/utils/createConfirm'
+import { usePlaylistSearchEnhanced, useSongSearch } from '@/utils/search'
 const appStore = useAppStore()
 const router = useRouter()
 const keyword = ref('')
-const onSearch = () => {}
-const handleClick = () => {
-  toast.success('操作成功！')
+const playShownSongs = () => {
+  if (showSongsList.value.length === 0) return
+  appStore.setPlayQueue(showSongsList.value)
+  appStore.setCurrentIndex(0)
+  appStore.setMockCurrentTime(0)
+  if (!appStore.getPlayData().isPlaying) {
+    appStore.togglePlay()
+  }
 }
 const operations: DropdownItem[] = [
   { icon: 'ic:baseline-plus', description: '新建播放列表', value: 'new-songs-list' },
@@ -84,10 +90,15 @@ const onCategorySelect = (option: HorizontalSelectOption) => {
 console.log('AllSongs:' + appStore.getAllSongs().length)
 
 const songsList = ref<Song[]>(appStore.getAllSongs())
+const showSongsList = ref<Song[]>(songsList.value)
+const synchroShowSongsList = () => {
+  showSongsList.value = songsList.value
+}
 const loadAllSongs = async () => {
   const result = await scanAllAudio()
   if (result.success) {
     songsList.value = result.songs
+    synchroShowSongsList()
     toast.success(`扫描完成，共 ${result.songs.length} 首歌曲`)
     appStore.setAllSongs(songsList.value)
     selectedCategory.value = 'tracks'
@@ -95,7 +106,23 @@ const loadAllSongs = async () => {
     toast.error(result.error || '扫描失败，请检查权限')
   }
 }
-
+const onSearch = () => {
+  if (appStore.getSelectedCategory() === 'tracks') {
+    if (keyword.value === '') {
+      synchroShowSongsList()
+      return
+    }
+    const result = useSongSearch(keyword, songsList, appStore.getPinyinSearch())
+    showSongsList.value = result.value
+  } else if (appStore.getSelectedCategory() === 'play-lists') {
+    if (keyword.value === '') {
+      synchroShowPlaylists()
+      return
+    }
+    const result = usePlaylistSearchEnhanced(keyword, playlists, appStore.getPinyinSearch())
+    showPlaylists.value = result.value
+  }
+}
 const handleBatchDelete = async (ids: string[]) => {
   const result = await showConfirm({
     title: '提示',
@@ -109,6 +136,7 @@ const handleBatchDelete = async (ids: string[]) => {
     if (!ids.includes(item.id)) list.push(item)
   })
   songsList.value = list
+  synchroShowSongsList()
   appStore.setAllSongs(songsList.value)
   toast.success(`已删除${ids.length}首歌`)
 }
@@ -151,6 +179,10 @@ const showFullPlayer = () => {
 }
 
 const playlists = ref<Playlist[]>([appStore.getLikeList(), ...appStore.getSongLists()])
+const showPlaylists = ref<Playlist[]>(playlists.value)
+const synchroShowPlaylists = () => {
+  showPlaylists.value = playlists.value
+}
 const onSelectOperation = async (item: DropdownItem) => {
   console.log('选中:', item.description, item.value)
   if (item.value === 'settings') router.push('/settings')
@@ -173,6 +205,9 @@ const onSelectOperation = async (item: DropdownItem) => {
       }
       appStore.addSongList(data)
       playlists.value.push(data)
+      synchroShowPlaylists()
+      selectedCategory.value = 'play-lists'
+      appStore.setSelectedCategory('play-lists')
     } else {
       console.log('用户取消')
     }
@@ -208,6 +243,7 @@ watch(
   () => [appStore.getLikeList(), ...appStore.getSongLists()],
   (newVal) => {
     playlists.value = newVal
+    synchroShowPlaylists()
   },
   { deep: true, immediate: true }
 )
@@ -217,26 +253,86 @@ watch(selectedCategory, () => {
 </script>
 
 <style scoped lang="scss">
-.body {
-  height: 100%;
-  width: 100%;
-  background-color: var(--bg-color);
-}
 .header {
-  height: 60px;
+  height: 64px;
   width: 100%;
-  background-color: var(--bg-header);
+  background: rgba(var(--bg-header-rgb, 255, 255, 255), 0.8);
+  backdrop-filter: blur(20px);
   display: flex;
   align-items: center;
-  gap: 40px;
+  justify-content: space-between;
+  padding: 0 20px;
+  gap: 16px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  box-sizing: border-box;
+  position: sticky;
+  top: 0;
+  z-index: 100;
 }
+
 .search-box-container {
-  width: 60%;
-  padding: 15px;
+  flex: 1;
+  max-width: 500px;
+  min-width: 200px;
 }
+
 .button-container {
   display: flex;
   align-items: center;
-  gap: 13px;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.dark .header {
+  background: rgba(var(--bg-header-rgb, 30, 30, 35), 0.8);
+  border-bottom-color: rgba(255, 255, 255, 0.05);
+}
+
+@media (max-width: 640px) {
+  .header {
+    padding: 0 12px;
+    gap: 12px;
+  }
+  .search-box-container {
+    flex: 1;
+  }
+  .button-container {
+    gap: 8px;
+  }
+}
+.body {
+  flex: 1;
+  height: 100%;
+  width: 100%;
+  overflow-y: auto;
+  background-color: var(--bg-color);
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.3) transparent;
+
+  &::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 4px;
+  }
+  &::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 0, 0, 0.4);
+  }
+}
+
+.dark .body {
+  scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+  &::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+  }
+  &::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.4);
+  }
 }
 </style>

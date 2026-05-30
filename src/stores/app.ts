@@ -7,6 +7,16 @@ import { getNextSongIndex, getPrevSongIndex } from '@/utils/control'
 
 export const useAppStore = defineStore('app', () => {
   const darkMode = ref(localStorage.getItem('darkMode') === 'true')
+  const pinyinSearch = ref(localStorage.getItem('pinyinSearch') === 'true')
+
+  function setPinyinSearch(val: boolean) {
+    pinyinSearch.value = val
+    localStorage.setItem('pinyinSearch', String(pinyinSearch.value))
+  }
+  function getPinyinSearch() {
+    return pinyinSearch.value
+  }
+
   const selectedCategory = ref('tracks')
   const allSongs = ref<Song[]>([])
   const playQueue = ref<Song[]>([])
@@ -454,10 +464,12 @@ export const useAppStore = defineStore('app', () => {
     // 切换锁
     setIsSwitchingSong,
     getIsSwitchingSong,
-    // 主题
+    // 设置
     darkMode,
     toggleDarkMode,
     loadInitialDarkMode,
+    setPinyinSearch,
+    getPinyinSearch,
     // 歌曲库
     allSongs,
     setAllSongs,
