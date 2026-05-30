@@ -115,6 +115,7 @@ const onMenuItemSelect = async (item: DropdownItem) => {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   transition: all 0.2s ease;
   cursor: pointer;
+  animation: slideInUp 0.3s ease both;
 
   &:hover {
     background-color: var(--bg-card-hover, #f5f5f5);
@@ -191,5 +192,19 @@ const onMenuItemSelect = async (item: DropdownItem) => {
       background-color: var(--bg-card-hover, #2c2c2c);
     }
   }
+}
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.dark .song-cover .default-cover {
+  color: rgba(75, 73, 73, 0.6);
 }
 </style>

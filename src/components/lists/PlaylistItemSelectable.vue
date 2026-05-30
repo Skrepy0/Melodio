@@ -118,6 +118,18 @@ const toggleSelect = () => {
   align-items: center;
   gap: 8px;
   transition: background 0.2s;
+  animation: slideInUp 0.3s ease both;
+}
+
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .checkbox-area {

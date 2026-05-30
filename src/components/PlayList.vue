@@ -242,4 +242,21 @@ const handleSongClick = (song: Song) => {
   transform: translateY(100%);
   opacity: 0;
 }
+.dark .bottom-actions {
+  background: var(--bg-color, #1e1e1e);
+  background-color: rgba(var(--bg-color-rgb, 30, 30, 35), 0.9);
+  border-top-color: rgba(255, 255, 255, 0.1);
+}
+
+.dark .action-btn {
+  color: var(--text-color, #e0e0e0);
+}
+
+.dark .action-btn.danger {
+  color: #ff6b6b;
+}
+
+.dark .action-btn:hover {
+  opacity: 0.8;
+}
 </style>
