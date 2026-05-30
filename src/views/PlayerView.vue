@@ -372,6 +372,10 @@ let pointerId: number | null = null
 const startDrag = (e: PointerEvent, idx: number) => {
   if (e.button !== 0 && e.pointerType !== 'touch') return
   e.preventDefault()
+  if (isPlaying.value) {
+    togglePlay()
+  }
+  appStore.setIsSwitchingSong(true)
   dragStartIndex.value = idx
   const target = (e.target as HTMLElement).closest('.queue-item')
   if (!target) return
@@ -400,15 +404,6 @@ const onDragMove = (e: PointerEvent) => {
         newQueue.splice(overIndex, 0, movedItem)
         localQueue.value = newQueue
         appStore.setPlayQueue(newQueue)
-        const currentSongId = currentSong.value?.id
-        if (currentSongId && movedItem.id === currentSongId) {
-          appStore.setCurrentIndex(overIndex)
-        } else if (currentSongId) {
-          const newCurrentIdx = newQueue.findIndex((s) => s.id === currentSongId)
-          if (newCurrentIdx !== -1 && newCurrentIdx !== appStore.getPlayData().currentIndex) {
-            appStore.setCurrentIndex(newCurrentIdx)
-          }
-        }
         dragStartIndex.value = overIndex
         dragItem = document.querySelector(`.queue-item[data-index="${overIndex}"]`) as HTMLElement
         if (dragItem) dragItem.classList.add('dragging-source')
@@ -429,6 +424,13 @@ const stopDrag = (e: PointerEvent) => {
   dragItem = null
   isDraggingQueue = false
   pointerId = null
+  togglePlay()
+  setTimeout(() => {
+    togglePlay()
+  }, 100)
+  setTimeout(() => {
+    appStore.setIsSwitchingSong(false)
+  }, 1000)
   document.removeEventListener('pointermove', onDragMove)
   document.removeEventListener('pointerup', stopDrag)
 }
