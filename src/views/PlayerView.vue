@@ -55,7 +55,7 @@
       </div>
 
       <div class="controls">
-        <button class="control-btn" @click="togglePlay" :title="playModeText">
+        <button class="control-btn" @click="togglePlayMode" :title="playModeText">
           <Icon :icon="playModeIcon" :width="24" color="var(--text-color)" />
         </button>
         <button class="control-btn" @click="prevSong">
@@ -127,7 +127,7 @@ import { ref, computed, onUnmounted, watch } from 'vue'
 import { Icon } from '@iconify/vue'
 import CircleButton from '@/components/button/CircleButton.vue'
 import DropdownButton from '@/components/button/DropdownButton.vue'
-import { type Song, type DropdownItem } from '@/utils/interface'
+import { type Song, type DropdownItem, PlayMode } from '@/utils/interface'
 import { useAppStore } from '@/stores/app'
 import { MediaSession } from '@pejota14/capacitor-media-session'
 import toast from '@/utils/createToast'
@@ -135,16 +135,13 @@ import { showConfirm } from '@/utils/createConfirm'
 import { audio } from '@/utils/createAudio'
 
 const appStore = useAppStore()
-type PlayMode = 'sequential' | 'repeatOne' | 'shuffle'
-const playMode = ref<PlayMode>('sequential')
+const playMode = ref<PlayMode>(appStore.getPlayMode())
 const playModeIcon = computed(() => {
   switch (playMode.value) {
     case 'sequential':
       return 'mdi:repeat'
     case 'repeatOne':
       return 'mdi:repeat-once'
-    case 'shuffle':
-      return 'mdi:shuffle'
     default:
       return 'mdi:repeat'
   }
@@ -155,8 +152,6 @@ const playModeText = computed(() => {
       return '顺序播放'
     case 'repeatOne':
       return '单曲循环'
-    case 'shuffle':
-      return '随机播放'
     default:
       return '顺序播放'
   }
@@ -236,6 +231,14 @@ audio.addEventListener('pause', () => {
 })
 
 const togglePlay = () => appStore.togglePlay()
+const togglePlayMode = () => {
+  if (playMode.value === 'sequential') {
+    playMode.value = 'repeatOne'
+  } else {
+    playMode.value = 'sequential'
+  }
+  appStore.setPlayMode(playMode.value)
+}
 const prevSong = () => {
   appStore.prevSong()
 }

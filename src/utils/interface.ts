@@ -106,3 +106,4 @@ export const emptySong = {
   year: 0,
   albumArtUri: '',
 }
+export type PlayMode = 'sequential' | 'repeatOne'

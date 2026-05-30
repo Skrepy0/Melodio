@@ -1,4 +1,4 @@
-import { Playlist, Song } from '@/utils/interface'
+import { Playlist, PlayMode, Song } from '@/utils/interface'
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { audio } from '@/utils/createAudio'
@@ -43,9 +43,16 @@ export const useAppStore = defineStore('app', () => {
     isPlaying: false,
     mockCurrentTime: 0,
   })
-
-  const playMode = ref<'sequential' | 'repeatOne' | 'shuffle'>('sequential')
-
+  const playMode = ref<PlayMode>('sequential')
+  function isValidMode(mode: any): mode is PlayMode {
+    return mode === 'sequential' || mode === 'repeatOne'
+  }
+  function initPlayMode() {
+    const mode = localStorage.getItem('playMode')
+    if (isValidMode(mode)) {
+      playMode.value = mode
+    }
+  }
   const isSwitchingSong = ref(false)
 
   const likeList = ref<Playlist>({
@@ -57,6 +64,13 @@ export const useAppStore = defineStore('app', () => {
     data: [],
   })
   const songLists = ref<Playlist[]>([])
+  function setPlayMode(val: 'sequential' | 'repeatOne') {
+    playMode.value = val
+    localStorage.setItem('playMode', playMode.value)
+  }
+  function getPlayMode() {
+    return playMode.value
+  }
   function addSongList(val: Playlist) {
     songLists.value.push(val)
     saveSongLists()
@@ -232,7 +246,14 @@ export const useAppStore = defineStore('app', () => {
     if (endedListenerRegistered) return
     audio.addEventListener('ended', () => {
       if (!isSwitchingSong.value) {
-        nextSong()
+        if (playMode.value === 'repeatOne') {
+          togglePlay()
+          setTimeout(() => {
+            togglePlay()
+          }, 100)
+        } else {
+          nextSong()
+        }
       }
     })
     endedListenerRegistered = true
@@ -313,7 +334,6 @@ export const useAppStore = defineStore('app', () => {
     }
   }
 
-  // ==================== 应用启动时完整初始化 ====================
   async function init() {
     if (!initFlag.value) {
       loadInitialDarkMode()
@@ -323,26 +343,27 @@ export const useAppStore = defineStore('app', () => {
       initCurrentPlayListIndex()
       initLikeList()
       initSongLists()
-      // 恢复当前歌曲的音频状态
+      initPlayMode()
       const current = currentSong.value
+      initGlobalPlayerEvents()
+      initFlag.value = true
       if (current) {
+        //const time = playData.value.mockCurrentTime
         const url = getAccessibleUrl(current.uri)
         if (audio.src !== url) {
           audio.src = url
         }
-        if (playData.value.mockCurrentTime > 0) {
-          await audio.seek(playData.value.mockCurrentTime)
-        }
-        if (playData.value.isPlaying) {
-          await audio.play()
-        } else {
-          audio.pause()
-        }
-        audio.setSong(current)
+        // if (time !== 0) {
+        //   setTimeout( () => {
+        //     togglePlay()
+        //     setTimeout(() => {
+        //       togglePlay()
+        //     }, 100)
+        //     setMockCurrentTime(time)
+        //     audio.seek(time)
+        //   }, 500)
+        // }
       }
-      // 注册全局 ended 事件
-      initGlobalPlayerEvents()
-      initFlag.value = true
     }
   }
 
@@ -451,6 +472,8 @@ export const useAppStore = defineStore('app', () => {
     setSongListDataById,
     delectSongListById,
 
+    getPlayMode,
+    setPlayMode,
     playQueue,
     playData,
     playMode,
