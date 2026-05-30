@@ -2,7 +2,7 @@
 import router from '@/router'
 import { ref } from 'vue'
 import { Icon } from '@iconify/vue'
-import type { Song } from '@/utils/interface'
+import type { Playlist, Song } from '@/utils/interface'
 import { useAppStore } from '@/stores/app'
 import PlayList from '@/components/PlayList.vue'
 import toast from '@/utils/createToast'
@@ -16,14 +16,16 @@ if (appStore.getCurrentPlayListIndex() === 0) {
   songsList.value = likeList.data
   title.value = likeList.name
 } else {
-  // todo
+  const list: Playlist = appStore.getSongLists()[appStore.getCurrentPlayListIndex() - 1]
+  songsList.value = list.data
+  title.value = list.name
 }
 const saveSongList = () => {
   const index = appStore.getCurrentPlayListIndex()
   if (index === 0) {
     appStore.setLikeListData(songsList.value)
   } else {
-    //TODO
+    appStore.setSongListDataById(index, songsList.value)
   }
 }
 const isLoading = ref(false) // 可扩展加载状态

@@ -7,15 +7,23 @@ import { getNextSongIndex, getPrevSongIndex } from '@/utils/control'
 
 export const useAppStore = defineStore('app', () => {
   const darkMode = ref(localStorage.getItem('darkMode') === 'true')
+  const selectedCategory = ref('tracks')
   const allSongs = ref<Song[]>([])
   const playQueue = ref<Song[]>([])
   const homeFlag = ref(false)
   const initFlag = ref(false)
   const currentPlayList = ref<number>(-1)
 
+  function setSelectedCategory(val: string) {
+    selectedCategory.value = val
+  }
+  function getSelectedCategory() {
+    return selectedCategory.value
+  }
   function setCurrentPlayList(val: number) {
     currentPlayList.value = val
   }
+
   function getCurrentPlayList() {
     return currentPlayList.value
   }
@@ -38,6 +46,53 @@ export const useAppStore = defineStore('app', () => {
     songCount: 0,
     data: [],
   })
+  const songLists = ref<Playlist[]>([])
+  function addSongList(val: Playlist) {
+    songLists.value.push(val)
+    saveSongLists()
+  }
+  function setSongListById(val: number, list: Playlist) {
+    list.songCount = list.data.length
+    songLists.value[val - 1] = list
+    saveSongLists()
+  }
+  function setSongListDataById(val: number, data: Song[]) {
+    songLists.value[val - 1].data = data
+    songLists.value[val - 1].songCount = data.length
+    saveSongLists()
+  }
+  function delectSongListById(val: number) {
+    songLists.value.splice(val - 1, 1)
+    saveSongLists()
+  }
+  function getSongLists() {
+    return songLists.value
+  }
+  function saveSongLists() {
+    localStorage.setItem(
+      'songLists',
+      JSON.stringify({
+        data: songLists.value,
+      })
+    )
+  }
+  function setSongLists(list: Playlist[]) {
+    songLists.value = list
+    saveSongLists()
+  }
+  function mergeSongLists(list: Playlist[]) {
+    songLists.value = [...songLists.value, ...list]
+    saveSongLists()
+  }
+  function initSongLists() {
+    const obj = localStorage.getItem('songLists')
+    if (obj) {
+      const parsed = JSON.parse(obj)
+      if (Array.isArray(parsed.data)) {
+        songLists.value = parsed.data
+      }
+    }
+  }
 
   const currentPlayListIndex = ref(0)
 
@@ -155,7 +210,7 @@ export const useAppStore = defineStore('app', () => {
       await audio.pause()
       playData.value.isPlaying = false
     } else {
-      await loadCurrentSong() // 确保歌曲已加载
+      await loadCurrentSong()
       await audio.play()
       playData.value.isPlaying = true
     }
@@ -257,6 +312,7 @@ export const useAppStore = defineStore('app', () => {
       initPlayData()
       initCurrentPlayListIndex()
       initLikeList()
+      initSongLists()
       // 恢复当前歌曲的音频状态
       const current = currentSong.value
       if (current) {
@@ -280,7 +336,6 @@ export const useAppStore = defineStore('app', () => {
     }
   }
 
-  // ==================== 其他 setter / getter（保持原有接口） ====================
   function toggleDarkMode() {
     darkMode.value = !darkMode.value
     if (darkMode.value) document.documentElement.classList.add('dark')
@@ -371,8 +426,20 @@ export const useAppStore = defineStore('app', () => {
   }
 
   return {
+    setSelectedCategory,
+    getSelectedCategory,
+
     setCurrentPlayList,
     getCurrentPlayList,
+
+    mergeSongLists,
+    setSongLists,
+    saveSongLists,
+    getSongLists,
+    addSongList,
+    setSongListById,
+    setSongListDataById,
+    delectSongListById,
 
     playQueue,
     playData,

@@ -11,6 +11,7 @@
     <div class="playlist-actions">
       <span class="song-count">{{ playlist.songCount }}首</span>
       <DropdownButton
+        v-if="props.showButton"
         v-model:visible="dropdownVisible"
         :button-icon="'mdi:dots-vertical'"
         :size="32"
@@ -31,13 +32,20 @@ import { Icon } from '@iconify/vue'
 import { computed } from 'vue'
 import DropdownButton from '@/components/button/DropdownButton.vue'
 import type { DropdownItem, Playlist } from '@/utils/interface'
-
+import { showPrompt } from '@/utils/createPrompt'
+import toast from '@/utils/createToast'
+import { useAppStore } from '@/stores/app'
+import { showConfirm } from '@/utils/createConfirm'
+const appStore = useAppStore()
 interface Props {
   playlist: Playlist
   dropdownOpen?: boolean
+  showButton?: boolean
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  showButton: true,
+})
 
 const emit = defineEmits<{
   (e: 'click', playlist: Playlist): void
@@ -51,8 +59,7 @@ const dropdownVisible = computed({
 })
 
 const menuOptions: DropdownItem[] = [
-  { icon: 'mdi:play', description: '播放', value: 'play' },
-  { icon: 'mdi:pencil', description: '编辑', value: 'edit' },
+  { icon: 'mdi:pencil', description: '编辑名称', value: 'edit' },
   { icon: 'mdi:delete', description: '删除', value: 'delete' },
 ]
 
@@ -60,8 +67,45 @@ const onCardClick = () => {
   emit('click', props.playlist)
 }
 
-const onMenuItemSelect = (item: DropdownItem) => {
+const onMenuItemSelect = async (item: DropdownItem) => {
   emit('menuSelect', item.value as string, props.playlist)
+  if (item.value === 'edit') {
+    if (props.playlist.id === 0) {
+      toast.warning('无法对默认歌单执行此操作!')
+      return
+    }
+    const name = await showPrompt({
+      title: '修改歌单名称',
+      message: '请输入此歌单的新名称',
+      placeholder: '',
+      defaultValue: props.playlist.name,
+    })
+    if (name) {
+      if (name === props.playlist.name) {
+        toast.warning('歌单名称与原来相同!')
+      } else {
+        const newList = props.playlist
+        newList.name = name
+        appStore.setSongListById(newList.id, newList)
+        toast.success('已经将歌单重命名!')
+      }
+    }
+  } else if (item.value === 'delete') {
+    if (props.playlist.id === 0) {
+      toast.warning('无法对默认歌单执行此操作!')
+      return
+    }
+    const result = await showConfirm({
+      title: '提示',
+      message: `确定要删除歌单"${props.playlist.name}"`,
+      confirmText: '删除',
+      cancelText: '取消',
+    })
+    if (result) {
+      appStore.delectSongListById(props.playlist.id)
+      toast.success(`已删除歌单${props.playlist.name}!`)
+    }
+  }
 }
 </script>
 

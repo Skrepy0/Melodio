@@ -55,16 +55,16 @@ interface Props {
 const props = defineProps<Props>()
 
 const emit = defineEmits<{
-  (e: 'batch-delete', playlistIds: (string | number)[]): void
+  (e: 'batch-delete', playlistIds: number[]): void
   (e: 'playlist-click', playlist: Playlist): void
   (e: 'menu-select', action: string, playlist: Playlist): void
 }>()
 
 const isSelectMode = ref(false)
-const selectedIds = ref<Set<string | number>>(new Set())
+const selectedIds = ref<Set<number>>(new Set())
 const { openDropdownId, handleDropdownToggle } = useDropdownManager()
 
-const enterSelectMode = (id?: string | number) => {
+const enterSelectMode = (id?: number) => {
   if (isSelectMode.value) return
   isSelectMode.value = true
   if (id !== undefined) {
@@ -72,7 +72,7 @@ const enterSelectMode = (id?: string | number) => {
   }
 }
 
-const toggleSelect = (id: string | number) => {
+const toggleSelect = (id: number) => {
   if (selectedIds.value.has(id)) {
     selectedIds.value.delete(id)
     if (selectedIds.value.size === 0) exitSelectMode()

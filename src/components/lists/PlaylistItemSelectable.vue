@@ -42,8 +42,8 @@ interface Props {
 const props = defineProps<Props>()
 
 const emit = defineEmits<{
-  (e: 'long-press', playlistId: string | number): void
-  (e: 'toggle-select', playlistId: string | number): void
+  (e: 'long-press', playlistId: number): void
+  (e: 'toggle-select', playlistId: number): void
   (e: 'click', playlist: Playlist): void
   (e: 'menuSelect', action: string, playlist: Playlist): void
   (e: 'update:dropdownOpen', value: boolean): void
@@ -96,7 +96,11 @@ const onMouseUp = () => {
 
 const onItemClick = (playlist: Playlist) => {
   if (isLongPressed.value) return
-  emit('click', playlist)
+  if (props.selectable) {
+    toggleSelect()
+  } else {
+    emit('click', playlist)
+  }
 }
 
 const onMenuSelect = (action: string, playlist: Playlist) => {

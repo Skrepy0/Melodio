@@ -28,11 +28,11 @@
           </button>
           <button class="action-btn" @click="addToQueue">
             <Icon icon="ic:baseline-queue" :width="20" />
-            <span>队列</span>
+            <span>添加到队列</span>
           </button>
-          <button class="action-btn" @click="addToLike">
+          <button class="action-btn" @click="addToSongList">
             <Icon icon="mdi:heart-outline" :width="20" />
-            <span>喜欢</span>
+            <span>添加到歌单</span>
           </button>
           <button class="action-btn danger" @click="batchDelete">
             <Icon icon="mdi:delete" :width="20" />
@@ -57,6 +57,7 @@ import type { Song } from '@/utils/interface.ts'
 import { useAppStore } from '@/stores/app'
 import toast from '@/utils/createToast'
 import { isInList } from '@/utils/functions'
+import { showPlaylistSelector } from '@/utils/createPlaylistSelector'
 const appStore = useAppStore()
 interface Props {
   songs: Song[]
@@ -113,19 +114,37 @@ const addToQueue = () => {
   }
   exitSelectMode()
 }
-const addToLike = () => {
-  const likeList = appStore.getLikeList().data
-  const newSongs: Song[] = []
-  props.songs.forEach((song) => {
-    if (selectedIds.value.has(song.id) && !isInList(song.id, likeList)) {
-      newSongs.push(song)
+const addToSongList = async () => {
+  const selected = await showPlaylistSelector([appStore.getLikeList(), ...appStore.getSongLists()])
+  if (selected) {
+    if (selected.id === 0) {
+      const likeList = appStore.getLikeList().data
+      const newSongs: Song[] = []
+      props.songs.forEach((song) => {
+        if (selectedIds.value.has(song.id) && !isInList(song.id, likeList)) {
+          newSongs.push(song)
+        }
+      })
+      if (newSongs.length > 0) {
+        appStore.mergeLikeListData(newSongs)
+        toast.success(`已添加 ${newSongs.length} 首歌曲至"${selected.name}"`)
+      } else {
+        toast.warning('所选歌曲已在喜欢歌单中')
+      }
+    } else {
+      const list: Song[] = []
+      props.songs.forEach((song) => {
+        if (selectedIds.value.has(song.id) && !isInList(song.id, selected.data)) {
+          list.push(song)
+        }
+      })
+      if (list.length > 0) {
+        appStore.setSongListDataById(selected.id, [...selected.data, ...list])
+        toast.success(`已添加 ${list.length} 首歌曲至"${selected.name}"`)
+      } else {
+        toast.warning('所选歌曲已在此歌单中')
+      }
     }
-  })
-  if (newSongs.length > 0) {
-    appStore.mergeLikeListData(newSongs)
-    toast.success(`已添加 ${newSongs.length} 首歌曲至“我喜欢的音乐”`)
-  } else {
-    toast.warning('所选歌曲已在喜欢列表中')
   }
   exitSelectMode()
 }

@@ -37,6 +37,7 @@ import type { DropdownItem, Song } from '@/utils/interface'
 import { useAppStore } from '@/stores/app'
 import toast from '@/utils/createToast'
 import { isInList } from '@/utils/functions'
+import { showPlaylistSelector } from '@/utils/createPlaylistSelector'
 const appStore = useAppStore()
 interface Props {
   song: Song
@@ -71,7 +72,7 @@ const onCardClick = () => {
   emit('click', props.song)
 }
 
-const onMenuItemSelect = (item: DropdownItem) => {
+const onMenuItemSelect = async (item: DropdownItem) => {
   emit('menuSelect', item.value as string, props.song)
   if (item.value === 'queue') {
     appStore.addToQueue(props.song)
@@ -83,6 +84,21 @@ const onMenuItemSelect = (item: DropdownItem) => {
     }
     appStore.mergeLikeListData([props.song])
     toast.success('已经将1首歌加入喜欢')
+  } else if (item.value === 'addToPlaylist') {
+    const selected = await showPlaylistSelector([
+      appStore.getLikeList(),
+      ...appStore.getSongLists(),
+    ])
+    if (selected) {
+      console.log('选中歌单:', selected.name)
+      if (isInList(props.song.id, selected.data)) {
+        toast.warning('这首歌已经在这个歌单中了')
+        return
+      }
+      selected.data.push(props.song)
+      appStore.setSongListById(selected.id, selected)
+      toast.success('已经将1首歌加入 ' + selected.name)
+    }
   }
 }
 </script>

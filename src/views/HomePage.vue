@@ -54,7 +54,7 @@ import NowPlayingBar from '@/components/NowPlayingBar.vue'
 import toast from '@/utils/createToast'
 import { useRouter } from 'vue-router'
 import { DropdownItem, HorizontalSelectOption, Playlist, Song } from '@/utils/interface'
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { scanAllAudio } from '@/utils/audioScanner'
 import { useAppStore } from '@/stores/app'
 import { showPrompt } from '@/utils/createPrompt'
@@ -71,26 +71,7 @@ const operations: DropdownItem[] = [
   { icon: 'ri:scan-2-line', description: '扫描曲库', value: 'scan-songs' },
   { icon: 'ri:settings-line', description: '设置', value: 'settings' },
 ]
-const onSelectOperation = async (item: DropdownItem) => {
-  console.log('选中:', item.description, item.value)
-  if (item.value === 'settings') router.push('/settings')
-  else if (item.value === 'scan-songs') loadAllSongs()
-  else if (item.value === 'new-songs-list') {
-    const name = await showPrompt({
-      title: '新建播放列表',
-      message: '请输入播放列表名称',
-      placeholder: '例如：我喜欢的音乐',
-      defaultValue: '新建歌单',
-    })
-    if (name) {
-      console.log('创建播放列表:', name)
-      // 执行创建逻辑
-    } else {
-      console.log('用户取消')
-    }
-  }
-}
-const selectedCategory = ref('tracks')
+const selectedCategory = ref(appStore.getSelectedCategory())
 
 const categoryOptions: HorizontalSelectOption[] = [
   { value: 'tracks', label: '曲目', icon: 'streamline:music-folder-song' },
@@ -114,6 +95,7 @@ const loadAllSongs = async () => {
     toast.error(result.error || '扫描失败，请检查权限')
   }
 }
+
 const handleBatchDelete = async (ids: string[]) => {
   const result = await showConfirm({
     title: '提示',
@@ -168,11 +150,49 @@ const showFullPlayer = () => {
   router.push('/player-view')
 }
 
-const playlists = ref<Playlist[]>([appStore.getLikeList()])
-
-const handleBatchDeletePlaylists = (ids: any) => {
+const playlists = ref<Playlist[]>([appStore.getLikeList(), ...appStore.getSongLists()])
+const onSelectOperation = async (item: DropdownItem) => {
+  console.log('选中:', item.description, item.value)
+  if (item.value === 'settings') router.push('/settings')
+  else if (item.value === 'scan-songs') loadAllSongs()
+  else if (item.value === 'new-songs-list') {
+    const name = await showPrompt({
+      title: '新建播放列表',
+      message: '请输入播放列表名称',
+      placeholder: '',
+      defaultValue: '新建歌单',
+    })
+    if (name) {
+      const data = {
+        id: appStore.getSongLists().length + 1,
+        name: name,
+        description: '',
+        coverUrl: '',
+        songCount: 0,
+        data: [],
+      }
+      appStore.addSongList(data)
+      playlists.value.push(data)
+    } else {
+      console.log('用户取消')
+    }
+  }
+}
+const handleBatchDeletePlaylists = async (ids: number[]) => {
   console.log('删除播放列表IDs:', ids)
-  // 更新 playlists 数据
+  if (ids.includes(0)) {
+    toast.warning('无法对默认收藏夹执行删除操作')
+    return
+  }
+  const result = await showConfirm({
+    title: '提示',
+    message: `确定要删除这${ids.length}个歌单吗？`,
+    confirmText: '删除',
+    cancelText: '取消',
+  })
+  if (!result) return
+  ids.forEach((id) => appStore.delectSongListById(id))
+  toast.success(`已删除这${ids.length}个歌单`)
 }
 
 const onPlaylistClick = (playlist: Playlist) => {
@@ -184,6 +204,16 @@ const onPlaylistClick = (playlist: Playlist) => {
 const onPlaylistMenuSelect = (action: any, playlist: Playlist) => {
   console.log('对播放列表操作:', action, playlist)
 }
+watch(
+  () => [appStore.getLikeList(), ...appStore.getSongLists()],
+  (newVal) => {
+    playlists.value = newVal
+  },
+  { deep: true, immediate: true }
+)
+watch(selectedCategory, () => {
+  appStore.setSelectedCategory(selectedCategory.value)
+})
 </script>
 
 <style scoped lang="scss">
