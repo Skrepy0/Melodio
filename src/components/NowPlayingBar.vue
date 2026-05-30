@@ -1,5 +1,5 @@
 <template>
-  <div class="now-playing-bar" v-if="song">
+  <div class="now-playing-bar" v-if="currentSong">
     <div class="progress-line">
       <div class="progress-fill-line" :style="{ width: progressPercent + '%' }"></div>
     </div>
@@ -7,12 +7,16 @@
     <div class="bar-content">
       <div class="song-info" @click="onExpand">
         <div class="cover">
-          <img v-if="song.albumArtUri" :src="song.albumArtUri" :alt="song.title" />
+          <img
+            v-if="currentSong.albumArtUri"
+            :src="currentSong.albumArtUri"
+            :alt="currentSong.title"
+          />
           <Icon v-else icon="mdi:music" :width="40" />
         </div>
         <div class="details">
-          <div class="name">{{ song.title }}</div>
-          <div class="artist">{{ song.artist }}</div>
+          <div class="name">{{ currentSong.title }}</div>
+          <div class="artist">{{ currentSong.artist }}</div>
         </div>
       </div>
 
@@ -33,142 +37,62 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, ref } from 'vue'
 import { Icon } from '@iconify/vue'
-import { emptySong, Song } from '@/utils/interface'
 import { useAppStore } from '@/stores/app'
-import { audio } from '@/utils/createAudio'
-import { MediaSession } from '@pejota14/capacitor-media-session'
 import toast from '@/utils/createToast'
-import { getNextSongIndex, getPrevSongIndex } from '@/utils/control'
+import { MediaSession } from '@pejota14/capacitor-media-session'
+import { audio } from '@/utils/createAudio'
 const appStore = useAppStore()
-const playData = appStore.getPlayData()
-const song = ref(appStore.getPlayQueue()[playData.currentIndex] || emptySong)
+
+const currentSong = computed(() => appStore.currentSong)
+const isPlaying = computed(() => appStore.getPlayData().isPlaying)
+const currentTime = ref(appStore.getPlayData().mockCurrentTime)
+const duration = computed(() => currentSong.value?.duration / 1000 || 0)
+const progressPercent = computed(() => (currentTime.value / duration.value) * 100 || 0)
+
 const emit = defineEmits<{
   (e: 'expand'): void
 }>()
+
+const onExpand = () => {
+  emit('expand')
+}
 const registerMediaSessionHandlers = () => {
   MediaSession.setActionHandler({ action: 'play' }, () => {
     console.log('[MediaSession] play')
-    audio.play()
-    isPlaying.value = true
+    appStore.togglePlay()
   })
   MediaSession.setActionHandler({ action: 'pause' }, () => {
     console.log('[MediaSession] pause')
-    audio.pause()
-    isPlaying.value = false
+    appStore.togglePlay()
   })
   MediaSession.setActionHandler({ action: 'nexttrack' }, () => {
     console.log('[MediaSession] next')
-    if (!appStore.getIsSwitchingSong()) {
-      nextSong()
-    }
+    appStore.nextSong()
   })
   MediaSession.setActionHandler({ action: 'previoustrack' }, () => {
     console.log('[MediaSession] previous')
-    if (!appStore.getIsSwitchingSong()) {
-      prevSong()
-    }
+    appStore.prevSong()
   })
-}
-const updateMediaSession = (song: Song) => {
-  if (!song) return
-  MediaSession.setPlaybackState({ playbackState: isPlaying.value ? 'playing' : 'paused' })
 }
 
 registerMediaSessionHandlers()
-
 audio.addEventListener('play', () => {
   MediaSession.setPlaybackState({ playbackState: 'playing' })
 })
 audio.addEventListener('pause', () => {
   MediaSession.setPlaybackState({ playbackState: 'paused' })
 })
-audio.addEventListener('ended', () => {
-  if (!appStore.getIsSwitchingSong()) {
-    nextSong()
-  }
-})
-const isPlaying = ref(playData.isPlaying)
-const currentTime = ref(playData.mockCurrentTime)
-onMounted(() => {
-  if (appStore.getHomeFlag()) return
-  appStore.setHomeFlag(true)
-  isPlaying.value = false
-})
-const duration = ref(song.value.duration / 1000)
-const progressPercent = ref(computed(() => (currentTime.value / duration.value) * 100 || 0))
 audio.addEventListener('timeupdate', () => {
   currentTime.value = audio.currentTime
 })
-const play = async () => {
-  isPlaying.value = true
-  audio.play().catch((e) => {
-    console.error(e)
-    toast.error('播放失败:' + e)
-  })
-  audio.setSong(song.value || emptySong)
-}
-const updateSongStatus = async () => {
-  currentTime.value = 0
-  const playData = appStore.getPlayData()
-  song.value = appStore.getPlayQueue()[playData.currentIndex] || null
-  if (!song.value) return
-  try {
-    await audio.setSrc(song.value.uri)
-    duration.value = song.value.duration / 1000 || 0
-    if (isPlaying.value) {
-      await audio.play()
-    }
-  } catch (e) {
-    console.error(e)
-    toast.error('播放失败')
-  }
-}
-const nextSong = () => {
-  if (appStore.getIsSwitchingSong()) return
-  appStore.setIsSwitchingSong(true)
-  const currentIndex = appStore.getPlayData().currentIndex
-  const req = getNextSongIndex(currentIndex, appStore.getPlayQueue().length)
-  if (req.meg === 'error') {
-    toast.warning('当前队列里没有歌曲')
-    appStore.setIsSwitchingSong(false)
-  } else {
-    if (currentIndex === req.idx) return
-    appStore.setCurrentIndex(req.idx)
-    updateSongStatus()
-  }
-  setTimeout(() => {
-    appStore.setIsSwitchingSong(false)
-  }, 100)
-}
-const prevSong = () => {
-  if (appStore.getIsSwitchingSong()) return
-  appStore.setIsSwitchingSong(true)
-  const currentIndex = appStore.getPlayData().currentIndex
-  const req = getPrevSongIndex(currentIndex, appStore.getPlayQueue().length)
-  if (req.meg === 'error') {
-    toast.warning('当前队列里没有歌曲')
-    appStore.setIsSwitchingSong(false)
-  } else {
-    if (currentIndex === req.idx) return
-    appStore.setCurrentIndex(req.idx)
-    updateSongStatus()
-  }
-  setTimeout(() => {
-    appStore.setIsSwitchingSong(false)
-  }, 100)
-}
-const pause = () => {
-  audio.pause()
-  isPlaying.value = false
-}
 
-const togglePlay = () => {
-  if (isPlaying.value) {
-    pause()
-  } else {
-    play()
+const togglePlay = async () => {
+  try {
+    await appStore.togglePlay()
+  } catch (e) {
+    toast.error('播放失败')
   }
 }
 
@@ -178,27 +102,6 @@ const formatTime = (seconds: number): string => {
   const secs = Math.floor(seconds % 60)
   return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
 }
-
-const onExpand = () => {
-  emit('expand')
-}
-
-watch(song, (newSong) => {
-  duration.value = newSong.duration / 1000
-  if (newSong) updateMediaSession(newSong)
-})
-watch(isPlaying, () => {
-  appStore.setIsPlaying(isPlaying.value)
-})
-watch(currentTime, () => {
-  appStore.setMockCurrentTime(currentTime.value)
-})
-onUnmounted(() => {
-  MediaSession.setActionHandler({ action: 'play' }, null)
-  MediaSession.setActionHandler({ action: 'pause' }, null)
-  MediaSession.setActionHandler({ action: 'nexttrack' }, null)
-  MediaSession.setActionHandler({ action: 'previoustrack' }, null)
-})
 </script>
 
 <style scoped lang="scss">
@@ -215,7 +118,6 @@ onUnmounted(() => {
   box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.05);
 }
 
-/* 顶部进度条 */
 .progress-line {
   height: 2px;
   background-color: rgba(0, 0, 0, 0.1);
@@ -230,7 +132,6 @@ onUnmounted(() => {
   transition: width 0.1s linear;
 }
 
-/* 主要内容区域 */
 .bar-content {
   display: flex;
   align-items: center;
@@ -319,7 +220,6 @@ onUnmounted(() => {
   }
 }
 
-// 暗色模式
 .dark {
   .now-playing-bar {
     background-color: rgba(var(--bg-header-rgb, 30, 30, 35), 0.95);
@@ -329,7 +229,6 @@ onUnmounted(() => {
   }
 }
 
-// 移动端优化
 @media (max-width: 640px) {
   .bar-content {
     padding: 8px 12px;

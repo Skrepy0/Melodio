@@ -19,9 +19,9 @@ import { useRouter, useRoute } from 'vue-router'
 import { ref, watch } from 'vue'
 import { useAppStore } from '@/stores/app'
 const appStore = useAppStore()
+appStore.init()
 const router = useRouter()
 const route = useRoute()
-appStore.init()
 const transitionName = ref('zoom')
 watch(
   () => route.path,

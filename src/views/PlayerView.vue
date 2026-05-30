@@ -25,7 +25,12 @@
 
       <div class="progress-section">
         <div class="time-current">{{ formatTime(mockCurrentTime) }}</div>
-        <div class="progress-bar-container" @click="mockSeek">
+        <div
+          class="progress-bar-container"
+          @click="mockSeek"
+          @mousedown="startDragProgress"
+          @touchstart="startDragProgress"
+        >
           <div
             class="progress-bar"
             ref="progressBarRef"
@@ -50,7 +55,7 @@
       </div>
 
       <div class="controls">
-        <button class="control-btn" @click="togglePlayMode" :title="playModeText">
+        <button class="control-btn" @click="togglePlay" :title="playModeText">
           <Icon :icon="playModeIcon" :width="24" color="var(--text-color)" />
         </button>
         <button class="control-btn" @click="prevSong">
@@ -117,19 +122,18 @@
 </template>
 
 <script setup lang="ts">
+defineOptions({ name: 'PlayerView' })
 import { ref, computed, onUnmounted, watch } from 'vue'
 import { Icon } from '@iconify/vue'
 import CircleButton from '@/components/button/CircleButton.vue'
 import DropdownButton from '@/components/button/DropdownButton.vue'
-import { type Song, type DropdownItem, emptySong } from '@/utils/interface'
+import { type Song, type DropdownItem } from '@/utils/interface'
 import { useAppStore } from '@/stores/app'
 import { MediaSession } from '@pejota14/capacitor-media-session'
 import toast from '@/utils/createToast'
 import { audio } from '@/utils/createAudio'
-import { getNextSongIndex, getPrevSongIndex } from '@/utils/control'
 
 const appStore = useAppStore()
-
 type PlayMode = 'sequential' | 'repeatOne' | 'shuffle'
 const playMode = ref<PlayMode>('sequential')
 const playModeIcon = computed(() => {
@@ -157,79 +161,72 @@ const playModeText = computed(() => {
   }
 })
 
-const playData = appStore.getPlayData()
-const queue = ref<Song[]>(appStore.getPlayQueue())
-const currentIndex = ref(playData.currentIndex)
-const currentSong = ref(queue.value[currentIndex.value] || emptySong)
-const isPlaying = ref(playData.isPlaying)
-const mockCurrentTime = ref(playData.mockCurrentTime)
-const mockDuration = ref(currentSong.value?.duration / 1000)
-const progressPercent = ref(computed(() => (mockCurrentTime.value / mockDuration.value) * 100 || 0))
-
-const updateMeta = () => {
-  audio.setSong(currentSong.value || emptySong)
-}
-const playSong = (song: Song) => {
-  const targetIdx = queue.value.findIndex((s) => s.id === song.id)
+const queue = computed(() => appStore.getPlayQueue())
+const currentSong = computed(() => appStore.currentSong)
+const isPlaying = computed(() => appStore.getPlayData().isPlaying)
+const mockCurrentTime = computed(() => appStore.getPlayData().mockCurrentTime)
+const mockDuration = computed(() => currentSong.value?.duration / 1000 || 0)
+const progressPercent = computed(() => (mockCurrentTime.value / mockDuration.value) * 100 || 0)
+const localQueue = ref<Song[]>(appStore.getPlayQueue())
+watch(
+  queue,
+  (newQueue) => {
+    localQueue.value = newQueue
+  },
+  { immediate: true }
+)
+audio.addEventListener('timeupdate', () => {
+  if (isDraggingProgress) return
+  appStore.setMockCurrentTime(audio.currentTime)
+})
+const playSong = async (song: Song) => {
+  const targetIdx = localQueue.value.findIndex((s) => s.id === song.id)
   if (targetIdx === -1) return
-  if (targetIdx === currentIndex.value) {
+  const currentIdx = appStore.getPlayData().currentIndex
+  if (targetIdx === currentIdx) {
     if (!isPlaying.value) {
-      isPlaying.value = true
-      audio.play()
+      appStore.togglePlay()
     }
     return
   }
   appStore.setIsSwitchingSong(true)
-  currentIndex.value = targetIdx
-  isPlaying.value = true
+  appStore.setCurrentIndex(targetIdx)
+  appStore.setIsPlaying(true)
+  if (isPlaying.value) {
+    togglePlay()
+  } else {
+    togglePlay()
+    togglePlay()
+  }
+  appStore.setMockCurrentTime(0)
+  await appStore.loadCurrentSong()
   setTimeout(() => {
     appStore.setIsSwitchingSong(false)
+  }, 100)
+  setTimeout(() => {
+    togglePlay()
   }, 500)
 }
-const loadCurrentSong = async () => {
-  const song = currentSong.value
-  if (!song) return
-  try {
-    await audio.setSrc(song.uri)
-    mockDuration.value = song.duration / 1000 || 0
-    await updateMeta()
-    if (isPlaying.value) {
-      await audio.play()
-    }
-  } catch (e) {
-    console.error(e)
-    toast.error('播放失败')
-  }
-}
-
 const registerMediaSessionHandlers = () => {
   MediaSession.setActionHandler({ action: 'play' }, () => {
     console.log('[MediaSession] play')
-    audio.play()
-    isPlaying.value = true
+    appStore.togglePlay()
   })
   MediaSession.setActionHandler({ action: 'pause' }, () => {
     console.log('[MediaSession] pause')
-    audio.pause()
-    isPlaying.value = false
+    appStore.togglePlay()
   })
   MediaSession.setActionHandler({ action: 'nexttrack' }, () => {
     console.log('[MediaSession] next')
-    nextSong()
+    appStore.nextSong()
   })
   MediaSession.setActionHandler({ action: 'previoustrack' }, () => {
     console.log('[MediaSession] previous')
-    prevSong()
+    appStore.prevSong()
   })
 }
 
-const updateMediaSession = (song: Song) => {
-  if (!song) return
-  MediaSession.setPlaybackState({ playbackState: isPlaying.value ? 'playing' : 'paused' })
-}
-
 registerMediaSessionHandlers()
-
 audio.addEventListener('play', () => {
   MediaSession.setPlaybackState({ playbackState: 'playing' })
 })
@@ -237,130 +234,32 @@ audio.addEventListener('pause', () => {
   MediaSession.setPlaybackState({ playbackState: 'paused' })
 })
 
-audio.addEventListener('timeupdate', () => {
-  if (!isDraggingProgress) {
-    mockCurrentTime.value = audio.currentTime
-  }
-})
-
-let lastLoadedSongId: string | number | null = null
-
-watch(currentSong, async (newSong) => {
-  if (!newSong) return
-  if (lastLoadedSongId === newSong.id) return
-  lastLoadedSongId = newSong.id
-  mockCurrentTime.value = 0
-  await loadCurrentSong()
-})
-
-watch(currentIndex, (newIndex, oldIndex) => {
-  if (newIndex===oldIndex) return
-  appStore.setCurrentIndex(currentIndex.value)
-  console.log('当前索引:' + currentIndex.value)
-  currentSong.value = queue.value[currentIndex.value]
-  audio.setSong(currentSong.value)
-  audio.setSrc(currentSong.value.uri)
-})
-
-watch(isPlaying, (newValue) => {
-  //console.log(`信息idx:${currentIndex.value},song${currentSong.value.title},playSrc:${audio.src},queue:${queue.value.toString()}`);
-  appStore.setIsPlaying(newValue)
-  if (newValue) {
-    const song = currentSong.value
-    if (song && lastLoadedSongId !== song.id) {
-      // 如果当前歌曲尚未加载，则由 currentSong 的 watch 负责加载，此处不重复调用
-    } else {
-      audio.play()
-    }
-  } else {
-    audio.pause()
-    mockCurrentTime.value = audio.currentTime
-  }
-})
-
-watch(mockCurrentTime, () => {
-  appStore.setMockCurrentTime(mockCurrentTime.value)
-})
-
-watch(currentSong, (newValue) => {
-  if (newValue) {
-    updateMediaSession(newValue)
-  }
-})
-
-const togglePlay = () => {
-  if (isPlaying.value) {
-    audio.pause()
-  } else {
-    audio.play().catch((e) => toast.error('播放失败:' + e))
-  }
-  isPlaying.value = !isPlaying.value
-}
-
+const togglePlay = () => appStore.togglePlay()
 const prevSong = () => {
-  if (appStore.getIsSwitchingSong()) return
-  appStore.setIsSwitchingSong(true)
-
-  const req = getPrevSongIndex(currentIndex.value, queue.value.length)
-  if (req.meg === 'error') {
-    toast.warning('当前队列里没有歌曲')
-    appStore.setIsSwitchingSong(false)
-    return
-  }
-  currentIndex.value = req.idx
-  console.log('[UI] 上一首')
-
-  setTimeout(() => {
-    appStore.setIsSwitchingSong(false)
-  }, 100)
+  appStore.prevSong()
 }
-
 const nextSong = () => {
-  if (appStore.getIsSwitchingSong()) return
-  appStore.setIsSwitchingSong(true)
+  appStore.nextSong()
+}
 
-  const req = getNextSongIndex(currentIndex.value, queue.value.length)
-  if (req.meg === 'error') {
-    toast.warning('当前队列里没有歌曲')
-    appStore.setIsSwitchingSong(false)
-    return
-  }
-  currentIndex.value = req.idx
-  console.log('[UI] 下一首')
-  console.log('索引:'+req.idx)
-  queue.value.forEach(item=>{
-    console.log(item.title)
-  })
-  setTimeout(() => {
-    appStore.setIsSwitchingSong(false)
-  }, 100)
-}
 const clearQueue = () => {
-  queue.value = []
-  appStore.setPlayQueue(queue.value)
+  appStore.setPlayQueue([])
   audio.pause()
-  isPlaying.value = false
-  currentIndex.value = 0
-  mockCurrentTime.value = 0
-  mockDuration.value = 0
-  lastLoadedSongId = null
+  appStore.setIsPlaying(false)
+  appStore.setCurrentIndex(0)
+  appStore.setMockCurrentTime(0)
   openDropdownId.value = null
-}
-const togglePlayMode = () => {
-  const modes: PlayMode[] = ['sequential', 'repeatOne', 'shuffle']
-  const idx = modes.indexOf(playMode.value)
-  playMode.value = modes[(idx + 1) % modes.length]
 }
 
 const shuffleQueue = () => {
-  if (queue.value.length <= 1) return
-  const rest = queue.value.slice(1)
+  if (localQueue.value.length <= 1) return
+  const rest = localQueue.value.slice(1)
   for (let i = rest.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1))
     ;[rest[i], rest[j]] = [rest[j], rest[i]]
   }
-  queue.value = [queue.value[0], ...rest]
-  appStore.setPlayQueue(queue.value)
+  const newQueue = [localQueue.value[0], ...rest]
+  appStore.setPlayQueue(newQueue)
 }
 
 const progressBarRef = ref<HTMLElement | null>(null)
@@ -375,7 +274,7 @@ const updateProgressByEvent = (e: MouseEvent | TouchEvent) => {
   const percent = clickX / rect.width
   let newTime = percent * mockDuration.value
   newTime = Math.max(0, Math.min(newTime, mockDuration.value))
-  mockCurrentTime.value = newTime
+  appStore.setMockCurrentTime(newTime)
 }
 
 const startDragProgress = (e: MouseEvent | TouchEvent) => {
@@ -397,8 +296,11 @@ const onDragProgress = (e: MouseEvent | TouchEvent) => {
 const stopDragProgress = async () => {
   if (!isDraggingProgress) return
   isDraggingProgress = false
-  const targetTime = Math.max(0, Math.min(mockCurrentTime.value, mockDuration.value))
-  mockCurrentTime.value = targetTime
+  const targetTime = Math.max(
+    0,
+    Math.min(appStore.getPlayData().mockCurrentTime, mockDuration.value)
+  )
+  appStore.setMockCurrentTime(targetTime)
   await audio.seek(targetTime)
   document.removeEventListener('mousemove', onDragProgress)
   document.removeEventListener('mouseup', stopDragProgress)
@@ -408,7 +310,10 @@ const stopDragProgress = async () => {
 
 const mockSeek = async (e: MouseEvent) => {
   updateProgressByEvent(e)
-  const targetTime = Math.max(0, Math.min(mockCurrentTime.value, mockDuration.value))
+  const targetTime = Math.max(
+    0,
+    Math.min(appStore.getPlayData().mockCurrentTime, mockDuration.value)
+  )
   await audio.seek(targetTime)
 }
 
@@ -422,52 +327,29 @@ const onMenuItemSelect = (item: DropdownItem, song: Song) => {
   console.log('[UI] 对歌曲', song.title, '执行', item.value)
   if (item.value === 'play') {
     playSong(song)
-  }
-
-  if (item.value === 'like') {
+  } else if (item.value === 'like') {
     console.log('[UI] 喜欢歌曲', song.title)
     toast.success(`已添加 ${song.title} 到“我喜欢的音乐”`)
-    openDropdownId.value = null
-    return
-  }
-
-  if (item.value === 'remove') {
-    const idx = queue.value.findIndex((s) => s.id === song.id)
-    if (idx === -1) {
-      openDropdownId.value = null
-      return
-    }
-
-    queue.value.splice(idx, 1)
-    appStore.setPlayQueue(queue.value)
-
-    if (queue.value.length === 0) {
-      audio.pause()
-      isPlaying.value = false
-      mockCurrentTime.value = 0
-      mockDuration.value = 0
-      currentIndex.value = 0
-      lastLoadedSongId = null
-      openDropdownId.value = null
-      return
-    }
-
-    // 调整当前播放索引
-    if (idx < currentIndex.value) {
-      currentIndex.value--
-    } else if (idx === currentIndex.value) {
-      if (currentIndex.value >= queue.value.length) {
-        currentIndex.value = queue.value.length - 1
+  } else if (item.value === 'remove') {
+    const idx = localQueue.value.findIndex((s) => s.id === song.id)
+    if (idx !== -1) {
+      const newQueue = [...localQueue.value]
+      newQueue.splice(idx, 1)
+      appStore.setPlayQueue(newQueue)
+      if (idx < appStore.getPlayData().currentIndex) {
+        appStore.setCurrentIndex(appStore.getPlayData().currentIndex - 1)
+      } else if (idx === appStore.getPlayData().currentIndex) {
+        if (newQueue.length === 0) {
+          audio.pause()
+          appStore.setIsPlaying(false)
+          appStore.setMockCurrentTime(0)
+        } else {
+          const newIndex = Math.min(appStore.getPlayData().currentIndex, newQueue.length - 1)
+          appStore.setCurrentIndex(newIndex)
+        }
       }
-      lastLoadedSongId = null
     }
-    // idx > currentIndex 时不变
-
-    openDropdownId.value = null
-    return
   }
-
-  console.warn('[UI] 未处理的菜单项:', item.value)
   openDropdownId.value = null
 }
 
@@ -503,10 +385,20 @@ const onDragMove = (e: PointerEvent) => {
     if (overIndex !== -1 && overIndex !== dragOverIndex.value) {
       dragOverIndex.value = overIndex
       if (dragStartIndex.value !== overIndex) {
-        const newQueue = [...queue.value]
+        const newQueue = [...localQueue.value]
         const [movedItem] = newQueue.splice(dragStartIndex.value, 1)
         newQueue.splice(overIndex, 0, movedItem)
-        queue.value = newQueue
+        localQueue.value = newQueue
+        appStore.setPlayQueue(newQueue)
+        const currentSongId = currentSong.value?.id
+        if (currentSongId && movedItem.id === currentSongId) {
+          appStore.setCurrentIndex(overIndex)
+        } else if (currentSongId) {
+          const newCurrentIdx = newQueue.findIndex((s) => s.id === currentSongId)
+          if (newCurrentIdx !== -1 && newCurrentIdx !== appStore.getPlayData().currentIndex) {
+            appStore.setCurrentIndex(newCurrentIdx)
+          }
+        }
         dragStartIndex.value = overIndex
         dragItem = document.querySelector(`.queue-item[data-index="${overIndex}"]`) as HTMLElement
         if (dragItem) dragItem.classList.add('dragging-source')
@@ -529,11 +421,10 @@ const stopDrag = (e: PointerEvent) => {
   pointerId = null
   document.removeEventListener('pointermove', onDragMove)
   document.removeEventListener('pointerup', stopDrag)
-  appStore.setPlayQueue(queue.value)
 }
 
 const getRelativeIndex = (idx: number) => {
-  const diff = idx - currentIndex.value
+  const diff = idx - appStore.getPlayData().currentIndex
   if (diff === 0) return '0'
   return diff > 0 ? `+${diff}` : `${diff}`
 }
@@ -562,7 +453,6 @@ const formatTime = (seconds: number): string => {
   const secs = Math.floor(seconds % 60)
   return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
 }
-
 onUnmounted(() => {
   if (isDraggingQueue) stopDrag(new PointerEvent('pointerup'))
   MediaSession.setActionHandler({ action: 'play' }, null)
@@ -571,7 +461,7 @@ onUnmounted(() => {
   MediaSession.setActionHandler({ action: 'previoustrack' }, null)
 })
 
-defineExpose({ queue, currentSong, playMode, togglePlay, prevSong, nextSong })
+defineExpose({ queue: localQueue, currentSong, playMode, togglePlay, prevSong, nextSong })
 </script>
 
 <style scoped lang="scss">

@@ -70,7 +70,6 @@ const operations: DropdownItem[] = [
   { icon: 'ri:scan-2-line', description: '扫描曲库', value: 'scan-songs' },
   { icon: 'ri:settings-line', description: '设置', value: 'settings' },
 ]
-
 const onSelectOperation = async (item: DropdownItem) => {
   console.log('选中:', item.description, item.value)
   if (item.value === 'settings') router.push('/settings')
@@ -100,6 +99,7 @@ const categoryOptions: HorizontalSelectOption[] = [
 const onCategorySelect = (option: HorizontalSelectOption) => {
   console.log('选中选项:', option)
 }
+console.log('AllSongs:' + appStore.getAllSongs().length)
 
 const songsList = ref<Song[]>(appStore.getAllSongs())
 const loadAllSongs = async () => {
@@ -108,7 +108,6 @@ const loadAllSongs = async () => {
     songsList.value = result.songs
     toast.success(`扫描完成，共 ${result.songs.length} 首歌曲`)
     appStore.setAllSongs(songsList.value)
-    appStore.saveAllSongs()
     selectedCategory.value = 'tracks'
   } else {
     toast.error(result.error || '扫描失败，请检查权限')
