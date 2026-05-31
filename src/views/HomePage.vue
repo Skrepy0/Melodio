@@ -54,12 +54,14 @@ import NowPlayingBar from '@/components/NowPlayingBar.vue'
 import toast from '@/utils/createToast'
 import { useRouter } from 'vue-router'
 import { DropdownItem, HorizontalSelectOption, Playlist, Song } from '@/utils/interface'
-import { ref, watch } from 'vue'
+import { onMounted, ref, watch } from 'vue'
 import { scanAllAudio } from '@/utils/audioScanner'
 import { useAppStore } from '@/stores/app'
 import { showPrompt } from '@/utils/createPrompt'
 import { showConfirm } from '@/utils/createConfirm'
 import { usePlaylistSearchEnhanced, useSongSearch } from '@/utils/search'
+import { checkPlayableUrl, getAccessibleUrl, isInList } from '@/utils/functions'
+// import { checkFileExists, getAccessibleUrl } from '@/utils/functions'
 const appStore = useAppStore()
 const router = useRouter()
 const keyword = ref('')
@@ -89,6 +91,40 @@ const onCategorySelect = (option: HorizontalSelectOption) => {
 }
 console.log('AllSongs:' + appStore.getAllSongs().length)
 
+onMounted(async () => {
+  if (!appStore.getAutoDelInvalidSongs()) return
+  const result = await Promise.all(
+    songsList.value.map(async (song) => {
+      const exists = await checkPlayableUrl(getAccessibleUrl(song.uri))
+
+      return {
+        song,
+        exists,
+      }
+    })
+  )
+
+  const validSongs = result.filter((item) => item.exists).map((item) => item.song)
+
+  const invalidSongs = result.filter((item) => !item.exists).map((item) => item.song)
+
+  if (invalidSongs.length !== 0) {
+    songsList.value = validSongs
+    showSongsList.value = validSongs
+    appStore.setAllSongs(validSongs)
+    const likeList = appStore.getLikeList().data
+    appStore.setLikeListData(likeList.filter((song) => !isInList(song.id, invalidSongs)))
+    const songLists = appStore.getSongLists()
+    for (const list of songLists) {
+      list.data = list.data.filter((song) => !isInList(song.id, invalidSongs))
+    }
+    appStore.setSongLists(songLists)
+    let queue = appStore.getPlayQueue()
+    queue = queue.filter((song) => !isInList(song.id, invalidSongs))
+    appStore.setPlayQueue(queue)
+    toast.warning(`有${invalidSongs.length}首歌失效,已自动清理`)
+  }
+})
 const songsList = ref<Song[]>(appStore.getAllSongs())
 const showSongsList = ref<Song[]>(songsList.value)
 const synchroShowSongsList = () => {

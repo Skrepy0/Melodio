@@ -2,13 +2,32 @@ import { Playlist, PlayMode, Song } from '@/utils/interface'
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { audio } from '@/utils/createAudio'
-import { getAccessibleUrl } from '@/utils/functions'
+import { checkPlayableUrl, getAccessibleUrl } from '@/utils/functions'
 import { getNextSongIndex, getPrevSongIndex } from '@/utils/control'
+import toast from '@/utils/createToast'
 
 export const useAppStore = defineStore('app', () => {
   const darkMode = ref(localStorage.getItem('darkMode') === 'true')
   const pinyinSearch = ref(localStorage.getItem('pinyinSearch') === 'true')
   const autoPauseOnDisconnect = ref(true)
+  const autoDelInvalidSongs = ref(true)
+
+  function initAutoDelInvalidSongs() {
+    const val = localStorage.getItem('autoDelInvalidSongs')
+    if (val && ['true', 'false'].includes(val)) {
+      autoDelInvalidSongs.value = val === 'true'
+    } else {
+      setAutoDelInvalidSongs(true)
+    }
+  }
+  function setAutoDelInvalidSongs(val: boolean) {
+    autoDelInvalidSongs.value = val
+    localStorage.setItem('autoDelInvalidSongs', String(autoDelInvalidSongs.value))
+  }
+  function getAutoDelInvalidSongs() {
+    return autoDelInvalidSongs.value
+  }
+
   function initAutoPauseOnDisconnect() {
     const val = localStorage.getItem('autoPauseOnDisconnect')
     if (val && ['true', 'false'].includes(val)) {
@@ -253,15 +272,84 @@ export const useAppStore = defineStore('app', () => {
   }
 
   async function togglePlay() {
-    if (playData.value.isPlaying) {
-      await audio.pause()
-      playData.value.isPlaying = false
-    } else {
-      await loadCurrentSong()
-      await audio.play()
-      playData.value.isPlaying = true
+    let currentSong = playQueue.value[playData.value.currentIndex]
+    if (!currentSong) {
+      toast.warning('播放队列为空')
+      return
     }
-    savePlayData()
+
+    const url = getAccessibleUrl(currentSong.uri)
+    const isValid = await checkPlayableUrl(url).catch(() => false)
+
+    if (!isValid) {
+      const invalidSongId = currentSong.id
+
+      if (autoDelInvalidSongs.value) {
+        const newLikeData = likeList.value.data.filter((s) => s.id !== invalidSongId)
+        setLikeListData(newLikeData)
+
+        const newSongLists = songLists.value.map((list) => ({
+          ...list,
+          data: list.data.filter((s) => s.id !== invalidSongId),
+        }))
+        setSongLists(newSongLists)
+
+        const newQueue = playQueue.value.filter((s) => s.id !== invalidSongId)
+        setPlayQueue(newQueue)
+
+        if (newQueue.length === 0) {
+          setCurrentIndex(0)
+          setIsPlaying(false)
+          await audio.pause()
+          toast.warning('当前歌曲已失效，队列已清空')
+          return
+        } else {
+          let newIndex = playData.value.currentIndex
+          const removedIdx = playQueue.value.findIndex((s) => s.id === invalidSongId)
+          if (removedIdx <= newIndex && newIndex > 0) newIndex--
+          if (newIndex >= newQueue.length) newIndex = newQueue.length - 1
+          setCurrentIndex(newIndex)
+          currentSong = newQueue[newIndex]
+          toast.warning('歌曲已失效，已自动跳过，正在播放下一首')
+        }
+      } else {
+        const newQueue = playQueue.value.filter((s) => s.id !== invalidSongId)
+        setPlayQueue(newQueue)
+
+        if (newQueue.length === 0) {
+          setCurrentIndex(0)
+          setIsPlaying(false)
+          await audio.pause()
+          toast.warning('当前歌曲已失效，队列已清空')
+          return
+        } else {
+          nextSong()
+          toast.warning('歌曲已失效，已从队列中移除，正在播放下一首')
+          togglePlay()
+          setTimeout(() => {
+            togglePlay()
+          }, 100)
+        }
+      }
+    }
+
+    try {
+      if (playData.value.isPlaying) {
+        await audio.pause()
+        playData.value.isPlaying = false
+      } else {
+        if (audio.src !== url) {
+          await loadCurrentSong()
+        } else {
+          await audio.play()
+        }
+        playData.value.isPlaying = true
+      }
+      savePlayData()
+    } catch (err) {
+      console.error('播放控制失败', err)
+      toast.error('播放失败，请检查网络或文件权限')
+    }
   }
 
   let endedListenerRegistered = false
@@ -361,6 +449,7 @@ export const useAppStore = defineStore('app', () => {
     if (!initFlag.value) {
       loadInitialDarkMode()
       initAutoPauseOnDisconnect()
+      initAutoDelInvalidSongs()
       initAllSongs()
       initPlayQueue()
       initPlayData()
@@ -523,6 +612,8 @@ export const useAppStore = defineStore('app', () => {
     getPinyinSearch,
     setAutoPauseOnDisconnect,
     getAutoPauseOnDisconnect,
+    setAutoDelInvalidSongs,
+    getAutoDelInvalidSongs,
     // 歌曲库
     allSongs,
     setAllSongs,

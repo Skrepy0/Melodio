@@ -34,9 +34,7 @@
               <span class="slider round"></span>
             </label>
           </div>
-          <div class="setting-desc">
-            开启后,所有搜索功能都会用拼音搜索处理(无法通过字母和单词进行搜索)
-          </div>
+          <div class="setting-desc">开启后,所有搜索功能都会启用拼音搜索处理</div>
         </div>
         <div class="setting-item">
           <div class="setting-row">
@@ -56,6 +54,24 @@
           <div class="setting-desc">
             开启后,当切换音频输出设备（如拔出有线耳机、断开蓝牙设备）时，播放器自动暂停播放
           </div>
+        </div>
+
+        <div class="setting-item">
+          <div class="setting-row">
+            <div class="item-left">
+              <Icon icon="lets-icons:check-fill" :width="22" class="item-icon" />
+              <span class="item-label">自动检测并清理无效歌曲</span>
+            </div>
+            <label class="switch">
+              <input
+                type="checkbox"
+                :checked="autoDelInvalidSongs"
+                @change="toggleAutoDelInvalidSongs"
+              />
+              <span class="slider round"></span>
+            </label>
+          </div>
+          <div class="setting-desc">开启后,应用会自动清除已经被移动或删除了的无效歌曲</div>
         </div>
         <!-- 关于 -->
         <div class="setting-item clickable" @click="goToAbout">
@@ -88,6 +104,7 @@ const router = useRouter()
 const isDarkMode = ref(false)
 const pinyinSearch = ref(appStore.getPinyinSearch())
 const autoPauseOnDisconnect = ref(appStore.getAutoPauseOnDisconnect())
+const autoDelInvalidSongs = ref(appStore.getAutoDelInvalidSongs())
 
 const goBack = () => {
   router.back()
@@ -107,6 +124,11 @@ const toggleAutoPauseOnDisconnect = (e: Event) => {
   const target = e.target as HTMLInputElement
   autoPauseOnDisconnect.value = target.checked
   appStore.setAutoPauseOnDisconnect(autoPauseOnDisconnect.value)
+}
+const toggleAutoDelInvalidSongs = (e: Event) => {
+  const target = e.target as HTMLInputElement
+  autoDelInvalidSongs.value = target.checked
+  appStore.setAutoDelInvalidSongs(autoDelInvalidSongs.value)
 }
 const goToAbout = () => {
   router.push('/about')
