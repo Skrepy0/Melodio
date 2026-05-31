@@ -1,4 +1,4 @@
-import { createApp } from 'vue'
+import { createApp, onMounted } from 'vue'
 import App from './App.vue'
 import router from './router'
 import { createPinia } from 'pinia'
@@ -39,6 +39,7 @@ import toast from './utils/createToast'
 import { audio } from './utils/createAudio'
 import { showPrompt } from './utils/createPrompt'
 import { showConfirm } from './utils/createConfirm'
+import { loadIcons } from '@iconify/iconify'
 const app = createApp(App).use(IonicVue).use(router)
 app.use(createPinia())
 app.config.globalProperties.$toast = toast
@@ -47,4 +48,32 @@ app.config.globalProperties.$prompt = showPrompt
 app.config.globalProperties.$createConfirm = showConfirm
 router.isReady().then(() => {
   app.mount('#app')
+})
+onMounted(() => {
+  loadIcons([
+    'mdi:arrow-left',
+    'mdi:music',
+    'mdi:repeat',
+    'mdi:repeat-once',
+    'mdi:skip-previous',
+    'mdi:skip-next',
+    'mdi:shuffle-variant',
+    'mdi:pause-circle',
+    'mdi:play-circle',
+    'mdi:drag-vertical',
+    'mdi:play',
+    'mdi:heart-outline',
+    'mdi:delete',
+    'mdi:dots-vertical',
+    'stash:play-duotone',
+    'mingcute:more-2-line',
+    'streamline:music-folder-song',
+    'tabler:playlist',
+    'ic:baseline-plus',
+    'ri:scan-2-line',
+    'ri:settings-line',
+    'mdi:playlist-music',
+    'mdi:checkbox-marked',
+    'mdi:checkbox-blank-outline',
+  ])
 })

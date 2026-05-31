@@ -14,7 +14,8 @@
     "android:add": "npx cap add android",
     "android:build": "npm run build && npx cap copy",
     "android:dev": "npm run android:build && npx cap open android",
-    "android:open": "npx cap open android"
+    "android:open": "npx cap open android",
+    "cap": "npx cap sync"
   },
   "dependencies": {
     "@capacitor-community/native-audio": "^8.0.0",
@@ -25,11 +26,14 @@
     "@capacitor/filesystem": "^8.1.2",
     "@capacitor/haptics": "8.0.2",
     "@capacitor/keyboard": "8.0.3",
-    "@capacitor/status-bar": "8.0.2",
+    "@capacitor/status-bar": "^8.0.2",
+    "@capawesome/capacitor-android-edge-to-edge-support": "^8.0.8",
+    "@iconify/iconify": "^3.1.1",
     "@ionic/vue": "^8.0.0",
     "@ionic/vue-router": "^8.0.0",
     "@odion-cloud/capacitor-mediastore": "^1.0.21",
     "@pejota14/capacitor-media-session": "^5.0.0",
+    "cordova-plugin-file": "^8.0.0",
     "cordova-plugin-media": "^7.0.0",
     "ionicons": "^7.0.0",
     "pinia": "^3.0.4",
