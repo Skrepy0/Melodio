@@ -17,8 +17,8 @@
           />
         </div>
         <div class="prompt-footer">
-          <button class="prompt-btn cancel" @click="cancel">取消</button>
-          <button class="prompt-btn confirm" @click="confirm">确定</button>
+          <button class="prompt-btn cancel" @click="cancel">{{ props.cancelContent }}</button>
+          <button class="prompt-btn confirm" @click="confirm">{{ props.confirmContent }}</button>
         </div>
       </div>
     </div>
@@ -33,13 +33,17 @@ interface Props {
   message?: string
   defaultValue?: string
   placeholder?: string
+  confirmContent?: string
+  cancelContent?: string
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  title: '请输入',
+  title: '',
   message: '',
   defaultValue: '',
-  placeholder: '请输入内容',
+  placeholder: '',
+  confirmContent: 'Confirm',
+  cancelContent: 'Cancel',
 })
 
 const visible = ref(true)

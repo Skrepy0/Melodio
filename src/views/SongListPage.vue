@@ -8,9 +8,15 @@ import PlayList from '@/components/PlayList.vue'
 import toast from '@/utils/createToast'
 import NowPlayingBar from '@/components/NowPlayingBar.vue'
 import { showConfirm } from '@/utils/createConfirm'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 const appStore = useAppStore()
-const title = ref<string>('全部歌曲')
+
 const songsList = ref<Song[]>([])
+
+const title = ref<string>(t('songList.defaultTitle'))
+
 if (appStore.getCurrentPlayListIndex() === 0) {
   const likeList = appStore.getLikeList()
   songsList.value = likeList.data
@@ -20,6 +26,7 @@ if (appStore.getCurrentPlayListIndex() === 0) {
   songsList.value = list.data
   title.value = list.name
 }
+
 const saveSongList = () => {
   const index = appStore.getCurrentPlayListIndex()
   if (index === 0) {
@@ -28,7 +35,8 @@ const saveSongList = () => {
     appStore.setSongListDataById(index, songsList.value)
   }
 }
-const isLoading = ref(false) // 可扩展加载状态
+
+const isLoading = ref(false)
 
 const goBack = () => {
   router.back()
@@ -40,10 +48,10 @@ const showFullPlayer = () => {
 
 const handleBatchDelete = async (ids: string[]) => {
   const result = await showConfirm({
-    title: '提示',
-    message: `确定要将这${ids.length}首歌移出此歌曲列表吗？`,
-    confirmText: '确定',
-    cancelText: '取消',
+    title: t('songList.confirm.title'),
+    message: t('songList.confirm.message', { count: ids.length }),
+    confirmText: t('songList.confirm.confirm'),
+    cancelText: t('songList.confirm.cancel'),
   })
   if (!result) return
   const list: Song[] = []
@@ -52,7 +60,7 @@ const handleBatchDelete = async (ids: string[]) => {
   })
   songsList.value = list
   saveSongList()
-  toast.success(`已移除${ids.length}首歌曲`)
+  toast.success(t('songList.toast.removeSuccess', { count: ids.length }))
 }
 
 const playSong = async (song: Song) => {
@@ -65,7 +73,7 @@ const playSong = async (song: Song) => {
     }
   }
   if (index === -1) {
-    toast.error('未找到此歌曲')
+    toast.error(t('songList.toast.songNotFound'))
     return
   }
   appStore.setIsSwitchingSong(true)
@@ -89,11 +97,9 @@ const playSong = async (song: Song) => {
   }
 }
 </script>
-
 <template>
   <ion-page>
     <div class="song-list-page">
-      <!-- 头部 -->
       <div class="song-list-header">
         <div class="header-back" @click="goBack">
           <Icon icon="material-symbols:arrow-back" :width="24" color="var(--text-color)" />
@@ -101,15 +107,12 @@ const playSong = async (song: Song) => {
         <div class="header-title">{{ title }}</div>
       </div>
 
-      <!-- 内容区域 -->
       <div class="content-body">
-        <!-- 加载状态（可选） -->
         <div v-if="isLoading" class="loading-state">
           <Icon icon="mdi:loading" :width="32" class="loading-icon" />
-          <span>加载中...</span>
+          <span>{{ $t('songList.loading') }}</span>
         </div>
 
-        <!-- 歌曲列表 -->
         <PlayList
           v-else
           :songs="songsList"
@@ -117,14 +120,12 @@ const playSong = async (song: Song) => {
           @song-click="playSong"
         />
 
-        <!-- 空状态 -->
         <div v-if="!isLoading && songsList.length === 0" class="empty-state">
           <Icon icon="mdi:music-off" :width="48" color="var(--text-secondary)" />
-          <p>暂无歌曲，请添加或扫描</p>
+          <p>{{ $t('songList.empty') }}</p>
         </div>
       </div>
 
-      <!-- 底部播放栏（可选） -->
       <NowPlayingBar auto-play @expand="showFullPlayer" />
     </div>
   </ion-page>

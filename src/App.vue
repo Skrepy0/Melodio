@@ -16,8 +16,9 @@
 import { IonApp, useBackButton } from '@ionic/vue'
 import { App } from '@capacitor/app'
 import { useRouter, useRoute } from 'vue-router'
-import { ref, watch } from 'vue'
+import { onMounted, ref, watch } from 'vue'
 import { useAppStore } from '@/stores/app'
+import { loadLocaleMessages } from './i18n'
 // import { StatusBar, Style } from '@capacitor/status-bar'
 // import { EdgeToEdge } from '@capawesome/capacitor-android-edge-to-edge-support';
 
@@ -68,6 +69,18 @@ useBackButton(-1, () => {
 //   },
 //   { immediate: true }
 // )
+watch(
+  () => appStore.getLanguage(),
+  (newLang) => {
+    if (newLang) {
+      loadLocaleMessages(newLang)
+    }
+  },
+  { immediate: true } // 立即执行一次，确保 store 中的语言与 i18n 同步
+)
+onMounted(() => {
+  appStore.initLanguage()
+})
 </script>
 
 <style>

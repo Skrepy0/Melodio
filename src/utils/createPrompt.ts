@@ -9,6 +9,8 @@ export interface PromptOptions {
   message?: string
   defaultValue?: string
   placeholder?: string
+  confirmContent?: string
+  cancelContent?: string
 }
 
 export function showPrompt(options: PromptOptions = {}): Promise<string | null> {
@@ -29,6 +31,8 @@ export function showPrompt(options: PromptOptions = {}): Promise<string | null> 
     message: options.message,
     defaultValue: options.defaultValue,
     placeholder: options.placeholder,
+    confirmContent: options.confirmContent,
+    cancelContent: options.cancelContent,
   })
 
   render(vnode, container)

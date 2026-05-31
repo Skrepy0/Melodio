@@ -20,27 +20,27 @@
         <div class="actions-container">
           <button class="action-btn" @click="selectAll">
             <Icon icon="mdi:select-all" :width="20" />
-            <span>全选</span>
+            <span>{{ $t('playList.selectAll') }}</span>
           </button>
           <button class="action-btn" @click="clearSelection">
             <Icon icon="mdi:select-off" :width="20" />
-            <span>清空</span>
+            <span>{{ $t('playList.clear') }}</span>
           </button>
           <button class="action-btn" @click="addToQueue">
             <Icon icon="ic:baseline-queue" :width="20" />
-            <span>添加到队列</span>
+            <span>{{ $t('playList.addToQueue') }}</span>
           </button>
           <button class="action-btn" @click="addToSongList">
             <Icon icon="mdi:heart-outline" :width="20" />
-            <span>添加到歌单</span>
+            <span>{{ $t('playList.addToPlaylist') }}</span>
           </button>
           <button class="action-btn danger" @click="batchDelete">
             <Icon icon="mdi:delete" :width="20" />
-            <span>删除({{ selectedIds.size }})</span>
+            <span>{{ $t('playList.delete', { count: selectedIds.size }) }}</span>
           </button>
           <button class="action-btn" @click="exitSelectMode">
             <Icon icon="mdi:close" :width="20" />
-            <span>取消</span>
+            <span>{{ $t('playList.cancel') }}</span>
           </button>
         </div>
       </div>
@@ -58,7 +58,11 @@ import { useAppStore } from '@/stores/app'
 import toast from '@/utils/createToast'
 import { isInList } from '@/utils/functions'
 import { showPlaylistSelector } from '@/utils/createPlaylistSelector'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 const appStore = useAppStore()
+
 interface Props {
   songs: Song[]
 }
@@ -98,6 +102,7 @@ const selectAll = () => {
     selectedIds.value.add(song.id)
   })
 }
+
 const addToQueue = () => {
   const queue = appStore.getPlayQueue()
   const newSongs: Song[] = []
@@ -108,14 +113,18 @@ const addToQueue = () => {
   })
   if (newSongs.length > 0) {
     appStore.addListToQueue(newSongs)
-    toast.success(`已添加 ${newSongs.length} 首歌至队列`)
+    toast.success(t('playList.toast.addedToQueue', { count: newSongs.length }))
   } else {
-    toast.warning('所选歌曲已在队列中')
+    toast.warning(t('playList.toast.alreadyInQueue'))
   }
   exitSelectMode()
 }
+
 const addToSongList = async () => {
-  const selected = await showPlaylistSelector([appStore.getLikeList(), ...appStore.getSongLists()])
+  const selected = await showPlaylistSelector(
+    [appStore.getLikeList(), ...appStore.getSongLists()],
+    t('playlistSelector.title')
+  )
   if (selected) {
     if (selected.id === 0) {
       const likeList = appStore.getLikeList().data
@@ -127,9 +136,11 @@ const addToSongList = async () => {
       })
       if (newSongs.length > 0) {
         appStore.mergeLikeListData(newSongs)
-        toast.success(`已添加 ${newSongs.length} 首歌曲至"${selected.name}"`)
+        toast.success(
+          t('playList.toast.addedToPlaylist', { count: newSongs.length, name: selected.name })
+        )
       } else {
-        toast.warning('所选歌曲已在喜欢歌单中')
+        toast.warning(t('playList.toast.alreadyInLike'))
       }
     } else {
       const list: Song[] = []
@@ -140,9 +151,11 @@ const addToSongList = async () => {
       })
       if (list.length > 0) {
         appStore.setSongListDataById(selected.id, [...selected.data, ...list])
-        toast.success(`已添加 ${list.length} 首歌曲至"${selected.name}"`)
+        toast.success(
+          t('playList.toast.addedToPlaylist', { count: list.length, name: selected.name })
+        )
       } else {
-        toast.warning('所选歌曲已在此歌单中')
+        toast.warning(t('playList.toast.alreadyInPlaylist'))
       }
     }
   }
@@ -207,6 +220,27 @@ const handleSongClick = (song: Song) => {
   align-items: center;
   padding: 12px 16px;
   gap: 16px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
+
+  &::-webkit-scrollbar {
+    height: 4px;
+  }
+  &::-webkit-scrollbar-track {
+    background: var(--scrollbar-track);
+    border-radius: 4px;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-thumb);
+    border-radius: 4px;
+    &:hover {
+      background: var(--scrollbar-thumb-hover);
+    }
+  }
 }
 
 .action-btn {

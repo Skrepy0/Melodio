@@ -38,7 +38,12 @@ import { useAppStore } from '@/stores/app'
 import toast from '@/utils/createToast'
 import { isInList } from '@/utils/functions'
 import { showPlaylistSelector } from '@/utils/createPlaylistSelector'
+import { useI18n } from 'vue-i18n'
+import { computed } from 'vue'
+
+const { t } = useI18n()
 const appStore = useAppStore()
+
 interface Props {
   song: Song
   dropdownOpen?: boolean
@@ -54,11 +59,12 @@ const emit = defineEmits<{
 
 const { dropdownVisible } = useDropdownControl(props, emit)
 
-const menuOptions: DropdownItem[] = [
-  { icon: 'mdi:playlist-plus', description: '添加到歌单', value: 'addToPlaylist' },
-  { icon: 'mdi:heart-outline', description: '喜欢', value: 'like' },
-  { icon: 'mdi:queue', description: '添加到播放队列', value: 'queue' },
-]
+const menuOptions = computed<DropdownItem[]>(() => [
+  { icon: 'mdi:playlist-plus', description: t('song.menu.addToPlaylist'), value: 'addToPlaylist' },
+  { icon: 'mdi:heart-outline', description: t('song.menu.like'), value: 'like' },
+  { icon: 'mi:next', description: t('song.menu.playNext'), value: 'next' },
+  { icon: 'mdi:queue', description: t('song.menu.addToQueue'), value: 'queue' },
+])
 
 const formatDuration = (milliseconds: number): string => {
   if (isNaN(milliseconds) || milliseconds < 0) return '00:00'
@@ -76,29 +82,33 @@ const onMenuItemSelect = async (item: DropdownItem) => {
   emit('menuSelect', item.value as string, props.song)
   if (item.value === 'queue') {
     appStore.addToQueue(props.song)
-    toast.success('已经将1首歌加入播放队列')
+    toast.success(t('song.toast.addedToQueue'))
   } else if (item.value === 'like') {
     if (isInList(props.song.id, appStore.getLikeList().data)) {
-      toast.warning('此歌曲已经在收藏夹里了')
+      toast.warning(t('song.toast.alreadyLiked'))
       return
     }
     appStore.mergeLikeListData([props.song])
-    toast.success('已经将1首歌加入喜欢')
+    toast.success(t('song.toast.liked'))
   } else if (item.value === 'addToPlaylist') {
-    const selected = await showPlaylistSelector([
-      appStore.getLikeList(),
-      ...appStore.getSongLists(),
-    ])
+    const selected = await showPlaylistSelector(
+      [appStore.getLikeList(), ...appStore.getSongLists()],
+      t('playlistSelector.title')
+    )
     if (selected) {
-      console.log('选中歌单:', selected.name)
       if (isInList(props.song.id, selected.data)) {
-        toast.warning('这首歌已经在这个歌单中了')
+        toast.warning(t('song.toast.alreadyInPlaylist'))
         return
       }
       selected.data.push(props.song)
       appStore.setSongListById(selected.id, selected)
-      toast.success('已经将1首歌加入 ' + selected.name)
+      toast.success(t('song.toast.addedToPlaylist', { name: selected.name }))
     }
+  } else if (item.value === 'next') {
+    const queue = appStore.getPlayQueue()
+    queue.splice(appStore.getPlayData().currentIndex + 1, 0, props.song)
+    appStore.setPlayQueue(queue)
+    toast.success(t('song.toast.next', { name: props.song.title }))
   }
 }
 </script>

@@ -1,8 +1,15 @@
 <template>
-  <ion-page>
+  <ion-page v-if="appStore.isI18nReady">
     <div class="header">
       <div class="search-box-container">
-        <SearchBox v-model="keyword" autofocus @search="onSearch" size="small" :clearable="false" />
+        <SearchBox
+          v-model="keyword"
+          autofocus
+          @search="onSearch"
+          size="small"
+          :clearable="false"
+          :placeholder="$t('home.searchPlaceholder')"
+        />
       </div>
       <div class="button-container">
         <CircleButton icon="stash:play-duotone" :size="36" @click="playShownSongs" />
@@ -54,17 +61,20 @@ import NowPlayingBar from '@/components/NowPlayingBar.vue'
 import toast from '@/utils/createToast'
 import { useRouter } from 'vue-router'
 import { DropdownItem, HorizontalSelectOption, Playlist, Song } from '@/utils/interface'
-import { onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { scanAllAudio } from '@/utils/audioScanner'
 import { useAppStore } from '@/stores/app'
 import { showPrompt } from '@/utils/createPrompt'
 import { showConfirm } from '@/utils/createConfirm'
 import { usePlaylistSearchEnhanced, useSongSearch } from '@/utils/search'
 import { checkPlayableUrl, getAccessibleUrl, isInList } from '@/utils/functions'
-// import { checkFileExists, getAccessibleUrl } from '@/utils/functions'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 const appStore = useAppStore()
 const router = useRouter()
 const keyword = ref('')
+
 const playShownSongs = () => {
   if (showSongsList.value.length === 0) return
   appStore.setPlayQueue(showSongsList.value)
@@ -74,17 +84,23 @@ const playShownSongs = () => {
     appStore.togglePlay()
   }
 }
-const operations: DropdownItem[] = [
-  { icon: 'ic:baseline-plus', description: '新建播放列表', value: 'new-songs-list' },
-  { icon: 'ri:scan-2-line', description: '扫描曲库', value: 'scan-songs' },
-  { icon: 'ri:settings-line', description: '设置', value: 'settings' },
-]
+
+const operations = computed<DropdownItem[]>(() => [
+  {
+    icon: 'ic:baseline-plus',
+    description: t('home.operations.newPlaylist'),
+    value: 'new-songs-list',
+  },
+  { icon: 'ri:scan-2-line', description: t('home.operations.scanLibrary'), value: 'scan-songs' },
+  { icon: 'ri:settings-line', description: t('home.operations.settings'), value: 'settings' },
+])
+
 const selectedCategory = ref(appStore.getSelectedCategory())
 
-const categoryOptions: HorizontalSelectOption[] = [
-  { value: 'tracks', label: '曲目', icon: 'streamline:music-folder-song' },
-  { value: 'play-lists', label: '播放列表', icon: 'tabler:playlist' },
-]
+const categoryOptions = computed<HorizontalSelectOption[]>(() => [
+  { value: 'tracks', label: t('home.categories.tracks'), icon: 'streamline:music-folder-song' },
+  { value: 'play-lists', label: t('home.categories.playlists'), icon: 'tabler:playlist' },
+])
 
 const onCategorySelect = (option: HorizontalSelectOption) => {
   console.log('选中选项:', option)
@@ -96,16 +112,10 @@ onMounted(async () => {
   const result = await Promise.all(
     songsList.value.map(async (song) => {
       const exists = await checkPlayableUrl(getAccessibleUrl(song.uri))
-
-      return {
-        song,
-        exists,
-      }
+      return { song, exists }
     })
   )
-
   const validSongs = result.filter((item) => item.exists).map((item) => item.song)
-
   const invalidSongs = result.filter((item) => !item.exists).map((item) => item.song)
 
   if (invalidSongs.length !== 0) {
@@ -122,26 +132,30 @@ onMounted(async () => {
     let queue = appStore.getPlayQueue()
     queue = queue.filter((song) => !isInList(song.id, invalidSongs))
     appStore.setPlayQueue(queue)
-    toast.warning(`有${invalidSongs.length}首歌失效,已自动清理`)
+    toast.warning(t('home.toast.invalidSongsCleaned', { count: invalidSongs.length }))
   }
 })
+
 const songsList = ref<Song[]>(appStore.getAllSongs())
 const showSongsList = ref<Song[]>(songsList.value)
+
 const synchroShowSongsList = () => {
   showSongsList.value = songsList.value
 }
+
 const loadAllSongs = async () => {
   const result = await scanAllAudio()
   if (result.success) {
     songsList.value = result.songs
     synchroShowSongsList()
-    toast.success(`扫描完成，共 ${result.songs.length} 首歌曲`)
+    toast.success(t('home.toast.scanSuccess', { count: result.songs.length }))
     appStore.setAllSongs(songsList.value)
     selectedCategory.value = 'tracks'
   } else {
-    toast.error(result.error || '扫描失败，请检查权限')
+    toast.error(t('home.toast.scanFailed'))
   }
 }
+
 const onSearch = () => {
   if (appStore.getSelectedCategory() === 'tracks') {
     if (keyword.value === '') {
@@ -159,12 +173,13 @@ const onSearch = () => {
     showPlaylists.value = result.value
   }
 }
+
 const handleBatchDelete = async (ids: string[]) => {
   const result = await showConfirm({
-    title: '提示',
-    message: `确定要删除这${ids.length}首歌吗(并不会删除本地文件)？`,
-    confirmText: '删除',
-    cancelText: '取消',
+    title: t('home.batchDeleteConfirm.title'),
+    message: t('home.batchDeleteConfirm.message', { count: ids.length }),
+    confirmText: t('home.batchDeleteConfirm.confirm'),
+    cancelText: t('home.batchDeleteConfirm.cancel'),
   })
   if (!result) return
   const list: Song[] = []
@@ -174,7 +189,7 @@ const handleBatchDelete = async (ids: string[]) => {
   songsList.value = list
   synchroShowSongsList()
   appStore.setAllSongs(songsList.value)
-  toast.success(`已删除${ids.length}首歌`)
+  toast.success(t('home.toast.deleteSongsSuccess', { count: ids.length }))
 }
 
 const playSong = async (song: Song) => {
@@ -187,7 +202,7 @@ const playSong = async (song: Song) => {
     }
   }
   if (index === -1) {
-    toast.error('未找到此歌曲')
+    toast.error(t('home.toast.songNotFound'))
     return
   }
   appStore.setIsSwitchingSong(true)
@@ -210,25 +225,30 @@ const playSong = async (song: Song) => {
     }, 500)
   }
 }
+
 const showFullPlayer = () => {
   router.push('/player-view')
 }
 
 const playlists = ref<Playlist[]>([appStore.getLikeList(), ...appStore.getSongLists()])
 const showPlaylists = ref<Playlist[]>(playlists.value)
+
 const synchroShowPlaylists = () => {
   showPlaylists.value = playlists.value
 }
+
 const onSelectOperation = async (item: DropdownItem) => {
   console.log('选中:', item.description, item.value)
   if (item.value === 'settings') router.push('/settings')
   else if (item.value === 'scan-songs') loadAllSongs()
   else if (item.value === 'new-songs-list') {
     const name = await showPrompt({
-      title: '新建播放列表',
-      message: '请输入播放列表名称',
+      title: t('home.newPlaylistPrompt.title'),
+      message: t('home.newPlaylistPrompt.message'),
       placeholder: '',
-      defaultValue: '新建歌单',
+      defaultValue: t('home.newPlaylistPrompt.default'),
+      confirmContent: t('common.confirm'),
+      cancelContent: t('common.cancel'),
     })
     if (name) {
       const data = {
@@ -249,21 +269,22 @@ const onSelectOperation = async (item: DropdownItem) => {
     }
   }
 }
+
 const handleBatchDeletePlaylists = async (ids: number[]) => {
   console.log('删除播放列表IDs:', ids)
   if (ids.includes(0)) {
-    toast.warning('无法对默认收藏夹执行删除操作')
+    toast.warning(t('home.playlistDefault.cannotDeleteDefault'))
     return
   }
   const result = await showConfirm({
-    title: '提示',
-    message: `确定要删除这${ids.length}个歌单吗？`,
-    confirmText: '删除',
-    cancelText: '取消',
+    title: t('home.deletePlaylistConfirm.title'),
+    message: t('home.deletePlaylistConfirm.message', { count: ids.length }),
+    confirmText: t('home.deletePlaylistConfirm.confirm'),
+    cancelText: t('home.deletePlaylistConfirm.cancel'),
   })
   if (!result) return
   ids.forEach((id) => appStore.delectSongListById(id))
-  toast.success(`已删除这${ids.length}个歌单`)
+  toast.success(t('home.toast.deletePlaylistsSuccess', { count: ids.length }))
 }
 
 const onPlaylistClick = (playlist: Playlist) => {
@@ -275,6 +296,7 @@ const onPlaylistClick = (playlist: Playlist) => {
 const onPlaylistMenuSelect = (action: any, playlist: Playlist) => {
   console.log('对播放列表操作:', action, playlist)
 }
+
 watch(
   () => [appStore.getLikeList(), ...appStore.getSongLists()],
   (newVal) => {
@@ -283,11 +305,11 @@ watch(
   },
   { deep: true, immediate: true }
 )
+
 watch(selectedCategory, () => {
   appStore.setSelectedCategory(selectedCategory.value)
 })
 </script>
-
 <style scoped lang="scss">
 .header {
   height: 64px;

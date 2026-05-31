@@ -5,13 +5,60 @@ import { audio } from '@/utils/createAudio'
 import { checkPlayableUrl, getAccessibleUrl } from '@/utils/functions'
 import { getNextSongIndex, getPrevSongIndex } from '@/utils/control'
 import toast from '@/utils/createToast'
-
+import { i18n } from '@/i18n'
+const SUPPORTED_LOCALES = ['zh-CN', 'en-US']
+function getSystemLanguage(): string {
+  const browserLang = navigator.language
+  if (SUPPORTED_LOCALES.includes(browserLang)) {
+    return browserLang
+  }
+  const prefix = browserLang.split('-')[0]
+  if (prefix === 'zh') return 'zh-CN'
+  return 'en-US'
+}
 export const useAppStore = defineStore('app', () => {
   const darkMode = ref(localStorage.getItem('darkMode') === 'true')
   const pinyinSearch = ref(localStorage.getItem('pinyinSearch') === 'true')
   const autoPauseOnDisconnect = ref(true)
   const autoDelInvalidSongs = ref(true)
+  const currentLanguage = ref('zh-CN')
+  const isI18nReady = ref(false)
 
+  function initLanguage() {
+    let targetLang: string
+    const savedLang = localStorage.getItem('appLanguage')
+
+    if (savedLang && SUPPORTED_LOCALES.includes(savedLang)) {
+      targetLang = savedLang
+    } else {
+      const systemLang = getSystemLanguage()
+      targetLang = SUPPORTED_LOCALES.includes(systemLang) ? systemLang : 'en-US'
+      localStorage.setItem('appLanguage', targetLang)
+    }
+
+    i18n.global.locale.value = targetLang
+    currentLanguage.value = targetLang
+    isI18nReady.value = true
+  }
+
+  function getLanguage() {
+    return currentLanguage.value
+  }
+
+  function setLanguage(lang: string) {
+    if (!SUPPORTED_LOCALES.includes(lang)) return
+    currentLanguage.value = lang
+    localStorage.setItem('appLanguage', lang)
+    i18n.global.locale.value = lang
+  }
+
+  function syncLanguageFromI18n() {
+    const i18nLocale = i18n.global.locale.value
+    if (i18nLocale !== currentLanguage.value) {
+      currentLanguage.value = i18nLocale
+      localStorage.setItem('appLanguage', i18nLocale)
+    }
+  }
   function initAutoDelInvalidSongs() {
     const val = localStorage.getItem('autoDelInvalidSongs')
     if (val && ['true', 'false'].includes(val)) {
@@ -240,7 +287,7 @@ export const useAppStore = defineStore('app', () => {
     if (flag) {
       setTimeout(() => {
         togglePlay()
-      }, 500)
+      }, 350)
     }
   }
 
@@ -363,6 +410,9 @@ export const useAppStore = defineStore('app', () => {
             togglePlay()
           }, 100)
         } else {
+          if (!playData.value.isPlaying) {
+            togglePlay()
+          }
           nextSong()
         }
       }
@@ -447,6 +497,7 @@ export const useAppStore = defineStore('app', () => {
 
   async function init() {
     if (!initFlag.value) {
+      initLanguage()
       loadInitialDarkMode()
       initAutoPauseOnDisconnect()
       initAutoDelInvalidSongs()
@@ -574,6 +625,8 @@ export const useAppStore = defineStore('app', () => {
   }
 
   return {
+    isI18nReady,
+    initLanguage,
     setSelectedCategory,
     getSelectedCategory,
 
@@ -614,6 +667,9 @@ export const useAppStore = defineStore('app', () => {
     getAutoPauseOnDisconnect,
     setAutoDelInvalidSongs,
     getAutoDelInvalidSongs,
+    syncLanguageFromI18n,
+    setLanguage,
+    getLanguage,
     // 歌曲库
     allSongs,
     setAllSongs,

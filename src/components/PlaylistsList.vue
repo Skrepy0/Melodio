@@ -147,6 +147,27 @@ const onMenuSelect = (action: string, playlist: Playlist) => {
   align-items: center;
   padding: 12px 16px;
   gap: 16px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
+
+  &::-webkit-scrollbar {
+    height: 4px;
+  }
+  &::-webkit-scrollbar-track {
+    background: var(--scrollbar-track);
+    border-radius: 4px;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-thumb);
+    border-radius: 4px;
+    &:hover {
+      background: var(--scrollbar-thumb-hover);
+    }
+  }
 }
 
 .action-btn {

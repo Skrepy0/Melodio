@@ -6,10 +6,12 @@
     </div>
     <div class="playlist-info">
       <div class="playlist-name">{{ playlist.name }}</div>
-      <div class="playlist-desc">{{ playlist.description || `${playlist.songCount}首歌曲` }}</div>
+      <div class="playlist-desc">
+        {{ playlist.description || t('playlist.defaultDesc', { count: playlist.songCount }) }}
+      </div>
     </div>
     <div class="playlist-actions">
-      <span class="song-count">{{ playlist.songCount }}首</span>
+      <span class="song-count">{{ t('playlist.songCount', { count: playlist.songCount }) }}</span>
       <DropdownButton
         v-if="props.showButton"
         v-model:visible="dropdownVisible"
@@ -36,7 +38,11 @@ import { showPrompt } from '@/utils/createPrompt'
 import toast from '@/utils/createToast'
 import { useAppStore } from '@/stores/app'
 import { showConfirm } from '@/utils/createConfirm'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 const appStore = useAppStore()
+
 interface Props {
   playlist: Playlist
   dropdownOpen?: boolean
@@ -58,10 +64,11 @@ const dropdownVisible = computed({
   set: (val) => emit('update:dropdownOpen', val),
 })
 
-const menuOptions: DropdownItem[] = [
-  { icon: 'mdi:pencil', description: '编辑名称', value: 'edit' },
-  { icon: 'mdi:delete', description: '删除', value: 'delete' },
-]
+// 下拉菜单选项（动态翻译）
+const menuOptions = computed<DropdownItem[]>(() => [
+  { icon: 'mdi:pencil', description: t('playlist.menu.edit'), value: 'edit' },
+  { icon: 'mdi:delete', description: t('playlist.menu.delete'), value: 'delete' },
+])
 
 const onCardClick = () => {
   emit('click', props.playlist)
@@ -71,39 +78,41 @@ const onMenuItemSelect = async (item: DropdownItem) => {
   emit('menuSelect', item.value as string, props.playlist)
   if (item.value === 'edit') {
     if (props.playlist.id === 0) {
-      toast.warning('无法对默认歌单执行此操作!')
+      toast.warning(t('playlist.warning.defaultPlaylist'))
       return
     }
     const name = await showPrompt({
-      title: '修改歌单名称',
-      message: '请输入此歌单的新名称',
+      title: t('playlist.editPrompt.title'),
+      message: t('playlist.editPrompt.message'),
       placeholder: '',
       defaultValue: props.playlist.name,
+      confirmContent: t('common.confirm'),
+      cancelContent: t('common.cancel'),
     })
     if (name) {
       if (name === props.playlist.name) {
-        toast.warning('歌单名称与原来相同!')
+        toast.warning(t('playlist.warning.sameName'))
       } else {
         const newList = props.playlist
         newList.name = name
         appStore.setSongListById(newList.id, newList)
-        toast.success('已经将歌单重命名!')
+        toast.success(t('playlist.success.renamed'))
       }
     }
   } else if (item.value === 'delete') {
     if (props.playlist.id === 0) {
-      toast.warning('无法对默认歌单执行此操作!')
+      toast.warning(t('playlist.warning.defaultPlaylist'))
       return
     }
     const result = await showConfirm({
-      title: '提示',
-      message: `确定要删除歌单"${props.playlist.name}"`,
-      confirmText: '删除',
-      cancelText: '取消',
+      title: t('playlist.deleteConfirm.title'),
+      message: t('playlist.deleteConfirm.message', { name: props.playlist.name }),
+      confirmText: t('playlist.deleteConfirm.confirm'),
+      cancelText: t('playlist.deleteConfirm.cancel'),
     })
     if (result) {
       appStore.delectSongListById(props.playlist.id)
-      toast.success(`已删除歌单${props.playlist.name}!`)
+      toast.success(t('playlist.success.deleted', { name: props.playlist.name }))
     }
   }
 }

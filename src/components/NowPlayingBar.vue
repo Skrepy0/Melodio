@@ -43,8 +43,9 @@ import { useAppStore } from '@/stores/app'
 import toast from '@/utils/createToast'
 import { MediaSession } from '@pejota14/capacitor-media-session'
 import { audio } from '@/utils/createAudio'
+import { useI18n } from 'vue-i18n'
 const appStore = useAppStore()
-
+const { t } = useI18n()
 const currentSong = computed(() => appStore.currentSong)
 const isPlaying = computed(() => appStore.getPlayData().isPlaying)
 const currentTime = ref(appStore.getPlayData().mockCurrentTime)
@@ -98,7 +99,7 @@ const togglePlay = async () => {
   try {
     await appStore.togglePlay()
   } catch (e) {
-    toast.error('播放失败')
+    toast.error(t('player.error'))
   }
 }
 

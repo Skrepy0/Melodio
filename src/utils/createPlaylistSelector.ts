@@ -5,7 +5,10 @@ import type { Playlist } from '@/utils/interface'
 let container: HTMLDivElement | null = null
 let instance: any = null
 
-export function showPlaylistSelector(playlists: Playlist[]): Promise<Playlist | null> {
+export function showPlaylistSelector(
+  playlists: Playlist[],
+  head: string
+): Promise<Playlist | null> {
   if (container) {
     document.body.removeChild(container)
     container = null
@@ -15,7 +18,9 @@ export function showPlaylistSelector(playlists: Playlist[]): Promise<Playlist | 
   container = document.createElement('div')
   document.body.appendChild(container)
 
-  const vnode = createVNode(PlaylistSelectorDialog)
+  const vnode = createVNode(PlaylistSelectorDialog, {
+    title: head,
+  })
   render(vnode, container)
   instance = vnode.component
 

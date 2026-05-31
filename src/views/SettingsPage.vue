@@ -5,7 +5,7 @@
         <div class="header-back" @click="goBack">
           <Icon icon="material-symbols:arrow-back" :width="24" color="var(--text-color)" />
         </div>
-        <div class="header-title">设置</div>
+        <div class="header-title">{{ $t('settings.title') }}</div>
       </div>
 
       <div class="settings-content">
@@ -13,34 +13,35 @@
           <div class="setting-row">
             <div class="item-left">
               <Icon icon="mdi:weather-night" :width="22" class="item-icon" />
-              <span class="item-label">深色模式</span>
+              <span class="item-label">{{ $t('settings.darkMode') }}</span>
             </div>
             <label class="switch">
               <input type="checkbox" v-model="isDarkMode" @change="toggleDarkMode" />
               <span class="slider round"></span>
             </label>
           </div>
-          <div class="setting-desc">开启后界面将切换为深色主题。</div>
+          <div class="setting-desc">{{ $t('settings.darkModeDesc') }}</div>
         </div>
 
         <div class="setting-item">
           <div class="setting-row">
             <div class="item-left">
               <Icon icon="material-symbols-light:language-pinyin" :width="22" class="item-icon" />
-              <span class="item-label">拼音搜索</span>
+              <span class="item-label">{{ $t('settings.pinyinSearch') }}</span>
             </div>
             <label class="switch">
               <input type="checkbox" :checked="pinyinSearch" @change="togglePinyinSearch" />
               <span class="slider round"></span>
             </label>
           </div>
-          <div class="setting-desc">开启后,所有搜索功能都会启用拼音搜索处理</div>
+          <div class="setting-desc">{{ $t('settings.pinyinSearchDesc') }}</div>
         </div>
+
         <div class="setting-item">
           <div class="setting-row">
             <div class="item-left">
               <Icon icon="ant-design:disconnect-outlined" :width="22" class="item-icon" />
-              <span class="item-label">设备断开自动暂停</span>
+              <span class="item-label">{{ $t('settings.autoPauseOnDisconnect') }}</span>
             </div>
             <label class="switch">
               <input
@@ -51,16 +52,14 @@
               <span class="slider round"></span>
             </label>
           </div>
-          <div class="setting-desc">
-            开启后,当切换音频输出设备（如拔出有线耳机、断开蓝牙设备）时，播放器自动暂停播放
-          </div>
+          <div class="setting-desc">{{ $t('settings.autoPauseOnDisconnectDesc') }}</div>
         </div>
 
         <div class="setting-item">
           <div class="setting-row">
             <div class="item-left">
               <Icon icon="lets-icons:check-fill" :width="22" class="item-icon" />
-              <span class="item-label">自动检测并清理无效歌曲</span>
+              <span class="item-label">{{ $t('settings.autoCleanInvalidSongs') }}</span>
             </div>
             <label class="switch">
               <input
@@ -71,20 +70,34 @@
               <span class="slider round"></span>
             </label>
           </div>
-          <div class="setting-desc">开启后,应用会自动清除已经被移动或删除了的无效歌曲</div>
+          <div class="setting-desc">{{ $t('settings.autoCleanInvalidSongsDesc') }}</div>
         </div>
-        <!-- 关于 -->
+
+        <div class="setting-item clickable" @click="showLanguageSelector">
+          <div class="setting-row">
+            <div class="item-left">
+              <Icon icon="mdi:translate" :width="22" class="item-icon" />
+              <span class="item-label">{{ $t('settings.language') }}</span>
+            </div>
+            <div class="item-right">
+              <span class="item-value">{{ currentLanguageName }}</span>
+              <Icon icon="mdi:chevron-right" :width="20" />
+            </div>
+          </div>
+          <div class="setting-desc">{{ $t('settings.languageDesc') }}</div>
+        </div>
+
         <div class="setting-item clickable" @click="goToAbout">
           <div class="setting-row">
             <div class="item-left">
               <Icon icon="mdi:information-outline" :width="22" class="item-icon" />
-              <span class="item-label">关于(todo)</span>
+              <span class="item-label">{{ $t('settings.about') }}</span>
             </div>
             <div class="item-right">
               <Icon icon="mdi:chevron-right" :width="20" />
             </div>
           </div>
-          <div class="setting-desc">查看应用的有关信息。</div>
+          <div class="setting-desc">{{ $t('settings.aboutDesc') }}</div>
         </div>
       </div>
     </div>
@@ -92,12 +105,14 @@
 </template>
 
 <script setup lang="ts">
-import { IonPage } from '@ionic/vue'
-import { ref, onMounted } from 'vue'
+import { actionSheetController, IonPage } from '@ionic/vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { Icon } from '@iconify/vue'
 import { useAppStore } from '@/stores/app'
+import { useI18n } from 'vue-i18n'
 
+const { t } = useI18n()
 const appStore = useAppStore()
 const router = useRouter()
 
@@ -105,6 +120,44 @@ const isDarkMode = ref(false)
 const pinyinSearch = ref(appStore.getPinyinSearch())
 const autoPauseOnDisconnect = ref(appStore.getAutoPauseOnDisconnect())
 const autoDelInvalidSongs = ref(appStore.getAutoDelInvalidSongs())
+
+// 直接从 store 获取当前语言（响应式）
+const currentLanguage = computed(() => appStore.getLanguage())
+const currentLanguageName = computed(() => {
+  switch (currentLanguage.value) {
+    case 'zh-CN':
+      return '简体中文'
+    case 'en-US':
+      return 'English'
+    default:
+      return currentLanguage.value
+  }
+})
+
+const showLanguageSelector = async () => {
+  const actionSheet = await actionSheetController.create({
+    header: t('settings.languageSelectorHeader', '选择语言'),
+    buttons: [
+      {
+        text: '简体中文',
+        handler: () => changeLanguage('zh-CN'),
+      },
+      {
+        text: 'English',
+        handler: () => changeLanguage('en-US'),
+      },
+      {
+        text: t('common.cancel', '取消'),
+        role: 'cancel',
+      },
+    ],
+  })
+  await actionSheet.present()
+}
+
+const changeLanguage = (lang: string) => {
+  appStore.setLanguage(lang) // store 内部会更新 i18n 和 localStorage
+}
 
 const goBack = () => {
   router.back()
@@ -120,16 +173,19 @@ const togglePinyinSearch = (e: Event) => {
   pinyinSearch.value = target.checked
   appStore.setPinyinSearch(pinyinSearch.value)
 }
+
 const toggleAutoPauseOnDisconnect = (e: Event) => {
   const target = e.target as HTMLInputElement
   autoPauseOnDisconnect.value = target.checked
   appStore.setAutoPauseOnDisconnect(autoPauseOnDisconnect.value)
 }
+
 const toggleAutoDelInvalidSongs = (e: Event) => {
   const target = e.target as HTMLInputElement
   autoDelInvalidSongs.value = target.checked
   appStore.setAutoDelInvalidSongs(autoDelInvalidSongs.value)
 }
+
 const goToAbout = () => {
   router.push('/about')
 }
@@ -147,14 +203,12 @@ onMounted(() => {
     opacity: 1;
   }
 }
-
 .settings-page {
   display: flex;
   flex-direction: column;
   height: 100%;
   background-color: var(--bg-color);
 }
-
 .settings-header {
   display: flex;
   align-items: center;
@@ -165,7 +219,6 @@ onMounted(() => {
   gap: 16px;
   flex-shrink: 0;
 }
-
 .header-back {
   display: flex;
   align-items: center;
@@ -179,19 +232,16 @@ onMounted(() => {
     background-color: var(--header-back-hover);
   }
 }
-
 .header-title {
   font-size: 18px;
   font-weight: 600;
   color: var(--text-color);
 }
-
 .settings-content {
   flex: 1;
   overflow-y: auto;
   padding: 16px;
 }
-
 .setting-item {
   display: flex;
   flex-direction: column;
@@ -199,7 +249,6 @@ onMounted(() => {
   border-bottom: 1px solid var(--setting-border);
   background-color: transparent;
   transition: background 0.2s;
-
   &.clickable {
     cursor: pointer;
     &:hover {
@@ -207,29 +256,24 @@ onMounted(() => {
     }
   }
 }
-
 .setting-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
-
 .item-left {
   display: flex;
   align-items: center;
   gap: 12px;
 }
-
 .item-icon {
   color: var(--text-secondary);
   width: 22px;
 }
-
 .item-label {
   font-size: 16px;
   color: var(--text-color);
 }
-
 .item-right {
   display: flex;
   align-items: center;
@@ -237,11 +281,9 @@ onMounted(() => {
   color: var(--text-secondary);
   font-size: 14px;
 }
-
 .item-value {
   color: var(--text-secondary);
 }
-
 .setting-desc {
   font-size: 12px;
   color: var(--text-secondary);
@@ -251,20 +293,17 @@ onMounted(() => {
   white-space: normal;
   word-break: break-word;
 }
-
 .switch {
   position: relative;
   display: inline-block;
   width: 48px;
   height: 26px;
 }
-
 .switch input {
   opacity: 0;
   width: 0;
   height: 0;
 }
-
 .slider {
   position: absolute;
   cursor: pointer;
@@ -276,7 +315,6 @@ onMounted(() => {
   transition: 0.2s;
   border-radius: 34px;
 }
-
 .slider:before {
   position: absolute;
   content: '';
@@ -288,11 +326,9 @@ onMounted(() => {
   transition: 0.2s;
   border-radius: 50%;
 }
-
 input:checked + .slider {
   background-color: var(--primary-color);
 }
-
 input:checked + .slider:before {
   transform: translateX(22px);
 }

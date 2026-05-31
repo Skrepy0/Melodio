@@ -15,7 +15,7 @@ interface Props {
 
 const props = withDefaults(defineProps<Props>(), {
   modelValue: '',
-  placeholder: '搜索...',
+  placeholder: '',
   showButton: false,
   clearable: true,
   disabled: false,
@@ -88,7 +88,7 @@ defineExpose({
         ref="inputRef"
         :value="modelValue"
         type="text"
-        :placeholder="placeholder"
+        :placeholder="placeholder || $t('searchBox.placeholder')"
         :disabled="disabled"
         :autofocus="autofocus"
         @input="onInput"
@@ -101,7 +101,7 @@ defineExpose({
       </span>
 
       <button v-if="showButton" class="search-button" :disabled="disabled" @click="handleSearch">
-        搜索
+        {{ $t('searchBox.searchButton') }}
       </button>
     </div>
   </div>

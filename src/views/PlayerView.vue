@@ -19,8 +19,8 @@
         <Icon v-else icon="mdi:music" :width="120" color="var(--text-secondary)" />
       </div>
       <div class="song-info">
-        <div class="song-name">{{ currentSong?.title || '未播放' }}</div>
-        <div class="song-artist">{{ currentSong?.artist || '未知艺术家' }}</div>
+        <div class="song-name">{{ currentSong?.title || $t('player.unknownTitle') }}</div>
+        <div class="song-artist">{{ currentSong?.artist || $t('player.unknownArtist') }}</div>
       </div>
 
       <div class="progress-section">
@@ -79,10 +79,12 @@
 
     <div class="queue-container">
       <div class="queue-header">
-        <span>播放队列 ({{ queue.length }})</span>
+        <span>{{ $t('player.queueHeader', { count: queue.length }) }}</span>
         <div class="queue-actions">
-          <span class="drag-hint">拖动调整顺序</span>
-          <button class="clear-queue-btn" @click="clearQueue" v-if="queue.length > 0">清空</button>
+          <span class="drag-hint">{{ $t('player.dragHint') }}</span>
+          <button class="clear-queue-btn" @click="clearQueue" v-if="queue.length > 0">
+            {{ $t('player.clearQueue') }}
+          </button>
         </div>
       </div>
       <div class="queue-list" ref="queueListRef" @scroll="handleScroll">
@@ -136,8 +138,11 @@ import { MediaSession } from '@pejota14/capacitor-media-session'
 import toast from '@/utils/createToast'
 import { showConfirm } from '@/utils/createConfirm'
 import { audio } from '@/utils/createAudio'
+import { useI18n } from 'vue-i18n'
 
+const { t } = useI18n()
 const appStore = useAppStore()
+
 const playMode = ref<PlayMode>(appStore.getPlayMode())
 const playModeIcon = computed(() => {
   switch (playMode.value) {
@@ -150,14 +155,9 @@ const playModeIcon = computed(() => {
   }
 })
 const playModeText = computed(() => {
-  switch (playMode.value) {
-    case 'sequential':
-      return '顺序播放'
-    case 'repeatOne':
-      return '单曲循环'
-    default:
-      return '顺序播放'
-  }
+  return playMode.value === 'sequential'
+    ? t('player.playMode.sequential')
+    : t('player.playMode.repeatOne')
 })
 
 const queue = computed(() => appStore.getPlayQueue())
@@ -178,6 +178,14 @@ audio.addEventListener('timeupdate', () => {
   if (isDraggingProgress) return
   appStore.setMockCurrentTime(audio.currentTime)
 })
+
+// 下拉菜单选项（动态翻译）
+const menuOptions = computed<DropdownItem[]>(() => [
+  { icon: 'mdi:play', description: t('player.menu.play'), value: 'play' },
+  { icon: 'mdi:heart-outline', description: t('player.menu.like'), value: 'like' },
+  { icon: 'mdi:delete', description: t('player.menu.remove'), value: 'remove' },
+])
+
 const playSong = async (song: Song) => {
   const targetIdx = localQueue.value.findIndex((s) => s.id === song.id)
   if (targetIdx === -1) return
@@ -206,6 +214,7 @@ const playSong = async (song: Song) => {
     togglePlay()
   }, 500)
 }
+
 const registerMediaSessionHandlers = () => {
   MediaSession.setActionHandler({ action: 'play' }, () => {
     console.log('[MediaSession] play')
@@ -257,10 +266,10 @@ const nextSong = () => {
 
 const clearQueue = async () => {
   const result = await showConfirm({
-    title: '提示',
-    message: '确定要清空播放队列吗？',
-    confirmText: '删除',
-    cancelText: '取消',
+    title: t('player.clearQueueConfirm.title'),
+    message: t('player.clearQueueConfirm.message'),
+    confirmText: t('player.clearQueueConfirm.confirm'),
+    cancelText: t('player.clearQueueConfirm.cancel'),
   })
   if (result) {
     appStore.setPlayQueue([])
@@ -269,7 +278,7 @@ const clearQueue = async () => {
     appStore.setCurrentIndex(0)
     appStore.setMockCurrentTime(0)
     openDropdownId.value = null
-    toast.success('已清空播放队列')
+    toast.success(t('player.toast.queueCleared'))
   }
 }
 
@@ -344,18 +353,14 @@ const mockSeek = async (e: MouseEvent) => {
 }
 
 const openDropdownId = ref<string | number | null>(null)
-const menuOptions: DropdownItem[] = [
-  { icon: 'mdi:play', description: '播放', value: 'play' },
-  { icon: 'mdi:heart-outline', description: '喜欢', value: 'like' },
-  { icon: 'mdi:delete', description: '从队列移除', value: 'remove' },
-]
+
 const onMenuItemSelect = (item: DropdownItem, song: Song) => {
   console.log('[UI] 对歌曲', song.title, '执行', item.value)
   if (item.value === 'play') {
     playSong(song)
   } else if (item.value === 'like') {
     console.log('[UI] 喜欢歌曲', song.title)
-    toast.success(`已添加 ${song.title} 到“我喜欢的音乐”`)
+    toast.success(t('player.toast.liked', { songTitle: song.title }))
   } else if (item.value === 'remove') {
     const idx = localQueue.value.findIndex((s) => s.id === song.id)
     if (idx !== -1) {
@@ -481,6 +486,7 @@ const formatTime = (seconds: number): string => {
   const secs = Math.floor(seconds % 60)
   return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
 }
+
 onUnmounted(() => {
   if (isDraggingQueue) stopDrag(new PointerEvent('pointerup'))
   MediaSession.setActionHandler({ action: 'play' }, () => {})

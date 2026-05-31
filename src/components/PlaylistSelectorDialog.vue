@@ -4,7 +4,7 @@
       <div v-if="visible" class="playlist-selector-overlay" @click.self="cancel">
         <div class="playlist-selector-container">
           <div class="playlist-selector-header">
-            <h3>选择歌单</h3>
+            <h3>{{ props.title }}</h3>
             <button class="close-btn" @click="cancel">✕</button>
           </div>
           <div class="playlist-selector-list">
@@ -14,7 +14,16 @@
               class="playlist-selector-item"
               @click="selectPlaylist(playlist)"
             >
-              <PlaylistItem :playlist="playlist" :dropdown-open="false" :show-button="false" />
+              <div class="playlist-cover">
+                <img v-if="playlist.coverUrl" :src="playlist.coverUrl" :alt="playlist.name" />
+                <Icon v-else icon="mdi:playlist-music" :width="40" class="default-cover" />
+              </div>
+              <div class="playlist-info">
+                <div class="playlist-name">{{ playlist.name }}</div>
+                <div class="playlist-desc">
+                  {{ playlist.description || `${playlist.songCount}首歌曲` }}
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -25,14 +34,14 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import PlaylistItem from '@/components/lists/PlaylistItem.vue'
+import { Icon } from '@iconify/vue'
 import type { Playlist } from '@/utils/interface'
-
+const props = withDefaults(defineProps<{ title: string }>(), {
+  title: '',
+})
 const visible = ref(false)
 let resolvePromise: ((value: Playlist | null) => void) | null = null
-
 const playlists = ref<Playlist[]>([])
-
 const show = (list: Playlist[]): Promise<Playlist | null> => {
   playlists.value = list
   visible.value = true
@@ -67,7 +76,7 @@ defineExpose({ show })
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 10000;
+  z-index: 20000;
   backdrop-filter: blur(4px);
 }
 
@@ -75,41 +84,45 @@ defineExpose({ show })
   width: 320px;
   max-height: 80%;
   background: var(--bg-color);
-  border-radius: 16px;
+  border-radius: 24px;
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  box-shadow: var(--shadow-md);
+  box-shadow:
+    0 20px 35px -8px rgba(0, 0, 0, 0.2),
+    0 0 0 1px rgba(0, 0, 0, 0.02);
 }
 
 .playlist-selector-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px;
-  border-bottom: 1px solid var(--setting-border);
+  padding: 18px 20px;
+  background: var(--bg-header);
+  border-bottom: 1px solid var(--header-border-bottom);
   h3 {
     margin: 0;
     font-size: 18px;
     font-weight: 600;
     color: var(--text-color);
+    letter-spacing: -0.3px;
   }
   .close-btn {
-    background: none;
+    background: rgba(0, 0, 0, 0.05);
     border: none;
-    font-size: 20px;
+    font-size: 18px;
     cursor: pointer;
     color: var(--text-secondary);
-    padding: 0;
-    width: 28px;
-    height: 28px;
+    width: 32px;
+    height: 32px;
     display: flex;
     align-items: center;
     justify-content: center;
     border-radius: 50%;
-    transition: background 0.2s;
+    transition: all 0.2s;
     &:hover {
-      background: var(--header-back-hover);
+      background: rgba(0, 0, 0, 0.1);
+      transform: scale(1.02);
     }
   }
 }
@@ -118,20 +131,78 @@ defineExpose({ show })
   flex: 1;
   overflow-y: auto;
   padding: 8px 0;
-  max-height: 400px;
+  scrollbar-width: thin;
+  &::-webkit-scrollbar {
+    width: 4px;
+  }
+  &::-webkit-scrollbar-track {
+    background: var(--scrollbar-track);
+    border-radius: 4px;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-thumb);
+    border-radius: 4px;
+  }
 }
 
 .playlist-selector-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 16px;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: all 0.2s;
   &:hover {
     background: var(--setting-hover-bg);
+    transform: translateX(4px);
+  }
+}
+
+.playlist-cover {
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: var(--bg-placeholder);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .default-cover {
+    color: var(--text-secondary);
+    opacity: 0.7;
+  }
+}
+
+.playlist-info {
+  flex: 1;
+  min-width: 0;
+  .playlist-name {
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--text-color);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 4px;
+  }
+  .playlist-desc {
+    font-size: 12px;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 }
 
 .fade-enter-active,
 .fade-leave-active {
-  transition: opacity 0.2s;
+  transition: opacity 0.2s ease;
 }
 .fade-enter-from,
 .fade-leave-to {

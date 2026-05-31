@@ -1,0 +1,180 @@
+{
+  "home": {
+    "searchPlaceholder": "Search",
+    "categories": {
+      "tracks": "Tracks",
+      "playlists": "Playlists"
+    },
+    "operations": {
+      "newPlaylist": "New Playlist",
+      "scanLibrary": "Scan Library",
+      "settings": "Settings"
+    },
+    "newPlaylistPrompt": {
+      "title": "New Playlist",
+      "message": "Enter playlist name",
+      "default": "New Playlist"
+    },
+    "batchDeleteConfirm": {
+      "title": "Confirm",
+      "message": "Are you sure you want to delete {count} song(s)? (Local files will not be deleted)",
+      "confirm": "Delete",
+      "cancel": "Cancel"
+    },
+    "deletePlaylistConfirm": {
+      "title": "Confirm",
+      "message": "Are you sure you want to delete {count} playlist(s)?",
+      "confirm": "Delete",
+      "cancel": "Cancel"
+    },
+    "playlistDefault": {
+      "cannotDeleteDefault": "Cannot delete the default playlist"
+    },
+    "toast": {
+      "scanSuccess": "Scan completed, found {count} song(s)",
+      "scanFailed": "Scan failed, please check permissions",
+      "deleteSongsSuccess": "{count} song(s) deleted",
+      "deletePlaylistsSuccess": "{count} playlist(s) deleted",
+      "songNotFound": "Song not found",
+      "playlistCreated": "Playlist created",
+      "playlistCreateFailed": "Creation failed",
+      "invalidSongsCleaned": "{count} invalid song(s) have been cleaned"
+    }
+  },
+  "player": {
+    "unknownTitle": "Not playing",
+    "unknownArtist": "Unknown Artist",
+    "playMode": {
+      "sequential": "Sequential",
+      "repeatOne": "Repeat One"
+    },
+    "queueHeader": "Play Queue ({count})",
+    "dragHint": "Drag to reorder",
+    "clearQueue": "Clear",
+    "clearQueueConfirm": {
+      "title": "Confirm",
+      "message": "Are you sure you want to clear the play queue?",
+      "confirm": "Clear",
+      "cancel": "Cancel"
+    },
+    "toast": {
+      "queueCleared": "Play queue cleared",
+      "liked": "Added \"{songTitle}\" to \"My Favorites\""
+    },
+    "menu": {
+      "play": "Play",
+      "like": "Like",
+      "remove": "Remove from queue"
+    },
+    "error": "Playback failed"
+  },
+  "song": {
+    "menu": {
+      "addToPlaylist": "Add to Playlist",
+      "like": "Like",
+      "playNext": "Play Next",
+      "addToQueue": "Add to Queue"
+    },
+    "toast": {
+      "addedToQueue": "Added to queue",
+      "alreadyLiked": "You already liked this song",
+      "liked": "Added to liked songs",
+      "alreadyInPlaylist": "This song is already in the playlist",
+      "addedToPlaylist": "Added to playlist \"{name}\"",
+      "next": "Added \"{name}\" to play next"
+    }
+  },
+  "songList": {
+    "defaultTitle": "All Songs",
+    "loading": "Loading…",
+    "empty": "No songs yet, please add or scan",
+    "confirm": {
+      "title": "Confirm",
+      "message": "Are you sure you want to remove {count} song(s) from this playlist?",
+      "confirm": "Confirm",
+      "cancel": "Cancel"
+    },
+    "toast": {
+      "removeSuccess": "{count} song(s) removed",
+      "songNotFound": "Song not found"
+    }
+  },
+  "playlist": {
+    "defaultDesc": "{count} song(s)",
+    "songCount": "{count} song(s)",
+    "menu": {
+      "edit": "Edit Name",
+      "delete": "Delete"
+    },
+    "editPrompt": {
+      "title": "Edit Playlist Name",
+      "message": "Enter new playlist name"
+    },
+    "deleteConfirm": {
+      "title": "Confirm",
+      "message": "Are you sure you want to delete the playlist \"{name}\"?",
+      "confirm": "Delete",
+      "cancel": "Cancel"
+    },
+    "warning": {
+      "defaultPlaylist": "Cannot perform this operation on the default playlist",
+      "sameName": "New name is the same as the old one"
+    },
+    "success": {
+      "renamed": "Playlist renamed",
+      "deleted": "Playlist \"{name}\" deleted"
+    }
+  },
+  "dialog": {
+    "confirm": "Confirm",
+    "cancel": "Cancel"
+  },
+  "playList": {
+    "selectAll": "Select All",
+    "clear": "Clear",
+    "addToQueue": "Add to Queue",
+    "addToPlaylist": "Add to Playlist",
+    "delete": "Delete ({count})",
+    "cancel": "Cancel",
+    "toast": {
+      "addedToQueue": "{count} song(s) added to queue",
+      "alreadyInQueue": "Selected song(s) already in queue",
+      "addedToPlaylist": "{count} song(s) added to \"{name}\"",
+      "alreadyInLike": "Selected song(s) already in liked songs",
+      "alreadyInPlaylist": "Selected song(s) already in this playlist"
+    }
+  },
+  "playlistSelector": {
+    "title": "Select Playlist"
+  },
+  "prompt": {
+    "defaultTitle": "Please Enter",
+    "defaultPlaceholder": "Please enter content",
+    "cancel": "Cancel",
+    "confirm": "Confirm"
+  },
+  "searchBox": {
+    "placeholder": "Search",
+    "searchButton": "Search"
+  },
+  "settings": {
+    "title": "Settings",
+    "darkMode": "Dark Mode",
+    "darkModeDesc": "Switch to dark theme",
+    "pinyinSearch": "Pinyin Search",
+    "pinyinSearchDesc": "Enable fuzzy pinyin search",
+    "autoPauseOnDisconnect": "Auto-pause on device disconnect",
+    "autoPauseOnDisconnectDesc": "Automatically pause when headphones are unplugged or Bluetooth disconnected",
+    "autoCleanInvalidSongs": "Auto-clean invalid songs",
+    "autoCleanInvalidSongsDesc": "Automatically remove songs that have been moved or deleted",
+    "language": "Language",
+    "languageDesc": "Select interface language",
+    "about": "About",
+    "aboutDesc": "View app information"
+  },
+  "common": {
+    "back": "Back",
+    "confirm": "Confirm",
+    "cancel": "Cancel"
+  }
+}
