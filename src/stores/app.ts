@@ -163,6 +163,7 @@ export const useAppStore = defineStore('app', () => {
     if (!song) return
     try {
       setMockCurrentTime(0)
+      audio.setSong(song)
       const accessibleUrl = getAccessibleUrl(song.uri)
       if (audio.src !== accessibleUrl) {
         audio.src = accessibleUrl
@@ -348,11 +349,13 @@ export const useAppStore = defineStore('app', () => {
       initGlobalPlayerEvents()
       initFlag.value = true
       if (current) {
+        audio.setSong(current)
         //const time = playData.value.mockCurrentTime
         const url = getAccessibleUrl(current.uri)
         if (audio.src !== url) {
           audio.src = url
         }
+
         // if (time !== 0) {
         //   setTimeout( () => {
         //     togglePlay()
@@ -400,6 +403,7 @@ export const useAppStore = defineStore('app', () => {
 
   function setCurrentIndex(index: number) {
     playData.value.currentIndex = index
+    audio.updateMediaSessionMetadata(playQueue.value[index])
     savePlayData()
   }
   function setIsPlaying(status: boolean) {

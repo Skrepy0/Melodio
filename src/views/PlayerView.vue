@@ -223,6 +223,12 @@ const registerMediaSessionHandlers = () => {
     console.log('[MediaSession] previous')
     appStore.prevSong()
   })
+  MediaSession.setActionHandler({ action: 'seekto' }, (details: any) => {
+    console.log('[MediaSession] seekto', details)
+    if (details && typeof details.seekTime === 'number') {
+      audio.currentTime = details.seekTime
+    }
+  })
 }
 
 registerMediaSessionHandlers()
@@ -477,10 +483,10 @@ const formatTime = (seconds: number): string => {
 }
 onUnmounted(() => {
   if (isDraggingQueue) stopDrag(new PointerEvent('pointerup'))
-  MediaSession.setActionHandler({ action: 'play' }, null)
-  MediaSession.setActionHandler({ action: 'pause' }, null)
-  MediaSession.setActionHandler({ action: 'nexttrack' }, null)
-  MediaSession.setActionHandler({ action: 'previoustrack' }, null)
+  MediaSession.setActionHandler({ action: 'play' }, () => {})
+  MediaSession.setActionHandler({ action: 'pause' }, () => {})
+  MediaSession.setActionHandler({ action: 'nexttrack' }, () => {})
+  MediaSession.setActionHandler({ action: 'previoustrack' }, () => {})
 })
 
 defineExpose({ queue: localQueue, currentSong, playMode, togglePlay, prevSong, nextSong })
@@ -669,7 +675,7 @@ defineExpose({ queue: localQueue, currentSong, playMode, togglePlay, prevSong, n
   padding: 8px 0;
 }
 .queue-item.past-song {
-  background: var(--bg-card-dimmed, rgba(0,0,0,0.02));
+  background: var(--bg-card-dimmed, rgba(0, 0, 0, 0.02));
   opacity: 0.7;
   .queue-index,
   .queue-song-name {

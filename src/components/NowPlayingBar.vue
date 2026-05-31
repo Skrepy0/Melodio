@@ -75,6 +75,12 @@ const registerMediaSessionHandlers = () => {
     console.log('[MediaSession] previous')
     appStore.prevSong()
   })
+  MediaSession.setActionHandler({ action: 'seekto' }, (details: any) => {
+    console.log('[MediaSession] seekto', details)
+    if (details && typeof details.seekTime === 'number') {
+      audio.currentTime = details.seekTime
+    }
+  })
 }
 
 registerMediaSessionHandlers()
