@@ -8,7 +8,22 @@ import { getNextSongIndex, getPrevSongIndex } from '@/utils/control'
 export const useAppStore = defineStore('app', () => {
   const darkMode = ref(localStorage.getItem('darkMode') === 'true')
   const pinyinSearch = ref(localStorage.getItem('pinyinSearch') === 'true')
-
+  const autoPauseOnDisconnect = ref(true)
+  function initAutoPauseOnDisconnect() {
+    const val = localStorage.getItem('autoPauseOnDisconnect')
+    if (val && ['true', 'false'].includes(val)) {
+      autoPauseOnDisconnect.value = val === 'true'
+    } else {
+      setAutoPauseOnDisconnect(true)
+    }
+  }
+  function setAutoPauseOnDisconnect(val: boolean) {
+    autoPauseOnDisconnect.value = val
+    localStorage.setItem('autoPauseOnDisconnect', String(autoPauseOnDisconnect.value))
+  }
+  function getAutoPauseOnDisconnect() {
+    return autoPauseOnDisconnect.value
+  }
   function setPinyinSearch(val: boolean) {
     pinyinSearch.value = val
     localStorage.setItem('pinyinSearch', String(pinyinSearch.value))
@@ -37,7 +52,14 @@ export const useAppStore = defineStore('app', () => {
   function getCurrentPlayList() {
     return currentPlayList.value
   }
-
+  function setupAudioBecomingNoisyListener() {
+    window.addEventListener('audioBecomingNoisy', () => {
+      console.log('[Store] 收到音频输出设备断开事件，自动暂停')
+      if (getAutoPauseOnDisconnect() && playData.value.isPlaying) {
+        togglePlay()
+      }
+    })
+  }
   const playData = ref({
     currentIndex: 0,
     isPlaying: false,
@@ -338,6 +360,7 @@ export const useAppStore = defineStore('app', () => {
   async function init() {
     if (!initFlag.value) {
       loadInitialDarkMode()
+      initAutoPauseOnDisconnect()
       initAllSongs()
       initPlayQueue()
       initPlayData()
@@ -347,6 +370,7 @@ export const useAppStore = defineStore('app', () => {
       initPlayMode()
       const current = currentSong.value
       initGlobalPlayerEvents()
+      setupAudioBecomingNoisyListener()
       initFlag.value = true
       if (current) {
         audio.setSong(current)
@@ -497,6 +521,8 @@ export const useAppStore = defineStore('app', () => {
     loadInitialDarkMode,
     setPinyinSearch,
     getPinyinSearch,
+    setAutoPauseOnDisconnect,
+    getAutoPauseOnDisconnect,
     // 歌曲库
     allSongs,
     setAllSongs,

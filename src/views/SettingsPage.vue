@@ -1,7 +1,6 @@
 <template>
   <ion-page>
     <div class="settings-page">
-      <!-- 自定义头部 -->
       <div class="settings-header">
         <div class="header-back" @click="goBack">
           <Icon icon="material-symbols:arrow-back" :width="24" color="var(--text-color)" />
@@ -9,9 +8,7 @@
         <div class="header-title">设置</div>
       </div>
 
-      <!-- 设置内容区域 -->
       <div class="settings-content">
-        <!-- 深色模式 -->
         <div class="setting-item">
           <div class="setting-row">
             <div class="item-left">
@@ -26,7 +23,6 @@
           <div class="setting-desc">开启后界面将切换为深色主题。</div>
         </div>
 
-        <!-- 接收通知 -->
         <div class="setting-item">
           <div class="setting-row">
             <div class="item-left">
@@ -42,7 +38,25 @@
             开启后,所有搜索功能都会用拼音搜索处理(无法通过字母和单词进行搜索)
           </div>
         </div>
-
+        <div class="setting-item">
+          <div class="setting-row">
+            <div class="item-left">
+              <Icon icon="ant-design:disconnect-outlined" :width="22" class="item-icon" />
+              <span class="item-label">设备断开自动暂停</span>
+            </div>
+            <label class="switch">
+              <input
+                type="checkbox"
+                :checked="autoPauseOnDisconnect"
+                @change="toggleAutoPauseOnDisconnect"
+              />
+              <span class="slider round"></span>
+            </label>
+          </div>
+          <div class="setting-desc">
+            开启后,当切换音频输出设备（如拔出有线耳机、断开蓝牙设备）时，播放器自动暂停播放
+          </div>
+        </div>
         <!-- 关于 -->
         <div class="setting-item clickable" @click="goToAbout">
           <div class="setting-row">
@@ -73,6 +87,7 @@ const router = useRouter()
 
 const isDarkMode = ref(false)
 const pinyinSearch = ref(appStore.getPinyinSearch())
+const autoPauseOnDisconnect = ref(appStore.getAutoPauseOnDisconnect())
 
 const goBack = () => {
   router.back()
@@ -87,9 +102,12 @@ const togglePinyinSearch = (e: Event) => {
   const target = e.target as HTMLInputElement
   pinyinSearch.value = target.checked
   appStore.setPinyinSearch(pinyinSearch.value)
-  console.log(pinyinSearch.value)
 }
-
+const toggleAutoPauseOnDisconnect = (e: Event) => {
+  const target = e.target as HTMLInputElement
+  autoPauseOnDisconnect.value = target.checked
+  appStore.setAutoPauseOnDisconnect(autoPauseOnDisconnect.value)
+}
 const goToAbout = () => {
   router.push('/about')
 }
