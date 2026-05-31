@@ -115,14 +115,13 @@ onMounted(() => {
   background-color: var(--bg-color);
 }
 
-/* 自定义头部 */
 .settings-header {
   display: flex;
   align-items: center;
   height: 60px;
   padding: 0 16px;
   background-color: var(--bg-header);
-  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  border-bottom: 1px solid var(--header-border-bottom);
   gap: 16px;
   flex-shrink: 0;
 }
@@ -137,7 +136,7 @@ onMounted(() => {
   border-radius: 50%;
   transition: background 0.2s;
   &:hover {
-    background-color: rgba(0, 0, 0, 0.05);
+    background-color: var(--header-back-hover);
   }
 }
 
@@ -147,31 +146,28 @@ onMounted(() => {
   color: var(--text-color);
 }
 
-/* 内容区域，可滚动 */
 .settings-content {
   flex: 1;
   overflow-y: auto;
   padding: 16px;
 }
 
-/* 设置项容器（垂直布局） */
 .setting-item {
   display: flex;
   flex-direction: column;
   padding: 14px 0;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  border-bottom: 1px solid var(--setting-border);
   background-color: transparent;
   transition: background 0.2s;
 
   &.clickable {
     cursor: pointer;
     &:hover {
-      background-color: rgba(0, 0, 0, 0.02);
+      background-color: var(--setting-hover-bg);
     }
   }
 }
 
-/* 每一行的横向布局 */
 .setting-row {
   display: flex;
   align-items: center;
@@ -185,7 +181,7 @@ onMounted(() => {
 }
 
 .item-icon {
-  color: var(--text-secondary, #666);
+  color: var(--text-secondary);
   width: 22px;
 }
 
@@ -198,26 +194,24 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 8px;
-  color: var(--text-secondary, #666);
+  color: var(--text-secondary);
   font-size: 14px;
 }
 
 .item-value {
-  color: var(--text-secondary, #666);
+  color: var(--text-secondary);
 }
 
-/* 描述文字 */
 .setting-desc {
   font-size: 12px;
-  color: var(--text-secondary, #888);
+  color: var(--text-secondary);
   margin-top: 6px;
-  padding-left: 34px; // 与图标+文字对齐
+  padding-left: 34px;
   line-height: 1.4;
   white-space: normal;
   word-break: break-word;
 }
 
-/* 自定义开关样式（模拟 iOS 风格） */
 .switch {
   position: relative;
   display: inline-block;
@@ -238,7 +232,7 @@ onMounted(() => {
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: #ccc;
+  background-color: var(--switch-bg-off);
   transition: 0.2s;
   border-radius: 34px;
 }
@@ -250,30 +244,16 @@ onMounted(() => {
   width: 22px;
   left: 2px;
   bottom: 2px;
-  background-color: white;
+  background-color: var(--switch-handle-color);
   transition: 0.2s;
   border-radius: 50%;
 }
 
 input:checked + .slider {
-  background-color: var(--primary-color, #007aff);
+  background-color: var(--primary-color);
 }
 
 input:checked + .slider:before {
   transform: translateX(22px);
-}
-
-/* 暗色模式适配（如果全局有 .dark 类，这里也自动生效） */
-.dark .settings-header {
-  border-bottom-color: rgba(255, 255, 255, 0.1);
-}
-.dark .setting-item {
-  border-bottom-color: rgba(255, 255, 255, 0.1);
-}
-.dark .setting-item.clickable:hover {
-  background-color: rgba(255, 255, 255, 0.03);
-}
-.dark .setting-desc {
-  color: rgba(255, 255, 255, 0.6);
 }
 </style>

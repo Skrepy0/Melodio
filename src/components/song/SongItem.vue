@@ -110,17 +110,17 @@ const onMenuItemSelect = async (item: DropdownItem) => {
   align-items: center;
   gap: 16px;
   padding: 12px 16px;
-  background-color: var(--bg-card, #ffffff);
+  background-color: var(--bg-card);
   border-radius: 16px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--shadow-sm);
   transition: all 0.2s ease;
   cursor: pointer;
   animation: slideInUp 0.3s ease both;
 
   &:hover {
-    background-color: var(--bg-card-hover, #f5f5f5);
+    background-color: var(--bg-card-hover);
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+    box-shadow: var(--shadow-md);
   }
 
   .song-cover {
@@ -129,7 +129,7 @@ const onMenuItemSelect = async (item: DropdownItem) => {
     height: 56px;
     border-radius: 12px;
     overflow: hidden;
-    background-color: var(--bg-placeholder, #e0e0e0);
+    background-color: var(--bg-placeholder);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -141,7 +141,7 @@ const onMenuItemSelect = async (item: DropdownItem) => {
     }
 
     .default-cover {
-      color: var(--text-secondary, #888);
+      color: var(--text-secondary);
     }
   }
 
@@ -155,7 +155,7 @@ const onMenuItemSelect = async (item: DropdownItem) => {
     .song-name {
       font-size: 16px;
       font-weight: 600;
-      color: var(--text-color, #333);
+      color: var(--text-color);
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -163,7 +163,7 @@ const onMenuItemSelect = async (item: DropdownItem) => {
 
     .song-artist {
       font-size: 13px;
-      color: var(--text-secondary, #666);
+      color: var(--text-secondary);
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -178,21 +178,13 @@ const onMenuItemSelect = async (item: DropdownItem) => {
 
     .song-duration {
       font-size: 13px;
-      color: var(--text-secondary, #666);
+      color: var(--text-secondary);
       font-feature-settings: 'tnum';
       font-variant-numeric: tabular-nums;
     }
   }
 }
 
-.dark {
-  .song-item {
-    background-color: var(--bg-card, #1e1e1e);
-    &:hover {
-      background-color: var(--bg-card-hover, #2c2c2c);
-    }
-  }
-}
 @keyframes slideInUp {
   from {
     opacity: 0;
@@ -202,9 +194,5 @@ const onMenuItemSelect = async (item: DropdownItem) => {
     opacity: 1;
     transform: translateY(0);
   }
-}
-
-.dark .song-cover .default-cover {
-  color: rgba(75, 73, 73, 0.6);
 }
 </style>

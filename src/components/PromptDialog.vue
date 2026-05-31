@@ -88,9 +88,9 @@ onMounted(() => {
 
 .prompt-container {
   width: 280px;
-  background: var(--bg-color, #fff);
+  background: var(--bg-color);
   border-radius: 16px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--shadow-md);
   overflow: hidden;
   animation: scaleIn 0.2s ease;
 }
@@ -101,7 +101,7 @@ onMounted(() => {
     margin: 0;
     font-size: 18px;
     font-weight: 600;
-    color: var(--text-color, #333);
+    color: var(--text-color);
   }
 }
 
@@ -110,30 +110,30 @@ onMounted(() => {
   p {
     margin: 0 0 12px;
     font-size: 14px;
-    color: var(--text-secondary, #666);
+    color: var(--text-secondary);
   }
 }
 
 .prompt-input {
   width: 100%;
   padding: 8px 12px;
-  border: 1px solid rgba(0, 0, 0, 0.1);
+  border: 1px solid var(--input-border);
   border-radius: 8px;
   font-size: 14px;
-  background: var(--bg-input, #f5f5f5);
-  color: var(--text-color, #333);
+  background: var(--bg-input);
+  color: var(--text-color);
   outline: none;
   transition:
     border-color 0.2s,
     background 0.2s;
   &:focus {
-    border-color: var(--primary-color, #007aff);
+    border-color: var(--primary-color);
   }
 }
 
 .prompt-footer {
   display: flex;
-  border-top: 1px solid rgba(0, 0, 0, 0.05);
+  border-top: 1px solid var(--setting-border);
   .prompt-btn {
     flex: 1;
     padding: 12px;
@@ -144,15 +144,15 @@ onMounted(() => {
     cursor: pointer;
     transition: background 0.2s;
     &.cancel {
-      color: var(--text-secondary, #666);
+      color: var(--text-secondary);
       &:hover {
-        background: rgba(0, 0, 0, 0.05);
+        background: var(--header-back-hover);
       }
     }
     &.confirm {
-      color: var(--primary-color, #007aff);
+      color: var(--primary-color);
       &:hover {
-        background: rgba(0, 122, 255, 0.05);
+        background: rgba(var(--primary-color-rgb, 0, 122, 255), 0.05);
       }
     }
   }
@@ -176,28 +176,5 @@ onMounted(() => {
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
-}
-
-.dark .prompt-container {
-  background: var(--bg-color, #1e1e1e);
-}
-
-.dark .prompt-input {
-  background: var(--bg-input, #2c2c2c);
-  border-color: rgba(255, 255, 255, 0.1);
-  color: var(--text-color, #fff);
-  &:focus {
-    border-color: var(--primary-color, #007aff);
-  }
-}
-
-.dark .prompt-footer {
-  border-top-color: rgba(255, 255, 255, 0.1);
-  .prompt-btn.cancel:hover {
-    background: rgba(255, 255, 255, 0.1);
-  }
-  .prompt-btn.confirm:hover {
-    background: rgba(0, 122, 255, 0.2);
-  }
 }
 </style>

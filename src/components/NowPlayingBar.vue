@@ -110,24 +110,24 @@ const formatTime = (seconds: number): string => {
   bottom: 0;
   left: 0;
   right: 0;
-  background: var(--bg-header, #f8f9fa);
+  background: var(--bg-header);
   backdrop-filter: blur(10px);
-  background-color: rgba(var(--bg-header-rgb, 248, 249, 250), 0.95);
-  border-top: 1px solid rgba(0, 0, 0, 0.1);
+  background-color: rgba(var(--bg-header-rgb), 0.95);
+  border-top: 1px solid var(--bottom-actions-border);
   z-index: 100;
-  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.05);
+  box-shadow: var(--shadow-bottom);
 }
 
 .progress-line {
   height: 2px;
-  background-color: rgba(0, 0, 0, 0.1);
+  background-color: var(--progress-track);
   width: 100%;
   overflow: hidden;
 }
 
 .progress-fill-line {
   height: 100%;
-  background-color: var(--primary-color, #007aff);
+  background-color: var(--primary-color);
   width: 0%;
   transition: width 0.1s linear;
 }
@@ -173,14 +173,14 @@ const formatTime = (seconds: number): string => {
   .name {
     font-weight: 600;
     font-size: 14px;
-    color: var(--text-color, #333);
+    color: var(--text-color);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
   .artist {
     font-size: 12px;
-    color: var(--text-secondary, #666);
+    color: var(--text-secondary);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -198,7 +198,7 @@ const formatTime = (seconds: number): string => {
   gap: 4px;
   font-size: 12px;
   font-feature-settings: 'tnum';
-  color: var(--text-secondary, #666);
+  color: var(--text-secondary);
 }
 
 .action-buttons {
@@ -207,7 +207,7 @@ const formatTime = (seconds: number): string => {
     background: none;
     border: none;
     cursor: pointer;
-    color: var(--text-color, #333);
+    color: var(--text-color);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -220,15 +220,7 @@ const formatTime = (seconds: number): string => {
   }
 }
 
-.dark {
-  .now-playing-bar {
-    background-color: rgba(var(--bg-header-rgb, 30, 30, 35), 0.95);
-  }
-  .progress-line {
-    background-color: rgba(255, 255, 255, 0.2);
-  }
-}
-
+/* 响应式样式保持不变 */
 @media (max-width: 640px) {
   .bar-content {
     padding: 8px 12px;

@@ -256,14 +256,14 @@ watch(selectedCategory, () => {
 .header {
   height: 64px;
   width: 100%;
-  background: rgba(var(--bg-header-rgb, 255, 255, 255), 0.8);
+  background: rgba(var(--bg-header-rgb), 0.8);
   backdrop-filter: blur(20px);
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 0 20px;
   gap: 16px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  border-bottom: 1px solid var(--header-border-bottom);
   box-sizing: border-box;
   position: sticky;
   top: 0;
@@ -281,11 +281,6 @@ watch(selectedCategory, () => {
   align-items: center;
   gap: 12px;
   flex-shrink: 0;
-}
-
-.dark .header {
-  background: rgba(var(--bg-header-rgb, 30, 30, 35), 0.8);
-  border-bottom-color: rgba(255, 255, 255, 0.05);
 }
 
 @media (max-width: 640px) {
@@ -308,7 +303,7 @@ watch(selectedCategory, () => {
   background-color: var(--bg-color);
   -webkit-overflow-scrolling: touch;
   scrollbar-width: thin;
-  scrollbar-color: rgba(0, 0, 0, 0.3) transparent;
+  scrollbar-color: var(--scrollbar-color) transparent;
 
   &::-webkit-scrollbar {
     width: 4px;
@@ -318,21 +313,11 @@ watch(selectedCategory, () => {
     background: transparent;
   }
   &::-webkit-scrollbar-thumb {
-    background: rgba(0, 0, 0, 0.2);
+    background: var(--webkit-scrollbar-thumb);
     border-radius: 4px;
   }
   &::-webkit-scrollbar-thumb:hover {
-    background: rgba(0, 0, 0, 0.4);
-  }
-}
-
-.dark .body {
-  scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
-  &::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.2);
-  }
-  &::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.4);
+    background: var(--webkit-scrollbar-thumb-hover);
   }
 }
 </style>

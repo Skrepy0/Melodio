@@ -74,12 +74,12 @@ defineExpose({ show })
 .playlist-selector-container {
   width: 320px;
   max-height: 80%;
-  background: var(--bg-color, #fff);
+  background: var(--bg-color);
   border-radius: 16px;
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--shadow-md);
 }
 
 .playlist-selector-header {
@@ -87,19 +87,19 @@ defineExpose({ show })
   align-items: center;
   justify-content: space-between;
   padding: 16px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  border-bottom: 1px solid var(--setting-border);
   h3 {
     margin: 0;
     font-size: 18px;
     font-weight: 600;
-    color: var(--text-color, #333);
+    color: var(--text-color);
   }
   .close-btn {
     background: none;
     border: none;
     font-size: 20px;
     cursor: pointer;
-    color: var(--text-secondary, #666);
+    color: var(--text-secondary);
     padding: 0;
     width: 28px;
     height: 28px;
@@ -109,7 +109,7 @@ defineExpose({ show })
     border-radius: 50%;
     transition: background 0.2s;
     &:hover {
-      background: rgba(0, 0, 0, 0.05);
+      background: var(--header-back-hover);
     }
   }
 }
@@ -125,7 +125,7 @@ defineExpose({ show })
   cursor: pointer;
   transition: background 0.2s;
   &:hover {
-    background: rgba(0, 0, 0, 0.02);
+    background: var(--setting-hover-bg);
   }
 }
 
@@ -136,17 +136,5 @@ defineExpose({ show })
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
-}
-
-.dark {
-  .playlist-selector-container {
-    background: var(--bg-color, #1e1e1e);
-  }
-  .playlist-selector-header {
-    border-bottom-color: rgba(255, 255, 255, 0.1);
-  }
-  .playlist-selector-item:hover {
-    background: rgba(255, 255, 255, 0.03);
-  }
 }
 </style>

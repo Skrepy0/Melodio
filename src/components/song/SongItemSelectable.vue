@@ -137,7 +137,7 @@ const toggleSelect = () => {
 }
 
 .checkbox {
-  color: var(--primary-color, #007aff);
+  color: var(--primary-color);
 }
 
 .select-mode-offset {

@@ -133,12 +133,12 @@ const onMenuSelect = (action: string, playlist: Playlist) => {
   bottom: 0;
   left: 0;
   right: 0;
-  background: var(--bg-color, #ffffff);
-  border-top: 1px solid rgba(0, 0, 0, 0.1);
-  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+  background: var(--bottom-actions-bg);
+  border-top: 1px solid var(--bottom-actions-border);
+  box-shadow: var(--shadow-bottom);
   z-index: 200;
   backdrop-filter: blur(10px);
-  background-color: rgba(var(--bg-color-rgb, 255, 255, 255), 0.9);
+  background-color: rgba(var(--bottom-actions-bg-rgb), 0.9);
 }
 
 .actions-container {
@@ -157,7 +157,7 @@ const onMenuSelect = (action: string, playlist: Playlist) => {
   background: transparent;
   border: none;
   font-size: 12px;
-  color: var(--text-color, #333);
+  color: var(--text-color);
   cursor: pointer;
   transition: opacity 0.2s;
   padding: 8px;
@@ -167,7 +167,7 @@ const onMenuSelect = (action: string, playlist: Playlist) => {
   }
 
   &.danger {
-    color: #ff4444;
+    color: var(--danger-color);
   }
 }
 
@@ -181,23 +181,5 @@ const onMenuSelect = (action: string, playlist: Playlist) => {
 .slide-up-leave-to {
   transform: translateY(100%);
   opacity: 0;
-}
-
-.dark .bottom-actions {
-  background: var(--bg-color, #1e1e1e);
-  background-color: rgba(var(--bg-color-rgb, 30, 30, 35), 0.9);
-  border-top-color: rgba(255, 255, 255, 0.1);
-}
-
-.dark .action-btn {
-  color: var(--text-color, #e0e0e0);
-}
-
-.dark .action-btn.danger {
-  color: #ff6b6b;
-}
-
-.dark .action-btn:hover {
-  opacity: 0.8;
 }
 </style>

@@ -62,14 +62,14 @@ onMounted(() => {
     height: 4px;
   }
   &::-webkit-scrollbar-track {
-    background: rgba(0, 0, 0, 0.05);
+    background: var(--scrollbar-track);
     border-radius: 4px;
   }
   &::-webkit-scrollbar-thumb {
-    background: rgba(0, 0, 0, 0.2);
+    background: var(--scrollbar-thumb);
     border-radius: 4px;
     &:hover {
-      background: rgba(0, 0, 0, 0.3);
+      background: var(--scrollbar-thumb-hover);
     }
   }
 }
@@ -80,33 +80,29 @@ onMounted(() => {
   align-items: center;
   gap: 8px;
   padding: 8px 20px;
-  background-color: var(--bg-card, #ffffff);
+  background-color: var(--bg-card);
   border-radius: 40px;
   font-size: 14px;
   font-weight: 500;
-  color: var(--text-color, #333);
+  color: var(--text-color);
   cursor: pointer;
   transition: all 0.2s ease;
   user-select: none;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
-  border: 1px solid rgba(0, 0, 0, 0.04);
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border-light);
 
   &:hover:not(.disabled) {
-    background-color: var(--bg-card-hover, #f5f5f5);
+    background-color: var(--bg-card-hover);
     transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.06);
-    border-color: rgba(0, 0, 0, 0.08);
+    box-shadow: var(--shadow-md);
+    border-color: var(--border-light-hover);
   }
 
   &.selected {
-    background: linear-gradient(
-      135deg,
-      var(--primary-color, #007aff),
-      var(--primary-color-dark, #005bbf)
-    );
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-color-dark));
     color: white;
     border: none;
-    box-shadow: 0 4px 10px rgba(179, 213, 251, 0.3);
+    box-shadow: var(--selected-shadow);
     .item-icon {
       color: white;
     }
@@ -134,35 +130,5 @@ onMounted(() => {
 
 .item-label {
   white-space: nowrap;
-}
-
-.dark {
-  .horizontal-select {
-    &::-webkit-scrollbar-track {
-      background: rgba(255, 255, 255, 0.05);
-    }
-    &::-webkit-scrollbar-thumb {
-      background: rgba(255, 255, 255, 0.2);
-      &:hover {
-        background: rgba(255, 255, 255, 0.3);
-      }
-    }
-  }
-  .select-item {
-    background-color: var(--bg-card, #1e1e1e);
-    border-color: rgba(255, 255, 255, 0.05);
-    &:hover:not(.disabled) {
-      background-color: var(--bg-card-hover, #2c2c2c);
-      border-color: rgba(255, 255, 255, 0.1);
-    }
-    &.selected {
-      background: linear-gradient(
-        135deg,
-        var(--primary-color, #0a84ff),
-        var(--primary-color-dark, #0055b3)
-      );
-      box-shadow: 0 4px 12px rgba(201, 207, 212, 0.4);
-    }
-  }
 }
 </style>

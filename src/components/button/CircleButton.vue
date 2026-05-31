@@ -50,14 +50,14 @@ const iconSize = typeof props.size === 'number' ? props.size * 0.55 : '24px'
   transition: all 0.2s ease;
   outline: none;
   padding: 0;
-  background-color: var(--bg-color, #e0e0e0);
-  color: var(--text-color, #333);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  box-shadow: var(--shadow-sm);
 
   &:hover:not(:disabled) {
     transform: scale(1.05);
     opacity: 0.9;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    box-shadow: var(--shadow-md);
   }
 
   &:active:not(:disabled) {

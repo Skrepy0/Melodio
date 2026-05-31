@@ -49,14 +49,14 @@ defineExpose({ show })
   align-items: center;
   gap: 8px;
   padding: 10px 20px;
-  background: rgba(0, 0, 0, 0.8);
+  background: var(--toast-bg, rgba(0, 0, 0, 0.8));
   backdrop-filter: blur(10px);
-  color: white;
+  color: var(--toast-text, #ffffff);
   border-radius: 40px;
   font-size: 14px;
   z-index: 9999;
   white-space: nowrap;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--toast-shadow, 0 4px 12px rgba(0, 0, 0, 0.15));
 }
 
 .toast-icon {
@@ -65,16 +65,16 @@ defineExpose({ show })
 }
 
 .success {
-  background: rgba(46, 125, 50, 0.9);
+  background: var(--success-bg, rgba(46, 125, 50, 0.9));
 }
 .error {
-  background: rgba(211, 47, 47, 0.9);
+  background: var(--error-bg, rgba(211, 47, 47, 0.9));
 }
 .warning {
-  background: rgba(237, 108, 2, 0.9);
+  background: var(--warning-bg, rgba(237, 108, 2, 0.9));
 }
 .info {
-  background: rgba(25, 118, 210, 0.9);
+  background: var(--info-bg, rgba(25, 118, 210, 0.9));
 }
 
 .fade-enter-active,

@@ -138,14 +138,13 @@ const playSong = async (song: Song) => {
   background-color: var(--bg-color);
 }
 
-/* 自定义头部 */
 .song-list-header {
   display: flex;
   align-items: center;
   height: 60px;
   padding: 0 16px;
   background-color: var(--bg-header);
-  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  border-bottom: 1px solid var(--header-border-bottom);
   gap: 16px;
   flex-shrink: 0;
 }
@@ -160,7 +159,7 @@ const playSong = async (song: Song) => {
   border-radius: 50%;
   transition: background 0.2s;
   &:hover {
-    background-color: rgba(0, 0, 0, 0.05);
+    background-color: var(--header-back-hover);
   }
 }
 
@@ -174,14 +173,12 @@ const playSong = async (song: Song) => {
   text-overflow: ellipsis;
 }
 
-/* 内容区域 */
 .content-body {
   flex: 1;
   overflow-y: auto;
-  padding-bottom: 80px; /* 为底部播放栏预留空间 */
+  padding-bottom: 80px;
 }
 
-/* 加载 & 空状态 */
 .loading-state,
 .empty-state {
   display: flex;
@@ -204,14 +201,5 @@ const playSong = async (song: Song) => {
   to {
     transform: rotate(360deg);
   }
-}
-
-/* 暗色模式适配 */
-.dark .song-list-header {
-  border-bottom-color: rgba(255, 255, 255, 0.1);
-}
-.dark .loading-state,
-.dark .empty-state {
-  color: rgba(255, 255, 255, 0.6);
 }
 </style>

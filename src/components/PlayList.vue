@@ -193,12 +193,12 @@ const handleSongClick = (song: Song) => {
   bottom: 0;
   left: 0;
   right: 0;
-  background: var(--bg-color, #ffffff);
-  border-top: 1px solid rgba(0, 0, 0, 0.1);
-  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+  background: var(--bottom-actions-bg, #ffffff);
+  border-top: 1px solid var(--bottom-actions-border, rgba(0, 0, 0, 0.1));
+  box-shadow: 0 -2px 10px var(--bottom-actions-shadow, rgba(0, 0, 0, 0.1));
   z-index: 200;
   backdrop-filter: blur(10px);
-  background-color: rgba(var(--bg-color-rgb, 255, 255, 255), 0.9);
+  background-color: rgba(var(--bottom-actions-bg-rgb, 255, 255, 255), 0.9);
 }
 
 .actions-container {
@@ -217,7 +217,7 @@ const handleSongClick = (song: Song) => {
   background: transparent;
   border: none;
   font-size: 12px;
-  color: var(--text-color, #333);
+  color: var(--text-color);
   cursor: pointer;
   transition: opacity 0.2s;
   padding: 8px;
@@ -227,7 +227,7 @@ const handleSongClick = (song: Song) => {
   }
 
   &.danger {
-    color: #ff4444;
+    color: var(--danger-color, #ff4444);
   }
 }
 
@@ -242,18 +242,20 @@ const handleSongClick = (song: Song) => {
   transform: translateY(100%);
   opacity: 0;
 }
+
+// 暗色模式专用（全局 .dark 类下覆盖）
 .dark .bottom-actions {
-  background: var(--bg-color, #1e1e1e);
-  background-color: rgba(var(--bg-color-rgb, 30, 30, 35), 0.9);
-  border-top-color: rgba(255, 255, 255, 0.1);
+  background: var(--bottom-actions-bg);
+  background-color: rgba(var(--bottom-actions-bg-rgb, 30, 30, 35), 0.9);
+  border-top-color: var(--bottom-actions-border);
 }
 
 .dark .action-btn {
-  color: var(--text-color, #e0e0e0);
+  color: var(--text-color);
 }
 
 .dark .action-btn.danger {
-  color: #ff6b6b;
+  color: var(--danger-color-hover, #ff6b6b);
 }
 
 .dark .action-btn:hover {

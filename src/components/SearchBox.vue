@@ -163,11 +163,11 @@ defineExpose({
   align-items: center;
   gap: 8px;
   background-color: var(--bg-color);
-  border: 1px solid rgba(0, 0, 0, 0.1);
+  border: 1px solid var(--input-border);
   transition: all 0.3s ease;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-sm);
   &:focus-within {
-    box-shadow: 0 0 0 2px rgba(var(--text-color-rgb), 0.2);
+    box-shadow: 0 0 0 2px rgba(var(--text-color-rgb, 26, 28, 30), 0.2);
     border-color: transparent;
   }
 }

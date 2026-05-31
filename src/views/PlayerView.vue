@@ -91,7 +91,10 @@
           :key="song.id"
           class="queue-item"
           :data-index="idx"
-          :class="{ 'drag-over': dragOverIndex === idx }"
+          :class="{
+            'drag-over': dragOverIndex === idx,
+            'past-song': getRelativeIndex(idx).startsWith('-'),
+          }"
           @click="playSong(song)"
         >
           <div class="drag-handle" @pointerdown="startDrag($event, idx)" style="touch-action: none">
@@ -573,13 +576,13 @@ defineExpose({ queue: localQueue, currentSong, playMode, togglePlay, prevSong, n
   .progress-bar {
     position: relative;
     height: 4px;
-    background: rgba(0, 0, 0, 0.2);
+    background: var(--progress-bar);
     border-radius: 2px;
   }
   .progress-fill {
     position: absolute;
     height: 100%;
-    background: var(--primary-color, #007aff);
+    background: var(--primary-color);
     border-radius: 2px;
   }
   .progress-handle {
@@ -587,7 +590,7 @@ defineExpose({ queue: localQueue, currentSong, playMode, togglePlay, prevSong, n
     top: 50%;
     width: 12px;
     height: 12px;
-    background: var(--primary-color, #007aff);
+    background: var(--primary-color);
     border-radius: 50%;
     transform: translate(-50%, -50%);
     opacity: 0;
@@ -649,7 +652,7 @@ defineExpose({ queue: localQueue, currentSong, playMode, togglePlay, prevSong, n
   background: none;
   border: none;
   font-size: 12px;
-  color: var(--danger-color, #ff4d4f);
+  color: var(--danger-color);
   cursor: pointer;
   padding: 4px 8px;
   border-radius: 4px;
@@ -665,7 +668,14 @@ defineExpose({ queue: localQueue, currentSong, playMode, togglePlay, prevSong, n
   overflow-y: auto;
   padding: 8px 0;
 }
-
+.queue-item.past-song {
+  background: var(--bg-card-dimmed, rgba(0,0,0,0.02));
+  opacity: 0.7;
+  .queue-index,
+  .queue-song-name {
+    color: var(--text-disabled, #aaa);
+  }
+}
 .queue-item {
   display: flex;
   align-items: center;
@@ -678,15 +688,15 @@ defineExpose({ queue: localQueue, currentSong, playMode, togglePlay, prevSong, n
   transition: background 0.2s;
 
   &:hover {
-    background: var(--bg-card-hover, rgba(0, 0, 0, 0.02));
+    background: var(--bg-card-hover);
   }
 
   &.dragging-source {
     opacity: 0.5;
-    background: var(--primary-color-light, rgba(0, 122, 255, 0.1));
+    background: var(--primary-color-light);
   }
   &.drag-over {
-    border-top: 2px solid var(--primary-color, #007aff);
+    border-top: 2px solid var(--primary-color);
   }
 
   .drag-handle {
@@ -725,18 +735,6 @@ defineExpose({ queue: localQueue, currentSong, playMode, togglePlay, prevSong, n
       overflow: hidden;
       text-overflow: ellipsis;
     }
-  }
-}
-
-.dark {
-  .queue-item {
-    background: var(--bg-card, #1e1e1e);
-    &:hover {
-      background: var(--bg-card-hover, #2c2c2c);
-    }
-  }
-  .progress-bar {
-    background: rgba(255, 255, 255, 0.2);
   }
 }
 </style>

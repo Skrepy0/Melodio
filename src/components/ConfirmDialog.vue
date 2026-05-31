@@ -70,35 +70,40 @@ defineExpose({ show })
   z-index: 10000;
   backdrop-filter: blur(4px);
 }
+
 .confirm-container {
   width: 280px;
-  background: var(--bg-color, #fff);
+  background: var(--bg-color);
   border-radius: 16px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--shadow-md);
   overflow: hidden;
   animation: scaleIn 0.2s ease;
 }
+
 .confirm-header {
   padding: 16px 16px 0;
+  h3 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-color);
+  }
 }
-.confirm-header h3 {
-  margin: 0;
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--text-color, #333);
-}
+
 .confirm-body {
   padding: 16px;
+  p {
+    margin: 0;
+    font-size: 14px;
+    color: var(--text-secondary);
+  }
 }
-.confirm-body p {
-  margin: 0;
-  font-size: 14px;
-  color: var(--text-secondary, #666);
-}
+
 .confirm-footer {
   display: flex;
-  border-top: 1px solid rgba(0, 0, 0, 0.05);
+  border-top: 1px solid var(--setting-border);
 }
+
 .confirm-btn {
   flex: 1;
   padding: 12px;
@@ -108,19 +113,22 @@ defineExpose({ show })
   font-weight: 500;
   cursor: pointer;
   transition: background 0.2s;
+
+  &.cancel {
+    color: var(--text-secondary);
+    &:hover {
+      background: var(--header-back-hover);
+    }
+  }
+
+  &.confirm {
+    color: var(--primary-color);
+    &:hover {
+      background: rgba(var(--primary-color-rgb), 0.05);
+    }
+  }
 }
-.confirm-btn.cancel {
-  color: var(--text-secondary, #666);
-}
-.confirm-btn.cancel:hover {
-  background: rgba(0, 0, 0, 0.05);
-}
-.confirm-btn.confirm {
-  color: var(--primary-color, #007aff);
-}
-.confirm-btn.confirm:hover {
-  background: rgba(0, 122, 255, 0.05);
-}
+
 @keyframes scaleIn {
   from {
     opacity: 0;
@@ -131,6 +139,7 @@ defineExpose({ show })
     transform: scale(1);
   }
 }
+
 .fade-enter-active,
 .fade-leave-active {
   transition: opacity 0.2s;

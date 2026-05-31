@@ -212,10 +212,10 @@ watch(showDropdown, (val) => {
   position: fixed;
   z-index: 2000;
   min-width: 180px;
-  background-color: var(--bg-color, #fff);
-  border: 1px solid rgba(0, 0, 0, 0.1);
+  background-color: var(--bg-color);
+  border: 1px solid var(--dropdown-border, rgba(0, 0, 0, 0.1));
   border-radius: 12px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  box-shadow: var(--dropdown-shadow, 0 4px 16px rgba(0, 0, 0, 0.12));
   overflow-y: auto;
   max-height: v-bind(maxHeight);
 }
@@ -233,10 +233,10 @@ watch(showDropdown, (val) => {
   padding: 10px 16px;
   cursor: pointer;
   transition: background 0.2s;
-  color: var(--text-color, #333);
+  color: var(--text-color);
 
   &:hover:not(.disabled) {
-    background-color: rgba(0, 0, 0, 0.05);
+    background-color: var(--header-back-hover);
   }
 
   &.disabled {
@@ -247,7 +247,7 @@ watch(showDropdown, (val) => {
 
 .item-icon {
   flex-shrink: 0;
-  color: var(--text-secondary, #666);
+  color: var(--text-secondary);
 }
 
 .item-description {
