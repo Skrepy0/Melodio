@@ -12,6 +12,7 @@
         @toggle-select="toggleSelect(song.id)"
         @click="handleSongClick"
         @update:dropdown-open="(open) => handleDropdownToggle(song.id, open)"
+        :on-delete="handleDeleteSong"
       />
     </div>
 
@@ -72,6 +73,7 @@ const props = defineProps<Props>()
 const emit = defineEmits<{
   (e: 'batch-delete', songIds: string[]): void
   (e: 'song-click', song: Song): void
+  (e: 'delete-song', song: Song): void
 }>()
 
 const isSelectMode = ref(false)
@@ -172,7 +174,9 @@ const batchDelete = () => {
   emit('batch-delete', Array.from(selectedIds.value))
   exitSelectMode()
 }
-
+const handleDeleteSong = (song: Song) => {
+  emit('delete-song', song)
+}
 const exitSelectMode = () => {
   isSelectMode.value = false
   selectedIds.value.clear()

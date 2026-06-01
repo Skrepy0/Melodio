@@ -79,17 +79,17 @@
 
     <div class="queue-container">
       <div class="queue-header">
-        <span>{{ $t('player.queueHeader', { count: queue.length }) }}</span>
+        <span>{{ $t('player.queueHeader', { count: localQueue.length }) }}</span>
         <div class="queue-actions">
           <span class="drag-hint">{{ $t('player.dragHint') }}</span>
-          <button class="clear-queue-btn" @click="clearQueue" v-if="queue.length > 0">
+          <button class="clear-queue-btn" @click="clearQueue" v-if="localQueue.length > 0">
             {{ $t('player.clearQueue') }}
           </button>
         </div>
       </div>
       <div class="queue-list" ref="queueListRef" @scroll="handleScroll">
         <div
-          v-for="(song, idx) in queue"
+          v-for="(song, idx) in localQueue"
           :key="song.id"
           class="queue-item"
           :data-index="idx"
@@ -128,13 +128,12 @@
 
 <script setup lang="ts">
 defineOptions({ name: 'PlayerView' })
-import { ref, computed, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { Icon } from '@iconify/vue'
 import CircleButton from '@/components/button/CircleButton.vue'
 import DropdownButton from '@/components/button/DropdownButton.vue'
 import { type Song, type DropdownItem, PlayMode } from '@/utils/interface'
 import { useAppStore } from '@/stores/app'
-import { MediaSession } from '@pejota14/capacitor-media-session'
 import toast from '@/utils/createToast'
 import { showConfirm } from '@/utils/createConfirm'
 import { audio } from '@/utils/createAudio'
@@ -143,158 +142,77 @@ import { useI18n } from 'vue-i18n'
 const { t } = useI18n()
 const appStore = useAppStore()
 
-const playMode = ref<PlayMode>(appStore.getPlayMode())
-const playModeIcon = computed(() => {
-  switch (playMode.value) {
-    case 'sequential':
-      return 'mdi:repeat'
-    case 'repeatOne':
-      return 'mdi:repeat-once'
-    default:
-      return 'mdi:repeat'
-  }
-})
-const playModeText = computed(() => {
-  return playMode.value === 'sequential'
-    ? t('player.playMode.sequential')
-    : t('player.playMode.repeatOne')
-})
-
-const queue = computed(() => appStore.getPlayQueue())
-const currentSong = computed(() => appStore.currentSong)
 const isPlaying = computed(() => appStore.getPlayData().isPlaying)
 const mockCurrentTime = computed(() => appStore.getPlayData().mockCurrentTime)
-const mockDuration = computed(() => currentSong.value?.duration / 1000 || 0)
-const progressPercent = computed(() => (mockCurrentTime.value / mockDuration.value) * 100 || 0)
+const mockDuration = computed(() =>
+  appStore.currentSong?.duration ? appStore.currentSong.duration / 1000 : 0
+)
+const progressPercent = computed(() =>
+  mockDuration.value > 0 ? (mockCurrentTime.value / mockDuration.value) * 100 : 0
+)
+
+const playMode = ref<PlayMode>(appStore.getPlayMode())
+const playModeIcon = computed(() =>
+  playMode.value === 'repeatOne' ? 'mdi:repeat-once' : 'mdi:repeat'
+)
+const playModeText = computed(() =>
+  playMode.value === 'sequential' ? t('player.playMode.sequential') : t('player.playMode.repeatOne')
+)
+
 const localQueue = ref<Song[]>(appStore.getPlayQueue())
 watch(
-  queue,
+  () => appStore.getPlayQueue(),
   (newQueue) => {
-    localQueue.value = newQueue
+    localQueue.value = [...newQueue]
   },
-  { immediate: true }
+  { deep: true }
 )
-audio.addEventListener('timeupdate', () => {
-  if (isDraggingProgress) return
-  appStore.setMockCurrentTime(audio.currentTime)
+
+const currentSong = computed(() => appStore.currentSong)
+
+let timeUpdateHandler: (() => void) | null = null
+
+onMounted(() => {
+  timeUpdateHandler = () => {
+    if (!isDraggingProgress) {
+      appStore.setMockCurrentTime(audio.currentTime)
+    }
+  }
+  audio.addEventListener('timeupdate', timeUpdateHandler)
 })
 
-// 下拉菜单选项（动态翻译）
-const menuOptions = computed<DropdownItem[]>(() => [
-  { icon: 'mdi:play', description: t('player.menu.play'), value: 'play' },
-  { icon: 'mdi:heart-outline', description: t('player.menu.like'), value: 'like' },
-  { icon: 'mdi:delete', description: t('player.menu.remove'), value: 'remove' },
-])
-
-const playSong = async (song: Song) => {
-  const targetIdx = localQueue.value.findIndex((s) => s.id === song.id)
-  if (targetIdx === -1) return
-  const currentIdx = appStore.getPlayData().currentIndex
-  if (targetIdx === currentIdx) {
-    if (!isPlaying.value) {
-      appStore.togglePlay()
-    }
-    return
+onUnmounted(() => {
+  if (timeUpdateHandler) {
+    audio.removeEventListener('timeupdate', timeUpdateHandler)
   }
-  appStore.setIsSwitchingSong(true)
-  appStore.setCurrentIndex(targetIdx)
-  appStore.setIsPlaying(true)
-  if (isPlaying.value) {
-    togglePlay()
-  } else {
-    togglePlay()
-    togglePlay()
-  }
-  appStore.setMockCurrentTime(0)
-  await appStore.loadCurrentSong()
-  setTimeout(() => {
-    appStore.setIsSwitchingSong(false)
-  }, 100)
-  setTimeout(() => {
-    togglePlay()
-  }, 500)
-}
-
-const registerMediaSessionHandlers = () => {
-  MediaSession.setActionHandler({ action: 'play' }, () => {
-    console.log('[MediaSession] play')
-    appStore.togglePlay()
-  })
-  MediaSession.setActionHandler({ action: 'pause' }, () => {
-    console.log('[MediaSession] pause')
-    appStore.togglePlay()
-  })
-  MediaSession.setActionHandler({ action: 'nexttrack' }, () => {
-    console.log('[MediaSession] next')
-    appStore.nextSong()
-  })
-  MediaSession.setActionHandler({ action: 'previoustrack' }, () => {
-    console.log('[MediaSession] previous')
-    appStore.prevSong()
-  })
-  MediaSession.setActionHandler({ action: 'seekto' }, (details: any) => {
-    console.log('[MediaSession] seekto', details)
-    if (details && typeof details.seekTime === 'number') {
-      audio.currentTime = details.seekTime
-    }
-  })
-}
-
-registerMediaSessionHandlers()
-audio.addEventListener('play', () => {
-  MediaSession.setPlaybackState({ playbackState: 'playing' })
-})
-audio.addEventListener('pause', () => {
-  MediaSession.setPlaybackState({ playbackState: 'paused' })
 })
 
 const togglePlay = () => appStore.togglePlay()
 const togglePlayMode = () => {
-  if (playMode.value === 'sequential') {
-    playMode.value = 'repeatOne'
-  } else {
-    playMode.value = 'sequential'
-  }
-  appStore.setPlayMode(playMode.value)
+  const next: PlayMode = playMode.value === 'sequential' ? 'repeatOne' : 'sequential'
+  playMode.value = next
+  appStore.setPlayMode(next)
 }
-const prevSong = () => {
-  appStore.prevSong()
-}
-const nextSong = () => {
-  appStore.nextSong()
-}
+const prevSong = () => appStore.prevSong()
+const nextSong = () => appStore.nextSong()
 
-const clearQueue = async () => {
-  const result = await showConfirm({
-    title: t('player.clearQueueConfirm.title'),
-    message: t('player.clearQueueConfirm.message'),
-    confirmText: t('player.clearQueueConfirm.confirm'),
-    cancelText: t('player.clearQueueConfirm.cancel'),
+const playSong = async (song: Song) => {
+  const targetIdx = localQueue.value.findIndex((s) => s.id === song.id)
+  if (targetIdx === -1) return
+
+  if (targetIdx === appStore.getPlayData().currentIndex) {
+    appStore.togglePlay()
+    return
+  }
+
+  appStore.setIsSwitchingSong(true)
+  await audio.playIndex(targetIdx).catch((e) => {
+    console.error('播放失败', e)
+    toast.error(t('player.toast.playFailed'))
   })
-  if (result) {
-    appStore.setPlayQueue([])
-    audio.pause()
-    appStore.setIsPlaying(false)
-    appStore.setCurrentIndex(0)
-    appStore.setMockCurrentTime(0)
-    openDropdownId.value = null
-    toast.success(t('player.toast.queueCleared'))
-  }
-}
-
-const shuffleQueue = () => {
-  const cur = appStore.getPlayData().currentIndex
-  const queueLength = localQueue.value.length
-  if (queueLength <= 1 || cur + 1 >= queueLength) return
-  const head = localQueue.value.slice(0, cur + 1)
-  const tail = localQueue.value.slice(cur + 1)
-  for (let i = tail.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1))
-    ;[tail[i], tail[j]] = [tail[j], tail[i]]
-  }
-  const newQueue = [...head, ...tail]
-  localQueue.value = newQueue
-  appStore.setPlayQueue(newQueue)
+  appStore.setIsPlaying(true)
+  appStore.setMockCurrentTime(0)
+  setTimeout(() => appStore.setIsSwitchingSong(false), 200)
 }
 
 const progressBarRef = ref<HTMLElement | null>(null)
@@ -307,8 +225,7 @@ const updateProgressByEvent = (e: MouseEvent | TouchEvent) => {
   let clickX = clientX - rect.left
   clickX = Math.max(0, Math.min(clickX, rect.width))
   const percent = clickX / rect.width
-  let newTime = percent * mockDuration.value
-  newTime = Math.max(0, Math.min(newTime, mockDuration.value))
+  const newTime = Math.min(percent * mockDuration.value, mockDuration.value)
   appStore.setMockCurrentTime(newTime)
 }
 
@@ -331,9 +248,9 @@ const onDragProgress = (e: MouseEvent | TouchEvent) => {
 const stopDragProgress = async () => {
   if (!isDraggingProgress) return
   isDraggingProgress = false
-  const targetTime = Math.max(
-    0,
-    Math.min(appStore.getPlayData().mockCurrentTime, mockDuration.value)
+  const targetTime = Math.min(
+    Math.max(appStore.getPlayData().mockCurrentTime, 0),
+    mockDuration.value
   )
   appStore.setMockCurrentTime(targetTime)
   await audio.seek(targetTime)
@@ -345,21 +262,56 @@ const stopDragProgress = async () => {
 
 const mockSeek = async (e: MouseEvent) => {
   updateProgressByEvent(e)
-  const targetTime = Math.max(
-    0,
-    Math.min(appStore.getPlayData().mockCurrentTime, mockDuration.value)
+  const targetTime = Math.min(
+    Math.max(appStore.getPlayData().mockCurrentTime, 0),
+    mockDuration.value
   )
   await audio.seek(targetTime)
 }
 
+const clearQueue = async () => {
+  const result = await showConfirm({
+    title: t('player.clearQueueConfirm.title'),
+    message: t('player.clearQueueConfirm.message'),
+    confirmText: t('player.clearQueueConfirm.confirm'),
+    cancelText: t('player.clearQueueConfirm.cancel'),
+  })
+  if (result) {
+    appStore.setPlayQueue([])
+    audio.pause()
+    appStore.setIsPlaying(false)
+    appStore.setCurrentIndex(0)
+    appStore.setMockCurrentTime(0)
+    openDropdownId.value = null
+    toast.success(t('player.toast.queueCleared'))
+  }
+}
+
+const shuffleQueue = () => {
+  const cur = appStore.getPlayData().currentIndex
+  if (localQueue.value.length <= 1 || cur + 1 >= localQueue.value.length) return
+  const head = localQueue.value.slice(0, cur + 1)
+  const tail = localQueue.value.slice(cur + 1)
+  for (let i = tail.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[tail[i], tail[j]] = [tail[j], tail[i]]
+  }
+  const newQueue = [...head, ...tail]
+  localQueue.value = newQueue
+  appStore.setPlayQueue(newQueue)
+}
+
 const openDropdownId = ref<string | number | null>(null)
+const menuOptions = computed<DropdownItem[]>(() => [
+  { icon: 'mdi:play', description: t('player.menu.play'), value: 'play' },
+  { icon: 'mdi:heart-outline', description: t('player.menu.like'), value: 'like' },
+  { icon: 'mdi:delete', description: t('player.menu.remove'), value: 'remove' },
+])
 
 const onMenuItemSelect = (item: DropdownItem, song: Song) => {
-  console.log('[UI] 对歌曲', song.title, '执行', item.value)
   if (item.value === 'play') {
     playSong(song)
   } else if (item.value === 'like') {
-    console.log('[UI] 喜欢歌曲', song.title)
     toast.success(t('player.toast.liked', { songTitle: song.title }))
   } else if (item.value === 'remove') {
     const idx = localQueue.value.findIndex((s) => s.id === song.id)
@@ -367,16 +319,17 @@ const onMenuItemSelect = (item: DropdownItem, song: Song) => {
       const newQueue = [...localQueue.value]
       newQueue.splice(idx, 1)
       appStore.setPlayQueue(newQueue)
-      if (idx < appStore.getPlayData().currentIndex) {
-        appStore.setCurrentIndex(appStore.getPlayData().currentIndex - 1)
-      } else if (idx === appStore.getPlayData().currentIndex) {
+      const curIdx = appStore.getPlayData().currentIndex
+      if (idx < curIdx) {
+        appStore.setCurrentIndex(curIdx - 1)
+      } else if (idx === curIdx) {
         if (newQueue.length === 0) {
           audio.pause()
           appStore.setIsPlaying(false)
           appStore.setMockCurrentTime(0)
+          appStore.setCurrentIndex(0)
         } else {
-          const newIndex = Math.min(appStore.getPlayData().currentIndex, newQueue.length - 1)
-          appStore.setCurrentIndex(newIndex)
+          appStore.setCurrentIndex(Math.min(curIdx, newQueue.length - 1))
         }
       }
     }
@@ -393,9 +346,7 @@ let pointerId: number | null = null
 const startDrag = (e: PointerEvent, idx: number) => {
   if (e.button !== 0 && e.pointerType !== 'touch') return
   e.preventDefault()
-  if (isPlaying.value) {
-    togglePlay()
-  }
+  if (isPlaying.value) togglePlay()
   appStore.setIsSwitchingSong(true)
   dragStartIndex.value = idx
   const target = (e.target as HTMLElement).closest('.queue-item')
@@ -446,20 +397,15 @@ const stopDrag = (e: PointerEvent) => {
   isDraggingQueue = false
   pointerId = null
   togglePlay()
-  setTimeout(() => {
-    togglePlay()
-  }, 100)
-  setTimeout(() => {
-    appStore.setIsSwitchingSong(false)
-  }, 1000)
+  setTimeout(() => togglePlay(), 100)
+  setTimeout(() => appStore.setIsSwitchingSong(false), 1000)
   document.removeEventListener('pointermove', onDragMove)
   document.removeEventListener('pointerup', stopDrag)
 }
 
 const getRelativeIndex = (idx: number) => {
   const diff = idx - appStore.getPlayData().currentIndex
-  if (diff === 0) return '0'
-  return diff > 0 ? `+${diff}` : `${diff}`
+  return diff === 0 ? '0' : diff > 0 ? `+${diff}` : `${diff}`
 }
 
 const queueListRef = ref<HTMLElement | null>(null)
@@ -481,21 +427,11 @@ const handleScroll = () => {
 }
 
 const formatTime = (seconds: number): string => {
-  if (isNaN(seconds)) return '00:00'
+  if (isNaN(seconds) || !isFinite(seconds)) return '00:00'
   const mins = Math.floor(seconds / 60)
   const secs = Math.floor(seconds % 60)
   return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
 }
-
-onUnmounted(() => {
-  if (isDraggingQueue) stopDrag(new PointerEvent('pointerup'))
-  MediaSession.setActionHandler({ action: 'play' }, () => {})
-  MediaSession.setActionHandler({ action: 'pause' }, () => {})
-  MediaSession.setActionHandler({ action: 'nexttrack' }, () => {})
-  MediaSession.setActionHandler({ action: 'previoustrack' }, () => {})
-})
-
-defineExpose({ queue: localQueue, currentSong, playMode, togglePlay, prevSong, nextSong })
 </script>
 
 <style scoped lang="scss">

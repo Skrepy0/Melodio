@@ -9,6 +9,8 @@ import toast from '@/utils/createToast'
 import NowPlayingBar from '@/components/NowPlayingBar.vue'
 import { showConfirm } from '@/utils/createConfirm'
 import { useI18n } from 'vue-i18n'
+import { audio } from '@/utils/createAudio'
+import { getAccessibleUrl } from '@/utils/functions'
 
 const { t } = useI18n()
 const appStore = useAppStore()
@@ -62,38 +64,61 @@ const handleBatchDelete = async (ids: string[]) => {
   saveSongList()
   toast.success(t('songList.toast.removeSuccess', { count: ids.length }))
 }
-
+const removeSongFromPlaylist = async (song: Song) => {
+  const result = await showConfirm({
+    title: t('songList.confirm.title'),
+    message: t('songList.confirm.message', { count: 1 }),
+    confirmText: t('songList.confirm.confirm'),
+    cancelText: t('songList.confirm.cancel'),
+  })
+  if (!result) return
+  const newList = songsList.value.filter((item) => item.id !== song.id)
+  songsList.value = newList
+  saveSongList()
+  toast.success(t('songList.toast.removeSuccess', { count: 1 }))
+}
 const playSong = async (song: Song) => {
   if (songsList.value.length === 0) return
-  let index: number = -1
-  for (let i = 0; i < songsList.value.length; i++) {
-    if (song.id === songsList.value[i].id) {
-      index = i
-      break
-    }
-  }
+
+  const index = songsList.value.findIndex((s) => s.id === song.id)
   if (index === -1) {
     toast.error(t('songList.toast.songNotFound'))
     return
   }
-  appStore.setIsSwitchingSong(true)
+
+  const currentIndex = appStore.getPlayData().currentIndex
+  const currentQueue = appStore.getPlayQueue()
+  if (
+    index === currentIndex &&
+    currentQueue.length > 0 &&
+    currentQueue[currentIndex]?.id === song.id
+  ) {
+    appStore.togglePlay()
+    return
+  }
   appStore.setPlayQueue(songsList.value)
   appStore.setCurrentIndex(index)
   appStore.setMockCurrentTime(0)
-  let flag = false
-  if (appStore.getPlayData().isPlaying) {
-    flag = true
-  }
-  appStore.togglePlay()
-  appStore.setIsPlaying(true)
-  await appStore.loadCurrentSong()
-  setTimeout(() => {
-    appStore.setIsSwitchingSong(false)
-  }, 100)
-  if (flag) {
+  try {
+    await audio.setPlaylist(
+      songsList.value.map((s) => ({
+        url: getAccessibleUrl(s.uri),
+        title: s.title,
+        artist: s.artist || 'Unknown',
+        album: s.album || '',
+        coverUrl: s.albumArtUri || '',
+      }))
+    )
+    await audio.playIndex(index)
+    appStore.setIsPlaying(true)
+  } catch (error) {
+    console.error('播放失败:', error)
+    toast.error(t('common.playFailed'))
+  } finally {
+    appStore.setIsSwitchingSong(true)
     setTimeout(() => {
-      appStore.togglePlay()
-    }, 500)
+      appStore.setIsSwitchingSong(false)
+    }, 100)
   }
 }
 </script>
@@ -118,6 +143,7 @@ const playSong = async (song: Song) => {
           :songs="songsList"
           @batch-delete="handleBatchDelete"
           @song-click="playSong"
+          @delete-song="removeSongFromPlaylist"
         />
 
         <div v-if="!isLoading && songsList.length === 0" class="empty-state">

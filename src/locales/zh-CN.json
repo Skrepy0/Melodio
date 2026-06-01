@@ -73,7 +73,8 @@
       "addToPlaylist": "添加到播放列表",
       "like": "喜欢",
       "playNext": "下一首播放",
-      "addToQueue": "添加到队列"
+      "addToQueue": "添加到队列",
+      "delete": "删除"
     },
     "toast": {
       "addedToQueue": "已添加到队列",

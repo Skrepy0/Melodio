@@ -22,6 +22,7 @@
       v-model:dropdownOpen="dropdownOpen"
       @click="onSongClick"
       @menu-select="onMenuSelect"
+      :on-delete="handleDeleteSong"
     />
   </div>
 </template>
@@ -95,7 +96,9 @@ const onClick = (e: MouseEvent) => {
     return
   }
 }
-
+const handleDeleteSong = (song: Song) => {
+  props.onDelete(song)
+}
 const onSongClick = (song: Song) => {
   if (isLongPressed.value) return
   if (props.selectable) {

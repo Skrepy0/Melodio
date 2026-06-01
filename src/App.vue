@@ -19,9 +19,8 @@ import { useRouter, useRoute } from 'vue-router'
 import { onMounted, ref, watch } from 'vue'
 import { useAppStore } from '@/stores/app'
 import { loadLocaleMessages } from './i18n'
-// import { StatusBar, Style } from '@capacitor/status-bar'
-// import { EdgeToEdge } from '@capawesome/capacitor-android-edge-to-edge-support';
-
+import { Capacitor } from '@capacitor/core'
+console.log('NativeAudio available:', Capacitor.isPluginAvailable('NativeAudio'))
 const appStore = useAppStore()
 appStore.init()
 const router = useRouter()

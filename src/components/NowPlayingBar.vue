@@ -40,12 +40,10 @@
 import { computed, ref } from 'vue'
 import { Icon } from '@iconify/vue'
 import { useAppStore } from '@/stores/app'
-import toast from '@/utils/createToast'
-import { MediaSession } from '@pejota14/capacitor-media-session'
 import { audio } from '@/utils/createAudio'
-import { useI18n } from 'vue-i18n'
+
 const appStore = useAppStore()
-const { t } = useI18n()
+
 const currentSong = computed(() => appStore.currentSong)
 const isPlaying = computed(() => appStore.getPlayData().isPlaying)
 const currentTime = ref(appStore.getPlayData().mockCurrentTime)
@@ -59,48 +57,13 @@ const emit = defineEmits<{
 const onExpand = () => {
   emit('expand')
 }
-const registerMediaSessionHandlers = () => {
-  MediaSession.setActionHandler({ action: 'play' }, () => {
-    console.log('[MediaSession] play')
-    appStore.togglePlay()
-  })
-  MediaSession.setActionHandler({ action: 'pause' }, () => {
-    console.log('[MediaSession] pause')
-    appStore.togglePlay()
-  })
-  MediaSession.setActionHandler({ action: 'nexttrack' }, () => {
-    console.log('[MediaSession] next')
-    appStore.nextSong()
-  })
-  MediaSession.setActionHandler({ action: 'previoustrack' }, () => {
-    console.log('[MediaSession] previous')
-    appStore.prevSong()
-  })
-  MediaSession.setActionHandler({ action: 'seekto' }, (details: any) => {
-    console.log('[MediaSession] seekto', details)
-    if (details && typeof details.seekTime === 'number') {
-      audio.currentTime = details.seekTime
-    }
-  })
-}
 
-registerMediaSessionHandlers()
-audio.addEventListener('play', () => {
-  MediaSession.setPlaybackState({ playbackState: 'playing' })
-})
-audio.addEventListener('pause', () => {
-  MediaSession.setPlaybackState({ playbackState: 'paused' })
-})
 audio.addEventListener('timeupdate', () => {
   currentTime.value = audio.currentTime
 })
 
 const togglePlay = async () => {
-  try {
-    await appStore.togglePlay()
-  } catch (e) {
-    toast.error(t('player.error'))
-  }
+  await appStore.togglePlay()
 }
 
 const formatTime = (seconds: number): string => {

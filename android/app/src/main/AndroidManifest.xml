@@ -40,9 +40,11 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths" />
         </provider>
-        <service 
-            android:name="de.jakobroehrl.capacitor.mediasession.MediaSessionService"
-            android:foregroundServiceType="mediaPlayback"
-            android:exported="true" />
+        <receiver android:name="com.skrepy.melodio.plugins.MediaButtonReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MEDIA_BUTTON" />
+            </intent-filter>
+        </receiver>
     </application>
 </manifest>

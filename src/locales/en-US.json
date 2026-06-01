@@ -73,7 +73,8 @@
       "addToPlaylist": "Add to Playlist",
       "like": "Like",
       "playNext": "Play Next",
-      "addToQueue": "Add to Queue"
+      "addToQueue": "Add to Queue",
+      "delete": "Delete"
     },
     "toast": {
       "addedToQueue": "Added to queue",

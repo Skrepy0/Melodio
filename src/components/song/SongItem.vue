@@ -47,6 +47,7 @@ const appStore = useAppStore()
 interface Props {
   song: Song
   dropdownOpen?: boolean
+  onDelete: (song: Song) => void
 }
 
 const props = defineProps<Props>()
@@ -64,6 +65,7 @@ const menuOptions = computed<DropdownItem[]>(() => [
   { icon: 'mdi:heart-outline', description: t('song.menu.like'), value: 'like' },
   { icon: 'mi:next', description: t('song.menu.playNext'), value: 'next' },
   { icon: 'mdi:queue', description: t('song.menu.addToQueue'), value: 'queue' },
+  { icon: 'mdi:delete', description: t('song.menu.delete'), value: 'delete' },
 ])
 
 const formatDuration = (milliseconds: number): string => {
@@ -105,10 +107,19 @@ const onMenuItemSelect = async (item: DropdownItem) => {
       toast.success(t('song.toast.addedToPlaylist', { name: selected.name }))
     }
   } else if (item.value === 'next') {
-    const queue = appStore.getPlayQueue()
-    queue.splice(appStore.getPlayData().currentIndex + 1, 0, props.song)
+    const queue = [...appStore.getPlayQueue()]
+    const currentIndex = appStore.getPlayData().currentIndex
+    if (queue.length === 0 || currentIndex < 0) {
+      queue.push(props.song)
+    } else {
+      queue.splice(currentIndex + 1, 0, props.song)
+    }
     appStore.setPlayQueue(queue)
     toast.success(t('song.toast.next', { name: props.song.title }))
+  } else if (item.value === 'delete') {
+    if (props.onDelete) {
+      props.onDelete(props.song)
+    }
   }
 }
 </script>

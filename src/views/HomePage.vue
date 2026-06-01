@@ -36,6 +36,7 @@
         :songs="showSongsList"
         @batch-delete="handleBatchDelete"
         @song-click="playSong"
+        @delete-song="removeSongFromPlaylist"
       />
       <PlaylistsList
         v-else-if="selectedCategory === 'play-lists'"
@@ -69,20 +70,30 @@ import { showConfirm } from '@/utils/createConfirm'
 import { usePlaylistSearchEnhanced, useSongSearch } from '@/utils/search'
 import { checkPlayableUrl, getAccessibleUrl, isInList } from '@/utils/functions'
 import { useI18n } from 'vue-i18n'
+import { audio } from '@/utils/createAudio'
 
 const { t } = useI18n()
 const appStore = useAppStore()
 const router = useRouter()
 const keyword = ref('')
 
-const playShownSongs = () => {
+const playShownSongs = async () => {
   if (showSongsList.value.length === 0) return
+
   appStore.setPlayQueue(showSongsList.value)
   appStore.setCurrentIndex(0)
   appStore.setMockCurrentTime(0)
-  if (!appStore.getPlayData().isPlaying) {
-    appStore.togglePlay()
-  }
+  await audio.setPlaylist(
+    showSongsList.value.map((s) => ({
+      url: getAccessibleUrl(s.uri),
+      title: s.title,
+      artist: s.artist || 'Unknown',
+      album: s.album || '',
+      coverUrl: s.albumArtUri || '',
+    }))
+  )
+  await audio.playIndex(0)
+  appStore.setIsPlaying(true)
 }
 
 const operations = computed<DropdownItem[]>(() => [
@@ -191,39 +202,50 @@ const handleBatchDelete = async (ids: string[]) => {
   appStore.setAllSongs(songsList.value)
   toast.success(t('home.toast.deleteSongsSuccess', { count: ids.length }))
 }
-
+const removeSongFromPlaylist = async (song: Song) => {
+  const result = await showConfirm({
+    title: t('songList.confirm.title'),
+    message: t('songList.confirm.message', { count: 1 }),
+    confirmText: t('songList.confirm.confirm'),
+    cancelText: t('songList.confirm.cancel'),
+  })
+  if (!result) return
+  const newList = songsList.value.filter((item) => item.id !== song.id)
+  showSongsList.value = newList
+  songsList.value = newList
+  appStore.setAllSongs(newList)
+  toast.success(t('songList.toast.removeSuccess', { count: 1 }))
+}
 const playSong = async (song: Song) => {
   if (songsList.value.length === 0) return
-  let index: number = -1
-  for (let i = 0; i < songsList.value.length; i++) {
-    if (song.id === songsList.value[i].id) {
-      index = i
-      break
-    }
-  }
+
+  const index = songsList.value.findIndex((s) => s.id === song.id)
   if (index === -1) {
     toast.error(t('home.toast.songNotFound'))
     return
   }
-  appStore.setIsSwitchingSong(true)
+
   appStore.setPlayQueue(songsList.value)
   appStore.setCurrentIndex(index)
   appStore.setMockCurrentTime(0)
-  let flag = false
-  if (appStore.getPlayData().isPlaying) {
-    flag = true
-  }
-  appStore.togglePlay()
+
+  await audio.setPlaylist(
+    songsList.value.map((s) => ({
+      url: getAccessibleUrl(s.uri),
+      title: s.title,
+      artist: s.artist || 'Unknown',
+      album: s.album || '',
+      coverUrl: s.albumArtUri || '',
+    }))
+  )
+
+  await audio.playIndex(index)
   appStore.setIsPlaying(true)
-  await appStore.loadCurrentSong()
+
+  appStore.setIsSwitchingSong(true)
   setTimeout(() => {
     appStore.setIsSwitchingSong(false)
   }, 100)
-  if (flag) {
-    setTimeout(() => {
-      appStore.togglePlay()
-    }, 500)
-  }
 }
 
 const showFullPlayer = () => {

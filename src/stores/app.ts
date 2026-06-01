@@ -1,21 +1,21 @@
 import { Playlist, PlayMode, Song } from '@/utils/interface'
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { audio } from '@/utils/createAudio'
-import { checkPlayableUrl, getAccessibleUrl } from '@/utils/functions'
-import { getNextSongIndex, getPrevSongIndex } from '@/utils/control'
+import { getAccessibleUrl } from '@/utils/functions'
 import toast from '@/utils/createToast'
 import { i18n } from '@/i18n'
+import type { SongItem } from '@/plugins/native-audio/definitions'
+
 const SUPPORTED_LOCALES = ['zh-CN', 'en-US']
 function getSystemLanguage(): string {
   const browserLang = navigator.language
-  if (SUPPORTED_LOCALES.includes(browserLang)) {
-    return browserLang
-  }
+  if (SUPPORTED_LOCALES.includes(browserLang)) return browserLang
   const prefix = browserLang.split('-')[0]
   if (prefix === 'zh') return 'zh-CN'
   return 'en-US'
 }
+
 export const useAppStore = defineStore('app', () => {
   const darkMode = ref(localStorage.getItem('darkMode') === 'true')
   const pinyinSearch = ref(localStorage.getItem('pinyinSearch') === 'true')
@@ -27,7 +27,6 @@ export const useAppStore = defineStore('app', () => {
   function initLanguage() {
     let targetLang: string
     const savedLang = localStorage.getItem('appLanguage')
-
     if (savedLang && SUPPORTED_LOCALES.includes(savedLang)) {
       targetLang = savedLang
     } else {
@@ -35,7 +34,6 @@ export const useAppStore = defineStore('app', () => {
       targetLang = SUPPORTED_LOCALES.includes(systemLang) ? systemLang : 'en-US'
       localStorage.setItem('appLanguage', targetLang)
     }
-
     i18n.global.locale.value = targetLang
     currentLanguage.value = targetLang
     isI18nReady.value = true
@@ -44,7 +42,6 @@ export const useAppStore = defineStore('app', () => {
   function getLanguage() {
     return currentLanguage.value
   }
-
   function setLanguage(lang: string) {
     if (!SUPPORTED_LOCALES.includes(lang)) return
     currentLanguage.value = lang
@@ -59,6 +56,7 @@ export const useAppStore = defineStore('app', () => {
       localStorage.setItem('appLanguage', i18nLocale)
     }
   }
+
   function initAutoDelInvalidSongs() {
     const val = localStorage.getItem('autoDelInvalidSongs')
     if (val && ['true', 'false'].includes(val)) {
@@ -90,6 +88,7 @@ export const useAppStore = defineStore('app', () => {
   function getAutoPauseOnDisconnect() {
     return autoPauseOnDisconnect.value
   }
+
   function setPinyinSearch(val: boolean) {
     pinyinSearch.value = val
     localStorage.setItem('pinyinSearch', String(pinyinSearch.value))
@@ -114,10 +113,10 @@ export const useAppStore = defineStore('app', () => {
   function setCurrentPlayList(val: number) {
     currentPlayList.value = val
   }
-
   function getCurrentPlayList() {
     return currentPlayList.value
   }
+
   function setupAudioBecomingNoisyListener() {
     window.addEventListener('audioBecomingNoisy', () => {
       console.log('[Store] 收到音频输出设备断开事件，自动暂停')
@@ -126,6 +125,7 @@ export const useAppStore = defineStore('app', () => {
       }
     })
   }
+
   const playData = ref({
     currentIndex: 0,
     isPlaying: false,
@@ -137,10 +137,9 @@ export const useAppStore = defineStore('app', () => {
   }
   function initPlayMode() {
     const mode = localStorage.getItem('playMode')
-    if (isValidMode(mode)) {
-      playMode.value = mode
-    }
+    if (isValidMode(mode)) playMode.value = mode
   }
+
   const isSwitchingSong = ref(false)
 
   const likeList = ref<Playlist>({
@@ -152,6 +151,7 @@ export const useAppStore = defineStore('app', () => {
     data: [],
   })
   const songLists = ref<Playlist[]>([])
+
   function setPlayMode(val: 'sequential' | 'repeatOne') {
     playMode.value = val
     localStorage.setItem('playMode', playMode.value)
@@ -159,6 +159,7 @@ export const useAppStore = defineStore('app', () => {
   function getPlayMode() {
     return playMode.value
   }
+
   function addSongList(val: Playlist) {
     songLists.value.push(val)
     saveSongLists()
@@ -181,12 +182,7 @@ export const useAppStore = defineStore('app', () => {
     return songLists.value
   }
   function saveSongLists() {
-    localStorage.setItem(
-      'songLists',
-      JSON.stringify({
-        data: songLists.value,
-      })
-    )
+    localStorage.setItem('songLists', JSON.stringify({ data: songLists.value }))
   }
   function setSongLists(list: Playlist[]) {
     songLists.value = list
@@ -200,9 +196,7 @@ export const useAppStore = defineStore('app', () => {
     const obj = localStorage.getItem('songLists')
     if (obj) {
       const parsed = JSON.parse(obj)
-      if (Array.isArray(parsed.data)) {
-        songLists.value = parsed.data
-      }
+      if (Array.isArray(parsed.data)) songLists.value = parsed.data
     }
   }
 
@@ -218,11 +212,9 @@ export const useAppStore = defineStore('app', () => {
       })
     )
   }
-
   function savePlayQueue() {
     localStorage.setItem('playQueue', JSON.stringify({ data: playQueue.value }))
   }
-
   function saveLikeList() {
     localStorage.setItem(
       'likeList',
@@ -236,7 +228,6 @@ export const useAppStore = defineStore('app', () => {
       })
     )
   }
-
   function saveCurrentPlayListIndex() {
     localStorage.setItem(
       'currentPlayListIndex',
@@ -246,253 +237,103 @@ export const useAppStore = defineStore('app', () => {
 
   const currentSong = computed(() => playQueue.value[playData.value.currentIndex] || null)
 
-  async function loadCurrentSong() {
-    const song = currentSong.value
-    if (!song) return
-    try {
-      setMockCurrentTime(0)
-      audio.setSong(song)
-      const accessibleUrl = getAccessibleUrl(song.uri)
-      if (audio.src !== accessibleUrl) {
-        audio.src = accessibleUrl
-      }
-      if (playData.value.isPlaying) {
-        await audio.play()
-      }
-    } catch (e) {
-      console.error('加载歌曲失败:', e)
-    }
-  }
+  const songsForPlugin = computed<SongItem[]>(() =>
+    playQueue.value.map((s) => ({
+      url: getAccessibleUrl(s.uri),
+      title: s.title,
+      artist: s.artist || 'Unknown',
+      album: s.album || '',
+      coverUrl: s.albumArtUri || '',
+    }))
+  )
 
-  async function nextSong() {
-    if (isSwitchingSong.value) return
-    isSwitchingSong.value = true
-    const queueLen = playQueue.value.length
-    const req = getNextSongIndex(playData.value.currentIndex, queueLen)
-    if (req.meg === 'error') {
-      isSwitchingSong.value = false
-      return
+  watch(
+    playQueue,
+    async () => {
+      await audio.setPlaylist(songsForPlugin.value)
+      if (playData.value.currentIndex >= playQueue.value.length) {
+        playData.value.currentIndex = 0
+        savePlayData()
+      }
+    },
+    { deep: true }
+  )
+  watch(
+    () => audio.paused,
+    (newPaused) => {
+      playData.value.isPlaying = !newPaused
     }
-    playData.value.currentIndex = req.idx
-    await loadCurrentSong()
-    let flag = false
-    if (playData.value.isPlaying) {
-      flag = true
-      togglePlay()
-    }
-    savePlayData()
-    setTimeout(() => {
-      isSwitchingSong.value = false
-    }, 100)
-    if (flag) {
-      setTimeout(() => {
-        togglePlay()
-      }, 350)
-    }
-  }
+  )
 
-  async function prevSong() {
-    if (isSwitchingSong.value) return
-    isSwitchingSong.value = true
-    const queueLen = playQueue.value.length
-    const req = getPrevSongIndex(playData.value.currentIndex, queueLen)
-    if (req.meg === 'error') {
-      isSwitchingSong.value = false
-      return
-    }
-    playData.value.currentIndex = req.idx
-    await loadCurrentSong()
-    let flag = false
-    if (playData.value.isPlaying) {
-      flag = true
-      togglePlay()
-    }
-    savePlayData()
-    setTimeout(() => {
-      isSwitchingSong.value = false
-    }, 100)
-    if (flag) {
-      setTimeout(() => {
-        togglePlay()
-      }, 500)
-    }
+  function setupNativeAudioListeners() {
+    audio.addEventListener('songChanged', (data: { index: number }) => {
+      console.log('[Store] songChanged:', data.index)
+      playData.value.currentIndex = data.index
+      playData.value.isPlaying = true
+      savePlayData()
+    })
+    audio.addEventListener('timeupdate', () => {
+      playData.value.mockCurrentTime = audio.currentTime
+    })
+    audio.addEventListener('error', (data) => {
+      console.error('[NativeAudio] Error', data)
+      toast.error('播放出错')
+    })
   }
 
   async function togglePlay() {
-    let currentSong = playQueue.value[playData.value.currentIndex]
-    if (!currentSong) {
+    if (playQueue.value.length === 0) {
       toast.warning('播放队列为空')
       return
     }
 
-    const url = getAccessibleUrl(currentSong.uri)
-    const isValid = await checkPlayableUrl(url).catch(() => false)
-
-    if (!isValid) {
-      const invalidSongId = currentSong.id
-
-      if (autoDelInvalidSongs.value) {
-        const newLikeData = likeList.value.data.filter((s) => s.id !== invalidSongId)
-        setLikeListData(newLikeData)
-
-        const newSongLists = songLists.value.map((list) => ({
-          ...list,
-          data: list.data.filter((s) => s.id !== invalidSongId),
-        }))
-        setSongLists(newSongLists)
-
-        const newQueue = playQueue.value.filter((s) => s.id !== invalidSongId)
-        setPlayQueue(newQueue)
-
-        if (newQueue.length === 0) {
-          setCurrentIndex(0)
-          setIsPlaying(false)
-          await audio.pause()
-          toast.warning('当前歌曲已失效，队列已清空')
-          return
-        } else {
-          let newIndex = playData.value.currentIndex
-          const removedIdx = playQueue.value.findIndex((s) => s.id === invalidSongId)
-          if (removedIdx <= newIndex && newIndex > 0) newIndex--
-          if (newIndex >= newQueue.length) newIndex = newQueue.length - 1
-          setCurrentIndex(newIndex)
-          currentSong = newQueue[newIndex]
-          toast.warning('歌曲已失效，已自动跳过，正在播放下一首')
-        }
-      } else {
-        const newQueue = playQueue.value.filter((s) => s.id !== invalidSongId)
-        setPlayQueue(newQueue)
-
-        if (newQueue.length === 0) {
-          setCurrentIndex(0)
-          setIsPlaying(false)
-          await audio.pause()
-          toast.warning('当前歌曲已失效，队列已清空')
-          return
-        } else {
-          nextSong()
-          toast.warning('歌曲已失效，已从队列中移除，正在播放下一首')
-          togglePlay()
-          setTimeout(() => {
-            togglePlay()
-          }, 100)
-        }
-      }
+    if (playData.value.currentIndex < 0 || playData.value.currentIndex >= playQueue.value.length) {
+      playData.value.currentIndex = 0
     }
 
-    try {
-      if (playData.value.isPlaying) {
-        await audio.pause()
-        playData.value.isPlaying = false
-      } else {
-        if (audio.src !== url) {
-          await loadCurrentSong()
-        } else {
-          await audio.play()
-        }
+    if (playData.value.isPlaying) {
+      await audio.pause()
+      playData.value.isPlaying = false
+    } else {
+      try {
+        await audio.play()
+        playData.value.isPlaying = true
+      } catch (e) {
+        console.warn('[Store] play() 失败，尝试 playIndex', e)
+        await audio.playIndex(playData.value.currentIndex)
         playData.value.isPlaying = true
       }
-      savePlayData()
-    } catch (err) {
-      console.error('播放控制失败', err)
-      toast.error('播放失败，请检查网络或文件权限')
     }
+    savePlayData()
   }
 
-  let endedListenerRegistered = false
-  function initGlobalPlayerEvents() {
-    if (endedListenerRegistered) return
-    audio.addEventListener('ended', () => {
-      if (!isSwitchingSong.value) {
-        if (playMode.value === 'repeatOne') {
-          togglePlay()
-          setTimeout(() => {
-            togglePlay()
-          }, 100)
-        } else {
-          if (!playData.value.isPlaying) {
-            togglePlay()
-          }
-          nextSong()
-        }
-      }
-    })
-    endedListenerRegistered = true
+  async function nextSong() {
+    if (isSwitchingSong.value || playQueue.value.length === 0) return
+    isSwitchingSong.value = true
+    const nextIndex = (playData.value.currentIndex + 1) % playQueue.value.length
+    console.log('[Store] nextSong: playing index=', nextIndex)
+    await audio.playIndex(nextIndex)
+    playData.value.currentIndex = nextIndex
+    playData.value.isPlaying = true
+    savePlayData()
+    setTimeout(() => {
+      isSwitchingSong.value = false
+    }, 100)
   }
 
-  function loadInitialDarkMode() {
-    const saved = localStorage.getItem('darkMode')
-    if (saved === 'true') {
-      darkMode.value = true
-      document.documentElement.classList.add('dark')
-    } else if (saved === 'false') {
-      darkMode.value = false
-      document.documentElement.classList.remove('dark')
-    } else {
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
-      darkMode.value = prefersDark
-      if (prefersDark) document.documentElement.classList.add('dark')
-    }
-  }
-
-  function initAllSongs() {
-    const obj = localStorage.getItem('allSongs')
-    if (obj) {
-      const parsed = JSON.parse(obj)
-      if (Array.isArray(parsed.data)) {
-        allSongs.value = parsed.data
-      }
-    }
-  }
-
-  function initPlayQueue() {
-    const obj = localStorage.getItem('playQueue')
-    if (obj) {
-      try {
-        playQueue.value = JSON.parse(obj).data || []
-      } catch (e) {
-        console.error(e)
-      }
-    }
-  }
-
-  function initPlayData() {
-    const obj = localStorage.getItem('playData')
-    if (obj) {
-      try {
-        const data = JSON.parse(obj)
-        playData.value.currentIndex = data.currentIndex ?? 0
-        playData.value.isPlaying = false //默认关闭
-        playData.value.mockCurrentTime = data.mockCurrentTime ?? 0
-      } catch (e) {
-        console.error(e)
-      }
-    }
-  }
-
-  function initLikeList() {
-    const obj = localStorage.getItem('likeList')
-    if (obj) {
-      try {
-        const data = JSON.parse(obj)
-        likeList.value = { ...likeList.value, ...data }
-      } catch (e) {
-        console.error(e)
-      }
-    }
-  }
-
-  function initCurrentPlayListIndex() {
-    const obj = localStorage.getItem('currentPlayListIndex')
-    if (obj) {
-      try {
-        currentPlayListIndex.value = JSON.parse(obj).data ?? 0
-      } catch (e) {
-        console.error(e)
-      }
-    } else {
-      currentPlayListIndex.value = 0
-    }
+  async function prevSong() {
+    if (isSwitchingSong.value || playQueue.value.length === 0) return
+    isSwitchingSong.value = true
+    const prevIndex =
+      (playData.value.currentIndex - 1 + playQueue.value.length) % playQueue.value.length
+    console.log('[Store] prevSong: playing index=', prevIndex)
+    await audio.playIndex(prevIndex)
+    playData.value.currentIndex = prevIndex
+    playData.value.isPlaying = true
+    savePlayData()
+    setTimeout(() => {
+      isSwitchingSong.value = false
+    }, 100)
   }
 
   async function init() {
@@ -508,29 +349,25 @@ export const useAppStore = defineStore('app', () => {
       initLikeList()
       initSongLists()
       initPlayMode()
-      const current = currentSong.value
-      initGlobalPlayerEvents()
       setupAudioBecomingNoisyListener()
       initFlag.value = true
-      if (current) {
-        audio.setSong(current)
-        //const time = playData.value.mockCurrentTime
-        const url = getAccessibleUrl(current.uri)
-        if (audio.src !== url) {
-          audio.src = url
-        }
+    }
 
-        // if (time !== 0) {
-        //   setTimeout( () => {
-        //     togglePlay()
-        //     setTimeout(() => {
-        //       togglePlay()
-        //     }, 100)
-        //     setMockCurrentTime(time)
-        //     audio.seek(time)
-        //   }, 500)
-        // }
+    console.log('[Store] init: setting playlist, count=', playQueue.value.length)
+    await audio.setPlaylist(songsForPlugin.value)
+    setupNativeAudioListeners()
+
+    const savedIndex = playData.value.currentIndex
+    if (savedIndex >= 0 && savedIndex < playQueue.value.length) {
+      await audio.playIndex(savedIndex, false)
+      const savedTime = playData.value.mockCurrentTime
+      if (savedTime > 0) {
+        setTimeout(async () => {
+          await audio.seek(savedTime)
+          setMockCurrentTime(savedTime)
+        }, 500)
       }
+      playData.value.isPlaying = false
     }
   }
 
@@ -567,7 +404,6 @@ export const useAppStore = defineStore('app', () => {
 
   function setCurrentIndex(index: number) {
     playData.value.currentIndex = index
-    audio.updateMediaSessionMetadata(playQueue.value[index])
     savePlayData()
   }
   function setIsPlaying(status: boolean) {
@@ -624,15 +460,82 @@ export const useAppStore = defineStore('app', () => {
     return initFlag.value
   }
 
+  function loadInitialDarkMode() {
+    const saved = localStorage.getItem('darkMode')
+    if (saved === 'true') {
+      darkMode.value = true
+      document.documentElement.classList.add('dark')
+    } else if (saved === 'false') {
+      darkMode.value = false
+      document.documentElement.classList.remove('dark')
+    } else {
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+      darkMode.value = prefersDark
+      if (prefersDark) document.documentElement.classList.add('dark')
+    }
+  }
+
+  function initAllSongs() {
+    const obj = localStorage.getItem('allSongs')
+    if (obj) {
+      const parsed = JSON.parse(obj)
+      if (Array.isArray(parsed.data)) allSongs.value = parsed.data
+    }
+  }
+  function initPlayQueue() {
+    const obj = localStorage.getItem('playQueue')
+    if (obj) {
+      try {
+        playQueue.value = JSON.parse(obj).data || []
+      } catch (e) {
+        console.error(e)
+      }
+    }
+  }
+  function initPlayData() {
+    const obj = localStorage.getItem('playData')
+    if (obj) {
+      try {
+        const data = JSON.parse(obj)
+        playData.value.currentIndex = data.currentIndex ?? 0
+        playData.value.isPlaying = false // 默认不自动播放
+        playData.value.mockCurrentTime = data.mockCurrentTime ?? 0
+      } catch (e) {
+        console.error(e)
+      }
+    }
+  }
+  function initLikeList() {
+    const obj = localStorage.getItem('likeList')
+    if (obj) {
+      try {
+        likeList.value = { ...likeList.value, ...JSON.parse(obj) }
+      } catch (e) {
+        console.error(e)
+      }
+    }
+  }
+  function initCurrentPlayListIndex() {
+    const obj = localStorage.getItem('currentPlayListIndex')
+    if (obj) {
+      try {
+        currentPlayListIndex.value = JSON.parse(obj).data ?? 0
+      } catch (e) {
+        console.error(e)
+      }
+    } else {
+      currentPlayListIndex.value = 0
+    }
+  }
+  async function loadCurrentSong() {}
+
   return {
     isI18nReady,
     initLanguage,
     setSelectedCategory,
     getSelectedCategory,
-
     setCurrentPlayList,
     getCurrentPlayList,
-
     mergeSongLists,
     setSongLists,
     saveSongLists,
@@ -641,7 +544,6 @@ export const useAppStore = defineStore('app', () => {
     setSongListById,
     setSongListDataById,
     delectSongListById,
-
     getPlayMode,
     setPlayMode,
     playQueue,
@@ -651,13 +553,9 @@ export const useAppStore = defineStore('app', () => {
     nextSong,
     prevSong,
     togglePlay,
-    loadCurrentSong,
-    initGlobalPlayerEvents,
     init,
-    // 切换锁
     setIsSwitchingSong,
     getIsSwitchingSong,
-    // 设置
     darkMode,
     toggleDarkMode,
     loadInitialDarkMode,
@@ -670,33 +568,28 @@ export const useAppStore = defineStore('app', () => {
     syncLanguageFromI18n,
     setLanguage,
     getLanguage,
-    // 歌曲库
     allSongs,
     setAllSongs,
     getAllSongs,
-    // 播放队列操作
     setPlayQueue,
     getPlayQueue,
     addToQueue,
     addListToQueue,
-    // 播放数据操作（兼容旧接口）
     setCurrentIndex,
     setIsPlaying,
     setMockCurrentTime,
     getPlayData,
-    // 喜欢列表
     getLikeList,
     setLikeListData,
     mergeLikeListData,
-    // 播放列表索引
     getCurrentPlayListIndex,
     setCurrentPlayListIndex,
-    // 标志位
     homeFlag,
     setHomeFlag,
     getHomeFlag,
     initFlag,
     setInitFlag,
     getInitFlag,
+    loadCurrentSong,
   }
 })
