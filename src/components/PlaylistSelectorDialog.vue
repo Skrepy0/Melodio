@@ -15,13 +15,28 @@
               @click="selectPlaylist(playlist)"
             >
               <div class="playlist-cover">
-                <img v-if="playlist.coverUrl" :src="playlist.coverUrl" :alt="playlist.name" />
-                <Icon v-else icon="mdi:playlist-music" :width="40" class="default-cover" />
+                <template v-if="playlist.id === 0">
+                  <Icon icon="mdi:heart" :width="40" color="red" />
+                </template>
+                <template v-else>
+                  <img
+                    v-if="getCover(playlist) && getCover(playlist) !== DEFAULT_COVER"
+                    :src="getCover(playlist)"
+                    :alt="playlist.name"
+                  />
+                  <Icon v-else icon="mdi:playlist-music" :width="40" class="default-cover" />
+                </template>
               </div>
               <div class="playlist-info">
-                <div class="playlist-name">{{ playlist.name }}</div>
+                <div class="playlist-name">
+                  {{ playlist.id === 0 ? props.likeListName : playlist.name }}
+                </div>
                 <div class="playlist-desc">
-                  {{ playlist.description || `${playlist.songCount}首歌曲` }}
+                  {{
+                    playlist.id === 0
+                      ? props.likeListDescription
+                      : playlist.description || `${playlist.songCount}首歌曲`
+                  }}
                 </div>
               </div>
             </div>
@@ -33,18 +48,33 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { Icon } from '@iconify/vue'
 import type { Playlist } from '@/utils/interface'
-const props = withDefaults(defineProps<{ title: string }>(), {
-  title: '',
-})
+import { fetchCoverFromWeb, DEFAULT_COVER } from '@/utils/functions'
+
+const props = withDefaults(
+  defineProps<{
+    title: string
+    likeListName: string
+    likeListDescription: string
+  }>(),
+  {
+    title: '',
+    likeListName: '',
+    likeListDescription: '',
+  }
+)
+
 const visible = ref(false)
 let resolvePromise: ((value: Playlist | null) => void) | null = null
 const playlists = ref<Playlist[]>([])
+const coverCache = ref<Record<number, string>>({})
+
 const show = (list: Playlist[]): Promise<Playlist | null> => {
   playlists.value = list
   visible.value = true
+  list.forEach((p) => loadCover(p))
   return new Promise((resolve) => {
     resolvePromise = resolve
   })
@@ -61,6 +91,42 @@ const cancel = () => {
   if (resolvePromise) resolvePromise(null)
   resolvePromise = null
 }
+
+async function loadCover(playlist: Playlist) {
+  if (playlist.id === 0) return
+  const songs = playlist.data ?? []
+  for (const song of songs) {
+    if (song.albumArtUri && song.albumArtUri.trim() !== '') {
+      coverCache.value[playlist.id] = song.albumArtUri
+      return
+    }
+  }
+  if (songs.length > 0) {
+    const firstSong = songs[0]
+    try {
+      const webCover = await fetchCoverFromWeb(firstSong.title, firstSong.artist || '')
+      if (webCover) {
+        coverCache.value[playlist.id] = webCover
+        return
+      }
+    } catch (e) {
+      console.warn('联网获取封面失败', e)
+    }
+  }
+  coverCache.value[playlist.id] = DEFAULT_COVER
+}
+
+function getCover(playlist: Playlist): string {
+  return coverCache.value[playlist.id] || ''
+}
+
+watch(
+  () => playlists.value,
+  (newList) => {
+    newList.forEach((p) => loadCover(p))
+  },
+  { deep: true }
+)
 
 defineExpose({ show })
 </script>

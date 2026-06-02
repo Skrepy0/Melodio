@@ -1,7 +1,12 @@
 <template>
   <div class="song-item" @click="onCardClick">
     <div class="song-cover">
-      <img v-if="song.albumArtUri" :src="song.albumArtUri" :alt="song.title" />
+      <img
+        v-if="coverSrc && coverSrc !== DEFAULT_COVER && !isCoverLoading"
+        :src="coverSrc"
+        :alt="song.title"
+        @error="coverSrc = DEFAULT_COVER"
+      />
       <Icon v-else icon="mdi:music" :width="36" class="default-cover" />
     </div>
 
@@ -13,6 +18,7 @@
     <div class="song-actions">
       <span class="song-duration">{{ formatDuration(song.duration) }}</span>
       <DropdownButton
+        v-if="props.showOperations"
         v-model:visible="dropdownVisible"
         :button-icon="'mdi:dots-vertical'"
         :size="32"
@@ -36,10 +42,11 @@ import { useDropdownControl } from '@/composables/useDropdownControl'
 import type { DropdownItem, Song } from '@/utils/interface'
 import { useAppStore } from '@/stores/app'
 import toast from '@/utils/createToast'
-import { isInList } from '@/utils/functions'
+import { getAccessibleUrl, isInList, fetchCoverFromWeb, DEFAULT_COVER } from '@/utils/functions'
 import { showPlaylistSelector } from '@/utils/createPlaylistSelector'
 import { useI18n } from 'vue-i18n'
-import { computed } from 'vue'
+import { computed, ref, watch, onUnmounted } from 'vue'
+import { audio } from '@/utils/createAudio'
 
 const { t } = useI18n()
 const appStore = useAppStore()
@@ -47,11 +54,13 @@ const appStore = useAppStore()
 interface Props {
   song: Song
   dropdownOpen?: boolean
+  showOperations?: boolean
   onDelete: (song: Song) => void
 }
 
-const props = defineProps<Props>()
-
+const props = withDefaults(defineProps<Props>(), {
+  showOperations: true,
+})
 const emit = defineEmits<{
   (e: 'click', song: Song): void
   (e: 'menuSelect', action: string, song: Song): void
@@ -60,12 +69,49 @@ const emit = defineEmits<{
 
 const { dropdownVisible } = useDropdownControl(props, emit)
 
+const coverSrc = ref<string>('')
+const isCoverLoading = ref(false)
+let abortController: AbortController | null = null
+
+async function resolveCover() {
+  if (
+    (props.song.albumArtUri && props.song.albumArtUri.trim() !== '') ||
+    !appStore.getCanFetchCoverFromWeb()
+  ) {
+    coverSrc.value = props.song.albumArtUri
+    return
+  }
+
+  isCoverLoading.value = true
+  abortController = new AbortController()
+  try {
+    const url = await fetchCoverFromWeb(props.song.title, props.song.artist || '')
+    coverSrc.value = url || DEFAULT_COVER
+  } catch {
+    coverSrc.value = DEFAULT_COVER
+  } finally {
+    isCoverLoading.value = false
+  }
+}
+
+watch(
+  () => props.song,
+  () => resolveCover(),
+  { immediate: true }
+)
+
+onUnmounted(() => {
+  abortController?.abort()
+})
+
 const menuOptions = computed<DropdownItem[]>(() => [
+  { icon: 'mdi:play', description: t('song.menu.play'), value: 'play' },
   { icon: 'mdi:playlist-plus', description: t('song.menu.addToPlaylist'), value: 'addToPlaylist' },
   { icon: 'mdi:heart-outline', description: t('song.menu.like'), value: 'like' },
   { icon: 'mi:next', description: t('song.menu.playNext'), value: 'next' },
   { icon: 'mdi:queue', description: t('song.menu.addToQueue'), value: 'queue' },
   { icon: 'mdi:delete', description: t('song.menu.delete'), value: 'delete' },
+  { icon: 'proicons:cancel', description: t('song.menu.cancel'), value: 'cancel' },
 ])
 
 const formatDuration = (milliseconds: number): string => {
@@ -95,7 +141,9 @@ const onMenuItemSelect = async (item: DropdownItem) => {
   } else if (item.value === 'addToPlaylist') {
     const selected = await showPlaylistSelector(
       [appStore.getLikeList(), ...appStore.getSongLists()],
-      t('playlistSelector.title')
+      t('playlistSelector.title'),
+      t('playList.like.title'),
+      t('playList.like.description')
     )
     if (selected) {
       if (isInList(props.song.id, selected.data)) {
@@ -120,6 +168,45 @@ const onMenuItemSelect = async (item: DropdownItem) => {
     if (props.onDelete) {
       props.onDelete(props.song)
     }
+  } else if (item.value === 'play') {
+    appStore.setIsSwitchingSong(true)
+    const queue = [...appStore.getPlayQueue()]
+    const currentIndex = appStore.getPlayData().currentIndex
+    let targetIndex: number
+
+    if (queue.length === 0 || currentIndex < 0) {
+      queue.push(props.song)
+      targetIndex = queue.length - 1
+    } else {
+      const insertPos = currentIndex + 1
+      queue.splice(insertPos, 0, props.song)
+      targetIndex = insertPos
+    }
+
+    appStore.setPlayQueue(queue)
+    appStore.setCurrentIndex(targetIndex)
+    appStore.setMockCurrentTime(0)
+
+    await audio.setPlaylist(
+      queue.map((s) => ({
+        url: getAccessibleUrl(s.uri),
+        title: s.title,
+        artist: s.artist || 'Unknown',
+        album: s.album || '',
+        coverUrl: s.albumArtUri || '',
+      }))
+    )
+
+    try {
+      await audio.playIndex(targetIndex)
+      appStore.setIsPlaying(true)
+    } catch (e) {
+      toast.error(t('common.playFailed'))
+    }
+
+    setTimeout(() => {
+      appStore.setIsSwitchingSong(false)
+    }, 100)
   }
 }
 </script>

@@ -77,5 +77,7 @@ onMounted(() => {
     'mdi:playlist-music',
     'mdi:checkbox-marked',
     'mdi:checkbox-blank-outline',
+    'ic:twotone-save',
+    'si:heart-duotone',
   ])
 })

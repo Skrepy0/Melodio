@@ -121,4 +121,18 @@ onMounted(() => {
   transform: translateY(0);
   opacity: 1;
 }
+/* 全局处理 */
+body {
+  background-color: var(--bg-color, #1e1e1e); /* 你的深色背景 */
+}
+
+/* 固定顶部元素避让状态栏 */
+.safe-area-top {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+/* 底部元素避让导航栏/Home 指示条 */
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
 </style>

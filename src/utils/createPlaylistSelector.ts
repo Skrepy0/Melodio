@@ -7,7 +7,9 @@ let instance: any = null
 
 export function showPlaylistSelector(
   playlists: Playlist[],
-  head: string
+  head: string,
+  likeListName: string,
+  likeListDescription: string
 ): Promise<Playlist | null> {
   if (container) {
     document.body.removeChild(container)
@@ -20,6 +22,8 @@ export function showPlaylistSelector(
 
   const vnode = createVNode(PlaylistSelectorDialog, {
     title: head,
+    likeListName: likeListName,
+    likeListDescription: likeListDescription,
   })
   render(vnode, container)
   instance = vnode.component

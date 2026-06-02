@@ -13,7 +13,7 @@
     "newPlaylistPrompt": {
       "title": "新建播放列表",
       "message": "请输入播放列表名称",
-      "default": "新建歌单"
+      "default": "新建播放列表"
     },
     "batchDeleteConfirm": {
       "title": "提示",
@@ -70,11 +70,13 @@
   },
   "song": {
     "menu": {
+      "play": "播放",
       "addToPlaylist": "添加到播放列表",
       "like": "喜欢",
       "playNext": "下一首播放",
       "addToQueue": "添加到队列",
-      "delete": "删除"
+      "delete": "删除",
+      "cancel": "取消"
     },
     "toast": {
       "addedToQueue": "已添加到队列",
@@ -89,6 +91,21 @@
     "defaultTitle": "全部歌曲",
     "loading": "加载中…",
     "empty": "暂无歌曲，请添加或扫描",
+    "deleteAllSongs": {
+      "title": "提示",
+      "message": "确定要清空播放列表“{name}”吗？",
+      "result": {
+        "success": "已清空此播放列表",
+        "emptyList": "此播放列表中没有歌曲！"
+      },
+      "confirm": "清空",
+      "cancel": "取消"
+    },
+    "operations": {
+      "sort": "排序",
+      "edit_name": "重命名",
+      "delete_all": "清空播放列表"
+    },
     "confirm": {
       "title": "提示",
       "message": "确定要将这 {count} 首歌移出该播放列表吗？",
@@ -105,7 +122,8 @@
     "songCount": "{count} 首",
     "menu": {
       "edit": "编辑名称",
-      "delete": "删除"
+      "delete": "删除",
+      "cancel": "取消"
     },
     "editPrompt": {
       "title": "修改播放列表名称",
@@ -143,6 +161,10 @@
       "addedToPlaylist": "已添加 {count} 首歌曲到“{name}”",
       "alreadyInLike": "所选歌曲已在喜欢的歌曲中",
       "alreadyInPlaylist": "所选歌曲已在此播放列表中"
+    },
+    "like": {
+      "title": "喜欢",
+      "description": "我喜欢"
     }
   },
   "playlistSelector": {
@@ -168,14 +190,39 @@
     "autoPauseOnDisconnectDesc": "当拔出耳机或断开蓝牙设备时自动暂停播放",
     "autoCleanInvalidSongs": "自动清理无效歌曲",
     "autoCleanInvalidSongsDesc": "自动移除已被移动或删除的歌曲条目",
+    "canFetchCoverFromWeb": "在线获取歌曲封面",
+    "canFetchCoverFromWebDesc": "开启后，系统将自动联网为缺少封面的歌曲补充封面",
+    "languageSelectorHeader": "选择语言",
     "language": "语言",
     "languageDesc": "选择界面显示语言",
-    "about": "关于",
+    "about": "关于(TODO)",
     "aboutDesc": "查看应用信息"
   },
   "common": {
     "back": "返回",
     "confirm": "确定",
     "cancel": "取消"
+  },
+  "editor": {
+    "title": "编辑歌单",
+    "save": "保存",
+    "reverse": "倒序",
+    "sortByTitle": "按标题",
+    "sortByArtist": "按艺术家",
+    "sortByAddedTime": "按添加时间",
+    "sortByModifiedTime": "按修改时间",
+    "asc": "升序",
+    "desc": "降序",
+    "totalSongs": "共 {count} 首",
+    "empty": "歌单中还没有歌曲",
+    "unsavedTitle": "未保存更改",
+    "unsavedMessage": "你有未保存的排序更改，确定要离开吗？若离开，系统不会保存您的更改",
+    "leave": "确定",
+    "stay": "取消",
+    "saved": "排序已保存",
+    "toast": {
+      "invalid_list": "无效歌单",
+      "list_not_found": "歌单不存在"
+    }
   }
 }

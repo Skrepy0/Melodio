@@ -73,6 +73,24 @@
           <div class="setting-desc">{{ $t('settings.autoCleanInvalidSongsDesc') }}</div>
         </div>
 
+        <div class="setting-item">
+          <div class="setting-row">
+            <div class="item-left">
+              <Icon icon="dashicons:cover-image" :width="22" class="item-icon" />
+              <span class="item-label">{{ $t('settings.canFetchCoverFromWeb') }}</span>
+            </div>
+            <label class="switch">
+              <input
+                type="checkbox"
+                :checked="canFetchCoverFromWeb"
+                @change="toggleCanFetchCoverFromWeb"
+              />
+              <span class="slider round"></span>
+            </label>
+          </div>
+          <div class="setting-desc">{{ $t('settings.canFetchCoverFromWebDesc') }}</div>
+        </div>
+
         <div class="setting-item clickable" @click="showLanguageSelector">
           <div class="setting-row">
             <div class="item-left">
@@ -120,8 +138,8 @@ const isDarkMode = ref(false)
 const pinyinSearch = ref(appStore.getPinyinSearch())
 const autoPauseOnDisconnect = ref(appStore.getAutoPauseOnDisconnect())
 const autoDelInvalidSongs = ref(appStore.getAutoDelInvalidSongs())
+const canFetchCoverFromWeb = ref(appStore.getCanFetchCoverFromWeb())
 
-// 直接从 store 获取当前语言（响应式）
 const currentLanguage = computed(() => appStore.getLanguage())
 const currentLanguageName = computed(() => {
   switch (currentLanguage.value) {
@@ -136,7 +154,7 @@ const currentLanguageName = computed(() => {
 
 const showLanguageSelector = async () => {
   const actionSheet = await actionSheetController.create({
-    header: t('settings.languageSelectorHeader', '选择语言'),
+    header: t('settings.languageSelectorHeader'),
     buttons: [
       {
         text: '简体中文',
@@ -156,7 +174,7 @@ const showLanguageSelector = async () => {
 }
 
 const changeLanguage = (lang: string) => {
-  appStore.setLanguage(lang) // store 内部会更新 i18n 和 localStorage
+  appStore.setLanguage(lang)
 }
 
 const goBack = () => {
@@ -186,6 +204,11 @@ const toggleAutoDelInvalidSongs = (e: Event) => {
   appStore.setAutoDelInvalidSongs(autoDelInvalidSongs.value)
 }
 
+const toggleCanFetchCoverFromWeb = (e: Event) => {
+  const target = e.target as HTMLInputElement
+  canFetchCoverFromWeb.value = target.checked
+  appStore.setCanFetchCoverFromWeb(canFetchCoverFromWeb.value)
+}
 const goToAbout = () => {
   router.push('/about')
 }

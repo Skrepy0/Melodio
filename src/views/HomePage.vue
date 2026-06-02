@@ -31,6 +31,17 @@
           @select="onCategorySelect"
         />
       </div>
+      <div v-if="selectedCategory === 'tracks' && songsList.length === 0" class="empty-state">
+        <Icon icon="mdi:music-off" :width="48" color="var(--text-secondary)" />
+        <p>{{ $t('songList.empty') }}</p>
+      </div>
+      <div
+        v-if="selectedCategory === 'tracks' && songsList.length !== 0 && showSongsList.length === 0"
+        class="empty-state"
+      >
+        <Icon icon="mdi:music-off" :width="48" color="var(--text-secondary)" />
+        <p>{{ $t('songList.notFound') }}</p>
+      </div>
       <PlayList
         v-if="selectedCategory === 'tracks'"
         :songs="showSongsList"
@@ -51,6 +62,7 @@
 </template>
 
 <script setup lang="ts">
+import { Icon } from '@iconify/vue'
 import { IonPage } from '@ionic/vue'
 import SearchBox from '@/components/SearchBox.vue'
 import CircleButton from '@/components/button/CircleButton.vue'
@@ -362,7 +374,15 @@ watch(selectedCategory, () => {
   gap: 12px;
   flex-shrink: 0;
 }
-
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 48px 20px;
+  color: var(--text-secondary);
+}
 @media (max-width: 640px) {
   .header {
     padding: 0 12px;

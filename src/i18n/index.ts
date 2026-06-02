@@ -2,10 +2,10 @@ import { createI18n } from 'vue-i18n'
 import zhCN from '@/locales/zh-CN.json'
 import enUS from '@/locales/en-US.json'
 
-const messages: Record<string, any> = {
+const messages = {
   'zh-CN': zhCN,
   'en-US': enUS,
-}
+} as any
 
 const savedLocale = localStorage.getItem('appLanguage') || 'zh-CN'
 
@@ -17,7 +17,7 @@ const i18n = createI18n({
 })
 
 export function setLanguage(locale: string) {
-  if (messages[locale]) {
+  if (locale === 'zh-CN' || locale === 'en-US') {
     i18n.global.locale.value = locale
     localStorage.setItem('appLanguage', locale)
   }

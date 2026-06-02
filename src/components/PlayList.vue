@@ -125,7 +125,9 @@ const addToQueue = () => {
 const addToSongList = async () => {
   const selected = await showPlaylistSelector(
     [appStore.getLikeList(), ...appStore.getSongLists()],
-    t('playlistSelector.title')
+    t('playlistSelector.title'),
+    t('playList.like.title'),
+    t('playList.like.description')
   )
   if (selected) {
     if (selected.id === 0) {

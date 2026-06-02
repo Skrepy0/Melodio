@@ -2,7 +2,7 @@ import { Playlist, PlayMode, Song } from '@/utils/interface'
 import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
 import { audio } from '@/utils/createAudio'
-import { getAccessibleUrl, getCoverUrl } from '@/utils/functions'
+import { getAccessibleUrl, resolveCoverUrl } from '@/utils/functions'
 import toast from '@/utils/createToast'
 import { i18n } from '@/i18n'
 import type { SongItem } from '@/plugins/native-audio/definitions'
@@ -23,6 +23,7 @@ export const useAppStore = defineStore('app', () => {
   const autoDelInvalidSongs = ref(true)
   const currentLanguage = ref('zh-CN')
   const isI18nReady = ref(false)
+  const canFetchCoverFromWeb = ref(true)
 
   function initLanguage() {
     let targetLang: string
@@ -65,12 +66,30 @@ export const useAppStore = defineStore('app', () => {
       setAutoDelInvalidSongs(true)
     }
   }
+
   function setAutoDelInvalidSongs(val: boolean) {
     autoDelInvalidSongs.value = val
     localStorage.setItem('autoDelInvalidSongs', String(autoDelInvalidSongs.value))
   }
+
   function getAutoDelInvalidSongs() {
     return autoDelInvalidSongs.value
+  }
+
+  function initCanFetchCoverFromWeb() {
+    const storage = localStorage.getItem('canFetchCoverFromWeb') || ''
+    if (['true', 'false'].includes(storage)) {
+      canFetchCoverFromWeb.value = storage === 'true'
+    }
+  }
+
+  function setCanFetchCoverFromWeb(val: boolean) {
+    canFetchCoverFromWeb.value = val
+    localStorage.setItem('canFetchCoverFromWeb', String(canFetchCoverFromWeb.value))
+  }
+
+  function getCanFetchCoverFromWeb() {
+    return canFetchCoverFromWeb.value
   }
 
   function initAutoPauseOnDisconnect() {
@@ -81,10 +100,12 @@ export const useAppStore = defineStore('app', () => {
       setAutoPauseOnDisconnect(true)
     }
   }
+
   function setAutoPauseOnDisconnect(val: boolean) {
     autoPauseOnDisconnect.value = val
     localStorage.setItem('autoPauseOnDisconnect', String(autoPauseOnDisconnect.value))
   }
+
   function getAutoPauseOnDisconnect() {
     return autoPauseOnDisconnect.value
   }
@@ -103,6 +124,7 @@ export const useAppStore = defineStore('app', () => {
   const homeFlag = ref(false)
   const initFlag = ref(false)
   const currentPlayList = ref<number>(-1)
+  const currentToBeSortedSongList = ref<number>(-1)
 
   function setSelectedCategory(val: string) {
     selectedCategory.value = val
@@ -115,6 +137,12 @@ export const useAppStore = defineStore('app', () => {
   }
   function getCurrentPlayList() {
     return currentPlayList.value
+  }
+  function setToBeSortedSongListIndex(val: number) {
+    currentToBeSortedSongList.value = val
+  }
+  function getToBeSortedSongListIndex() {
+    return currentToBeSortedSongList.value
   }
 
   function setupAudioBecomingNoisyListener() {
@@ -144,8 +172,8 @@ export const useAppStore = defineStore('app', () => {
 
   const likeList = ref<Playlist>({
     id: 0,
-    name: '喜欢',
-    description: '我喜欢',
+    name: '',
+    description: '',
     coverUrl: '',
     songCount: 0,
     data: [],
@@ -220,8 +248,8 @@ export const useAppStore = defineStore('app', () => {
       'likeList',
       JSON.stringify({
         id: 0,
-        name: '喜欢',
-        description: '我喜欢',
+        name: '',
+        description: '',
         coverUrl: likeList.value.coverUrl,
         songCount: likeList.value.songCount,
         data: likeList.value.data,
@@ -237,16 +265,25 @@ export const useAppStore = defineStore('app', () => {
 
   const currentSong = computed(() => playQueue.value[playData.value.currentIndex] || null)
 
-  const songsForPlugin = computed<SongItem[]>(() =>
-    playQueue.value.map((s) => ({
-      url: getAccessibleUrl(s.uri),
-      title: s.title,
-      artist: s.artist || 'Unknown',
-      album: s.album || '',
-      coverUrl: getCoverUrl(s.albumArtUri),
-    }))
-  )
+  const songsForPlugin = ref<SongItem[]>([])
 
+  watch(
+    playQueue,
+    async (newQueue) => {
+      const list = await Promise.all(
+        newQueue.map(async (s) => ({
+          url: getAccessibleUrl(s.uri),
+          title: s.title,
+          artist: s.artist || 'Unknown',
+          album: s.album || '',
+          coverUrl: canFetchCoverFromWeb.value ? await resolveCoverUrl(s) : s.albumArtUri,
+        }))
+      )
+      songsForPlugin.value = list
+      await audio.setPlaylist(list)
+    },
+    { deep: true, immediate: true }
+  )
   watch(
     playQueue,
     async () => {
@@ -344,6 +381,7 @@ export const useAppStore = defineStore('app', () => {
       loadInitialDarkMode()
       initAutoPauseOnDisconnect()
       initAutoDelInvalidSongs()
+      initCanFetchCoverFromWeb()
       initAllSongs()
       initPlayQueue()
       initPlayData()
@@ -595,5 +633,9 @@ export const useAppStore = defineStore('app', () => {
     setInitFlag,
     getInitFlag,
     loadCurrentSong,
+    setToBeSortedSongListIndex,
+    getToBeSortedSongListIndex,
+    setCanFetchCoverFromWeb,
+    getCanFetchCoverFromWeb,
   }
 })

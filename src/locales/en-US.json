@@ -70,11 +70,13 @@
   },
   "song": {
     "menu": {
+      "play": "Play",
       "addToPlaylist": "Add to Playlist",
       "like": "Like",
       "playNext": "Play Next",
       "addToQueue": "Add to Queue",
-      "delete": "Delete"
+      "delete": "Delete",
+      "cancel": "Cancel"
     },
     "toast": {
       "addedToQueue": "Added to queue",
@@ -89,6 +91,21 @@
     "defaultTitle": "All Songs",
     "loading": "Loading…",
     "empty": "No songs yet, please add or scan",
+    "deleteAllSongs": {
+      "title": "Confirm",
+      "message": "Are you sure you want to clear the playlist \"{name}\"?",
+      "result": {
+        "success": "Playlist cleared",
+        "emptyList": "This playlist is empty!"
+      },
+      "confirm": "Clear",
+      "cancel": "Cancel"
+    },
+    "operations": {
+      "sort": "Sort",
+      "edit_name": "Rename",
+      "delete_all": "Clear Playlist"
+    },
     "confirm": {
       "title": "Confirm",
       "message": "Are you sure you want to remove {count} song(s) from this playlist?",
@@ -105,7 +122,8 @@
     "songCount": "{count} song(s)",
     "menu": {
       "edit": "Edit Name",
-      "delete": "Delete"
+      "delete": "Delete",
+      "cancel": "Cancel"
     },
     "editPrompt": {
       "title": "Edit Playlist Name",
@@ -143,6 +161,10 @@
       "addedToPlaylist": "{count} song(s) added to \"{name}\"",
       "alreadyInLike": "Selected song(s) already in liked songs",
       "alreadyInPlaylist": "Selected song(s) already in this playlist"
+    },
+    "like": {
+      "title": "Like",
+      "description": "My Favorites"
     }
   },
   "playlistSelector": {
@@ -168,14 +190,39 @@
     "autoPauseOnDisconnectDesc": "Automatically pause when headphones are unplugged or Bluetooth disconnected",
     "autoCleanInvalidSongs": "Auto-clean invalid songs",
     "autoCleanInvalidSongsDesc": "Automatically remove songs that have been moved or deleted",
+    "canFetchCoverFromWeb": "Fetch cover images online",
+    "canFetchCoverFromWebDesc": "When enabled, the system will fetch cover images online for songs without local covers.",
+    "languageSelectorHeader": "Select Language",
     "language": "Language",
     "languageDesc": "Select interface language",
-    "about": "About",
+    "about": "About(TODO)",
     "aboutDesc": "View app information"
   },
   "common": {
     "back": "Back",
     "confirm": "Confirm",
     "cancel": "Cancel"
+  },
+  "editor": {
+    "title": "Sort Songs",
+    "save": "Save",
+    "reverse": "Reverse",
+    "sortByTitle": "By Title",
+    "sortByArtist": "By Artist",
+    "sortByAddedTime": "By Date Added",
+    "sortByModifiedTime": "By Date Modified",
+    "asc": "Ascending",
+    "desc": "Descending",
+    "totalSongs": "{count} songs",
+    "empty": "No songs in this playlist",
+    "unsavedTitle": "Unsaved Changes",
+    "unsavedMessage": "You have unsaved changes to the order. Do you want to leave? Unsaved changes will be lost.",
+    "leave": "Leave",
+    "stay": "Stay",
+    "saved": "Order saved",
+    "toast": {
+      "invalid_list": "Invalid playlist",
+      "list_not_found": "Playlist not found"
+    }
   }
 }
