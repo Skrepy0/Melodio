@@ -6,6 +6,8 @@ import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.media.AudioAttributes;
 import android.media.MediaPlayer;
 import android.net.Uri;
@@ -28,8 +30,12 @@ import com.getcapacitor.annotation.CapacitorPlugin;
 
 import org.json.JSONObject;
 
+import java.io.InputStream;
+import java.net.HttpURLConnection;
 import java.util.ArrayList;
 import java.util.List;
+import java.net.URL;
+import java.util.concurrent.Executors;
 
 @CapacitorPlugin(name = "NativeAudio")
 public class NativeAudioPlugin extends Plugin {
@@ -60,6 +66,7 @@ public class NativeAudioPlugin extends Plugin {
     private String album = "";
     private String cover = "";
     private int durationSec = 0;
+    private boolean repeatOne = false;
 
     @Override
     public void load() {
@@ -74,8 +81,14 @@ public class NativeAudioPlugin extends Plugin {
         mediaPlayer.setAudioAttributes(new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA).setContentType(AudioAttributes.CONTENT_TYPE_MUSIC).build());
 
         mediaPlayer.setOnCompletionListener(mp -> {
-            Log.d(TAG, "Playback completed, moving to next track");
-            nextInternal();
+            if (repeatOne) {
+                mediaPlayer.seekTo(0);
+                mediaPlayer.start();
+                updateState(true);
+                startProgress();
+            } else {
+                nextInternal();
+            }
         });
 
         mediaPlayer.setOnErrorListener((mp, what, extra) -> {
@@ -85,7 +98,13 @@ public class NativeAudioPlugin extends Plugin {
             return true;
         });
     }
-
+    @PluginMethod
+    public void setRepeatMode(PluginCall call) {
+        boolean repeat = call.getBoolean("repeatOne", false);
+        this.repeatOne = repeat;
+        Log.d(TAG, "Repeat mode set to: " + repeat);
+        call.resolve();
+    }
     private void initSession() {
         mediaSession = new MediaSessionCompat(getContext(), "MelodioAudio");
         mediaSession.setActive(true);
@@ -118,7 +137,17 @@ public class NativeAudioPlugin extends Plugin {
         });
         Log.d(TAG, "MediaSession initialized");
     }
-
+    @PluginMethod
+    public void setCurrentIndex(PluginCall call) {
+        int index = call.getInt("index", -1);
+        if (index >= 0 && index < playlist.size()) {
+            currentIndex = index;
+            Log.d(TAG, "Current index updated to: " + index);
+            call.resolve();
+        } else {
+            call.reject("Invalid index");
+        }
+    }
     @PluginMethod
     public void setPlaylist(PluginCall call) {
         JSArray arr = call.getArray("songs");
@@ -138,17 +167,49 @@ public class NativeAudioPlugin extends Plugin {
                 s.artist = o.optString("artist", "");
                 s.album = o.optString("album", "");
                 s.cover = o.optString("coverUrl", "");
+                Log.d(TAG, "s.cover:" + s.cover);
                 playlist.add(s);
             } catch (Exception e) {
                 Log.w(TAG, "Failed to parse song at index " + i, e);
             }
         }
 
-        Log.d(TAG, "Playlist set: " + playlist.size() + " songs. First URL: " + (playlist.isEmpty() ? "none" : playlist.get(0).url));
-        currentIndex = -1;
+        if (currentIndex < 0 || currentIndex >= playlist.size()) {
+            currentIndex = -1;
+        }
+
+        Log.d(TAG, "Playlist set: " + playlist.size() + " songs. First URL: " +
+                (playlist.isEmpty() ? "none" : playlist.get(0).url) +
+                ", currentIndex=" + currentIndex);
         call.resolve();
     }
-
+    private void loadBitmap(String urlString, BitmapCallback callback) {
+        Executors.newSingleThreadExecutor().execute(() -> {
+            Bitmap bitmap = null;
+            try {
+                if (urlString.startsWith("data:")) {
+                    // base64 Data URI 解码
+                    String base64Str = urlString.substring(urlString.indexOf(",") + 1);
+                    byte[] decodedBytes = android.util.Base64.decode(base64Str, android.util.Base64.DEFAULT);
+                    bitmap = BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.length);
+                } else if (urlString.startsWith("file://")) {
+                    bitmap = BitmapFactory.decodeFile(urlString.substring(7));
+                } else {
+                    URL url = new URL(urlString);
+                    HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+                    connection.setDoInput(true);
+                    connection.connect();
+                    InputStream input = connection.getInputStream();
+                    bitmap = BitmapFactory.decodeStream(input);
+                    input.close();
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "loadBitmap failed: " + e.getMessage());
+            }
+            Bitmap finalBitmap = bitmap;
+            new Handler(Looper.getMainLooper()).post(() -> callback.onResult(finalBitmap));
+        });
+    }
     @PluginMethod
     public void playIndex(PluginCall call) {
         int index = call.getInt("index", 0);
@@ -356,9 +417,24 @@ public class NativeAudioPlugin extends Plugin {
     }
 
     private void updateMetadata(SongItem song) {
-        MediaMetadataCompat.Builder b = new MediaMetadataCompat.Builder().putString(MediaMetadataCompat.METADATA_KEY_TITLE, song.title).putString(MediaMetadataCompat.METADATA_KEY_ARTIST, song.artist).putString(MediaMetadataCompat.METADATA_KEY_ALBUM, song.album).putLong(MediaMetadataCompat.METADATA_KEY_DURATION, durationSec * 1000L);
-        mediaSession.setMetadata(b.build());
-        showNotification();
+        MediaMetadataCompat.Builder b = new MediaMetadataCompat.Builder()
+                .putString(MediaMetadataCompat.METADATA_KEY_TITLE, song.title)
+                .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, song.artist)
+                .putString(MediaMetadataCompat.METADATA_KEY_ALBUM, song.album)
+                .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, durationSec * 1000L);
+
+        if (song.cover != null && !song.cover.isEmpty()) {
+            loadBitmap(song.cover, bitmap -> {
+                if (bitmap != null) {
+                    b.putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, bitmap);
+                }
+                mediaSession.setMetadata(b.build());
+                showNotification();
+            });
+        } else {
+            mediaSession.setMetadata(b.build());
+            showNotification();
+        }
     }
 
     private void showNotification() {
@@ -453,5 +529,8 @@ public class NativeAudioPlugin extends Plugin {
 
     static class SongItem {
         String url, title, artist, album, cover;
+    }
+    private interface BitmapCallback {
+        void onResult(Bitmap bitmap);
     }
 }

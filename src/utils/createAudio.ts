@@ -74,6 +74,12 @@ export class NativeAudioPlayer {
     this._volume = Math.max(0, Math.min(1, v))
     NativeAudio.setVolume({ volume: this._volume })
   }
+  async setRepeatMode(repeatOne: boolean) {
+    await NativeAudio.setRepeatMode({ repeatOne })
+  }
+  async setCurrentIndex(index: number) {
+    await NativeAudio.setCurrentIndex({ index })
+  }
 
   addEventListener(event: AudioEvent, cb: EventCallback) {
     if (!this.listeners.has(event)) this.listeners.set(event, new Set())

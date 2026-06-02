@@ -3,7 +3,7 @@ export interface SongItem {
   title: string
   artist: string
   album: string
-  coverUrl: string
+  coverUrl: string | any
 }
 
 export interface NativeAudioPlugin {
@@ -21,7 +21,8 @@ export interface NativeAudioPlugin {
 
   setMetadata(metadata: SongItem & { duration?: number }): Promise<void>
   updatePlaybackState(options: { isPlaying: boolean }): Promise<void>
-
+  setRepeatMode(options: { repeatOne: boolean }): Promise<void>
+  setCurrentIndex(options: { index: number }): Promise<void>
   addListener(
     eventName:
       | 'ended'

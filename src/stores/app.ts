@@ -2,7 +2,7 @@ import { Playlist, PlayMode, Song } from '@/utils/interface'
 import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
 import { audio } from '@/utils/createAudio'
-import { getAccessibleUrl } from '@/utils/functions'
+import { getAccessibleUrl, getCoverUrl } from '@/utils/functions'
 import toast from '@/utils/createToast'
 import { i18n } from '@/i18n'
 import type { SongItem } from '@/plugins/native-audio/definitions'
@@ -243,7 +243,7 @@ export const useAppStore = defineStore('app', () => {
       title: s.title,
       artist: s.artist || 'Unknown',
       album: s.album || '',
-      coverUrl: s.albumArtUri || '',
+      coverUrl: getCoverUrl(s.albumArtUri),
     }))
   )
 
@@ -258,6 +258,9 @@ export const useAppStore = defineStore('app', () => {
     },
     { deep: true }
   )
+  watch(playMode, (newMode) => {
+    audio.setRepeatMode(newMode === 'repeatOne')
+  })
   watch(
     () => audio.paused,
     (newPaused) => {
@@ -267,7 +270,6 @@ export const useAppStore = defineStore('app', () => {
 
   function setupNativeAudioListeners() {
     audio.addEventListener('songChanged', (data: { index: number }) => {
-      console.log('[Store] songChanged:', data.index)
       playData.value.currentIndex = data.index
       playData.value.isPlaying = true
       savePlayData()
@@ -350,6 +352,7 @@ export const useAppStore = defineStore('app', () => {
       initSongLists()
       initPlayMode()
       setupAudioBecomingNoisyListener()
+      await audio.setRepeatMode(playMode.value === 'repeatOne')
       initFlag.value = true
     }
 
@@ -404,6 +407,7 @@ export const useAppStore = defineStore('app', () => {
 
   function setCurrentIndex(index: number) {
     playData.value.currentIndex = index
+    audio.setCurrentIndex(index)
     savePlayData()
   }
   function setIsPlaying(status: boolean) {

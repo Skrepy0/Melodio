@@ -151,7 +151,7 @@ const progressPercent = computed(() =>
   mockDuration.value > 0 ? (mockCurrentTime.value / mockDuration.value) * 100 : 0
 )
 
-const playMode = ref<PlayMode>(appStore.getPlayMode())
+const playMode = computed(() => appStore.getPlayMode())
 const playModeIcon = computed(() =>
   playMode.value === 'repeatOne' ? 'mdi:repeat-once' : 'mdi:repeat'
 )
@@ -168,7 +168,7 @@ watch(
   { deep: true }
 )
 
-const currentSong = computed(() => appStore.currentSong)
+const currentSong = computed(() => currentSongOverride.value || appStore.currentSong)
 
 let timeUpdateHandler: (() => void) | null = null
 
@@ -187,12 +187,15 @@ onUnmounted(() => {
   }
 })
 
-const togglePlay = () => appStore.togglePlay()
+const togglePlay = () => {
+  appStore.togglePlay()
+}
+
 const togglePlayMode = () => {
   const next: PlayMode = playMode.value === 'sequential' ? 'repeatOne' : 'sequential'
-  playMode.value = next
   appStore.setPlayMode(next)
 }
+
 const prevSong = () => appStore.prevSong()
 const nextSong = () => appStore.nextSong()
 
@@ -205,14 +208,14 @@ const playSong = async (song: Song) => {
     return
   }
 
-  appStore.setIsSwitchingSong(true)
-  await audio.playIndex(targetIdx).catch((e) => {
+  try {
+    await audio.playIndex(targetIdx)
+    appStore.setIsPlaying(true)
+    appStore.setMockCurrentTime(0)
+  } catch (e) {
     console.error('播放失败', e)
     toast.error(t('player.toast.playFailed'))
-  })
-  appStore.setIsPlaying(true)
-  appStore.setMockCurrentTime(0)
-  setTimeout(() => appStore.setIsSwitchingSong(false), 200)
+  }
 }
 
 const progressBarRef = ref<HTMLElement | null>(null)
@@ -319,34 +322,47 @@ const onMenuItemSelect = (item: DropdownItem, song: Song) => {
       const newQueue = [...localQueue.value]
       newQueue.splice(idx, 1)
       appStore.setPlayQueue(newQueue)
+
       const curIdx = appStore.getPlayData().currentIndex
-      if (idx < curIdx) {
-        appStore.setCurrentIndex(curIdx - 1)
-      } else if (idx === curIdx) {
+      if (idx === curIdx) {
         if (newQueue.length === 0) {
           audio.pause()
           appStore.setIsPlaying(false)
           appStore.setMockCurrentTime(0)
           appStore.setCurrentIndex(0)
         } else {
-          appStore.setCurrentIndex(Math.min(curIdx, newQueue.length - 1))
+          const newIndex = Math.min(idx, newQueue.length - 1)
+          appStore.setCurrentIndex(newIndex)
+          audio.playIndex(newIndex)
+          appStore.setIsPlaying(true)
+          appStore.setMockCurrentTime(0)
         }
+      } else if (idx < curIdx) {
+        appStore.setCurrentIndex(curIdx - 1)
       }
     }
   }
   openDropdownId.value = null
 }
-
 const dragStartIndex = ref<number | null>(null)
 const dragOverIndex = ref<number | null>(null)
 let dragItem: HTMLElement | null = null
 let isDraggingQueue = false
 let pointerId: number | null = null
+let wasPlaying = false
+let currentPlayingSongId: string | null = null
+const currentSongOverride = ref<Song | null>(null)
+const dragCurrentIndex = ref<number | null>(null)
 
 const startDrag = (e: PointerEvent, idx: number) => {
   if (e.button !== 0 && e.pointerType !== 'touch') return
   e.preventDefault()
-  if (isPlaying.value) togglePlay()
+
+  wasPlaying = isPlaying.value
+  currentPlayingSongId = appStore.currentSong?.id ?? null
+  currentSongOverride.value = appStore.currentSong
+  dragCurrentIndex.value = appStore.getPlayData().currentIndex
+
   appStore.setIsSwitchingSong(true)
   dragStartIndex.value = idx
   const target = (e.target as HTMLElement).closest('.queue-item')
@@ -376,6 +392,16 @@ const onDragMove = (e: PointerEvent) => {
         newQueue.splice(overIndex, 0, movedItem)
         localQueue.value = newQueue
         appStore.setPlayQueue(newQueue)
+
+        if (currentPlayingSongId && movedItem.id === currentPlayingSongId) {
+          dragCurrentIndex.value = overIndex
+        } else if (dragCurrentIndex.value !== null) {
+          const currentPos = newQueue.findIndex((s) => s.id === currentPlayingSongId)
+          if (currentPos !== -1) {
+            dragCurrentIndex.value = currentPos
+          }
+        }
+
         dragStartIndex.value = overIndex
         dragItem = document.querySelector(`.queue-item[data-index="${overIndex}"]`) as HTMLElement
         if (dragItem) dragItem.classList.add('dragging-source')
@@ -384,9 +410,10 @@ const onDragMove = (e: PointerEvent) => {
   }
 }
 
-const stopDrag = (e: PointerEvent) => {
+const stopDrag = async (e: PointerEvent) => {
   if (!isDraggingQueue) return
   if (e.pointerId !== pointerId) return
+
   if (dragItem) {
     dragItem.classList.remove('dragging-source')
     if (dragItem.hasPointerCapture?.(pointerId)) dragItem.releasePointerCapture(pointerId)
@@ -396,15 +423,36 @@ const stopDrag = (e: PointerEvent) => {
   dragItem = null
   isDraggingQueue = false
   pointerId = null
-  togglePlay()
-  setTimeout(() => togglePlay(), 100)
+
+  const newIdx = currentPlayingSongId
+    ? localQueue.value.findIndex((s) => s.id === currentPlayingSongId)
+    : -1
+
+  if (newIdx !== -1) {
+    appStore.setCurrentIndex(newIdx)
+  }
+
+  if (wasPlaying && !appStore.getPlayData().isPlaying) {
+    togglePlay()
+  } else if (!wasPlaying && appStore.getPlayData().isPlaying) {
+    togglePlay()
+  }
+
+  dragCurrentIndex.value = null
+  currentSongOverride.value = null
+  currentPlayingSongId = null
   setTimeout(() => appStore.setIsSwitchingSong(false), 1000)
+
   document.removeEventListener('pointermove', onDragMove)
   document.removeEventListener('pointerup', stopDrag)
 }
 
 const getRelativeIndex = (idx: number) => {
-  const diff = idx - appStore.getPlayData().currentIndex
+  const current =
+    isDraggingQueue && dragCurrentIndex.value !== null
+      ? dragCurrentIndex.value
+      : appStore.getPlayData().currentIndex
+  const diff = idx - current
   return diff === 0 ? '0' : diff > 0 ? `+${diff}` : `${diff}`
 }
 
@@ -634,14 +682,21 @@ const formatTime = (seconds: number): string => {
   border-radius: 8px;
   user-select: none;
   transition: background 0.2s;
+  transition:
+    transform 0.2s cubic-bezier(0.2, 0.9, 0.4, 1.1),
+    background 0.2s,
+    opacity 0.2s;
+  will-change: transform;
 
   &:hover {
     background: var(--bg-card-hover);
   }
 
   &.dragging-source {
-    opacity: 0.5;
-    background: var(--primary-color-light);
+    transform: scale(1.02);
+    opacity: 0.6;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    cursor: grabbing;
   }
   &.drag-over {
     border-top: 2px solid var(--primary-color);

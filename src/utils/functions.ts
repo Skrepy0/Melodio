@@ -26,12 +26,10 @@ export const getAccessibleUrl = (path: string): string => {
 export async function checkPlayableUrl(url: string): Promise<boolean> {
   if (!url) return false
 
-  // 处理 Capacitor 内部转换的 http://localhost/_capacitor_file_/... 格式
   if (
     url.startsWith('https://localhost/_capacitor_file_/') ||
     url.startsWith('http://localhost/_capacitor_file_/')
   ) {
-    // 提取原始文件路径
     const prefix = url.includes('https://')
       ? 'https://localhost/_capacitor_file_'
       : 'http://localhost/_capacitor_file_'
@@ -41,32 +39,25 @@ export async function checkPlayableUrl(url: string): Promise<boolean> {
     return checkLocalFile(fileUrl)
   }
 
-  // 处理 file:// 协议
   if (url.startsWith('file://')) {
     return checkLocalFile(url)
   }
 
-  // 其他网络 URL (http://, https://)
   if (url.startsWith('http://') || url.startsWith('https://')) {
     return checkRemoteUrl(url)
   }
 
-  // 无法识别的协议，返回 false
   console.warn('[checkPlayableUrl] Unknown protocol:', url)
   return false
 }
 
 async function checkLocalFile(fileUrl: string): Promise<boolean> {
   try {
-    // 去掉 file:// 前缀
     let path = fileUrl.slice(7)
-    // 解码可能被编码的路径（因为 getAccessibleUrl 做了 encodeURI）
     path = decodeURIComponent(path)
-    // 使用 Filesystem.stat 检查文件状态
     const stat = await Filesystem.stat({ path })
     return stat.type === 'file'
   } catch (error) {
-    // 文件不存在或权限错误
     console.debug(`[checkPlayableUrl] File not found: ${fileUrl}`, error)
     return false
   }
@@ -93,5 +84,30 @@ export async function getCoverBase64(uri: string): Promise<string> {
     console.error('读取封面失败:', error)
     return ''
   }
+}
+export const DEFAULT_COVER =
+  'data:image/svg+xml,' +
+  encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#888"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>'
+  )
+
+export function getCoverUrl(albumArtUri?: string | null): string {
+  if (!albumArtUri) return DEFAULT_COVER
+
+  if (albumArtUri.startsWith('file://')) return albumArtUri
+
+  if (
+    albumArtUri.startsWith('https://localhost/_capacitor_file_/') ||
+    albumArtUri.startsWith('http://localhost/_capacitor_file_/')
+  ) {
+    const prefix = albumArtUri.includes('https://')
+      ? 'https://localhost/_capacitor_file_'
+      : 'http://localhost/_capacitor_file_'
+    let filePath = albumArtUri.slice(prefix.length)
+    if (!filePath.startsWith('/')) filePath = '/' + filePath
+    return 'file://' + filePath
+  }
+  if (albumArtUri.startsWith('/')) return 'file://' + albumArtUri
+  return albumArtUri
 }
 export const isInList = (id: string, queue: Song[]) => queue.some((song) => song.id === id)
