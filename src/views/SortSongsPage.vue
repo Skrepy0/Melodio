@@ -12,19 +12,17 @@
 
     <div class="sort-controls">
       <div class="sort-left">
-        <button class="sort-btn" @click="reverseOrder">
-          <Icon icon="mdi:swap-vertical" :width="20" />
-          <span>{{ $t('editor.reverse') }}</span>
-        </button>
-        <select v-model="sortKey" class="sort-select" @change="applySort">
+        <select v-model="sortMode" class="sort-select mode-select" @change="onSortModeChange">
+          <option value="custom">{{ $t('editor.sortCustom') }}</option>
           <option value="title">{{ $t('editor.sortByTitle') }}</option>
           <option value="artist">{{ $t('editor.sortByArtist') }}</option>
           <option value="addedTime">{{ $t('editor.sortByAddedTime') }}</option>
           <option value="modifiedTime">{{ $t('editor.sortByModifiedTime') }}</option>
         </select>
-        <button class="sort-btn" @click="toggleSortDirection">
-          <Icon :icon="sortAsc ? 'mdi:sort-ascending' : 'mdi:sort-descending'" :width="20" />
-          <span>{{ sortAsc ? $t('editor.asc') : $t('editor.desc') }}</span>
+
+        <button class="sort-btn" @click="handleOrderToggle">
+          <Icon :icon="orderIcon" :width="20" />
+          <span>{{ orderText }}</span>
         </button>
       </div>
       <span class="song-count">{{ $t('editor.totalSongs', { count: localSongs.length }) }}</span>
@@ -42,6 +40,7 @@
         }"
       >
         <div
+          v-if="sortMode === 'custom'"
           class="drag-handle"
           @pointerdown.prevent="onDragStart($event, idx)"
           @touchstart.prevent
@@ -66,9 +65,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { Icon } from '@iconify/vue'
-import { App } from '@capacitor/app'
 import SongItem from '@/components/song/SongItem.vue'
 import { useAppStore } from '@/stores/app'
 import type { Song } from '@/utils/interface'
@@ -77,7 +75,24 @@ import { useI18n } from 'vue-i18n'
 import router from '@/router'
 import { showConfirm } from '@/utils/createConfirm'
 import CircleButton from '@/components/button/CircleButton.vue'
-
+import { onBeforeRouteLeave } from 'vue-router'
+onBeforeRouteLeave(async (to, from, next) => {
+  if (hasUnsavedChanges.value) {
+    const confirm = await showConfirm({
+      title: t('editor.unsavedTitle'),
+      message: t('editor.unsavedMessage'),
+      confirmText: t('editor.leave'),
+      cancelText: t('editor.stay'),
+    })
+    if (confirm) {
+      next()
+    } else {
+      next(false)
+    }
+  } else {
+    next()
+  }
+})
 const { t } = useI18n()
 const appStore = useAppStore()
 
@@ -85,9 +100,10 @@ const listId = ref<number>(-1)
 const localSongs = ref<Song[]>([])
 const hasUnsavedChanges = ref(false)
 
-const sortKey = ref<string>('title')
+const sortMode = ref<'custom' | 'title' | 'artist' | 'addedTime' | 'modifiedTime'>('custom')
 const sortAsc = ref<boolean>(true)
 
+const customOrderSongs = ref<Song[]>([])
 const originalSongs = ref<Song[]>([])
 
 const dragSourceIndex = ref<number | null>(null)
@@ -117,19 +133,21 @@ onMounted(async () => {
     }
   }
   localSongs.value = [...originalSongs.value]
+  customOrderSongs.value = [...originalSongs.value]
   applySort()
   hasUnsavedChanges.value = false
-
-  App.addListener('backButton', () => {
-    handleBackPress()
-  })
 })
 
 function applySort() {
+  if (sortMode.value === 'custom') {
+    localSongs.value = [...customOrderSongs.value]
+    return
+  }
   const list = [...originalSongs.value]
+  const key = sortMode.value
   list.sort((a, b) => {
     let valA: any, valB: any
-    switch (sortKey.value) {
+    switch (key) {
       case 'title':
         valA = a.title.toLowerCase()
         valB = b.title.toLowerCase()
@@ -154,21 +172,55 @@ function applySort() {
     return 0
   })
   localSongs.value = list
-  hasUnsavedChanges.value = true
 }
 
-function toggleSortDirection() {
-  sortAsc.value = !sortAsc.value
-  applySort()
+function onSortModeChange() {
+  if (sortMode.value === 'custom') {
+    if (customOrderSongs.value.length === localSongs.value.length) {
+      localSongs.value = [...customOrderSongs.value]
+    } else {
+      customOrderSongs.value = [...originalSongs.value]
+      localSongs.value = [...customOrderSongs.value]
+    }
+    hasUnsavedChanges.value = true
+  } else {
+    applySort()
+    hasUnsavedChanges.value = true
+  }
+  dragSourceIndex.value = null
+  dragOverIndex.value = null
 }
 
-function reverseOrder() {
-  localSongs.value = [...localSongs.value].reverse()
-  originalSongs.value = [...localSongs.value]
-  hasUnsavedChanges.value = true
+const orderIcon = computed(() => {
+  if (sortMode.value === 'custom') {
+    return 'mdi:swap-vertical'
+  } else {
+    return sortAsc.value ? 'mdi:sort-ascending' : 'mdi:sort-descending'
+  }
+})
+
+const orderText = computed(() => {
+  if (sortMode.value === 'custom') {
+    return t('editor.reverse')
+  } else {
+    return sortAsc.value ? t('editor.asc') : t('editor.desc')
+  }
+})
+
+function handleOrderToggle() {
+  if (sortMode.value === 'custom') {
+    localSongs.value = [...localSongs.value].reverse()
+    customOrderSongs.value = [...localSongs.value]
+    hasUnsavedChanges.value = true
+  } else {
+    sortAsc.value = !sortAsc.value
+    applySort()
+    hasUnsavedChanges.value = true
+  }
 }
 
 function onDragStart(e: PointerEvent, idx: number) {
+  if (sortMode.value !== 'custom') return
   if (e.button !== 0 && e.pointerType !== 'touch') return
   e.preventDefault()
   dragSourceIndex.value = idx
@@ -197,7 +249,7 @@ function onDragMove(e: PointerEvent) {
         const [moved] = newList.splice(dragSourceIndex.value, 1)
         newList.splice(overIdx, 0, moved)
         localSongs.value = newList
-        originalSongs.value = [...newList]
+        customOrderSongs.value = [...newList]
         dragSourceIndex.value = overIdx
         dragItem = document.querySelector(`.song-row[data-index="${overIdx}"]`) as HTMLElement
         hasUnsavedChanges.value = true
@@ -241,7 +293,6 @@ function saveOrder() {
   router.back()
   toast.success(t('editor.saved'))
 }
-
 async function handleBackPress() {
   if (hasUnsavedChanges.value) {
     const confirm = await showConfirm({
@@ -257,25 +308,18 @@ async function handleBackPress() {
     router.back()
   }
 }
-
 const backWithoutSave = () => {
   handleBackPress()
 }
-
-onUnmounted(() => {
-  App.removeAllListeners()
-})
 </script>
 
 <style scoped lang="scss">
 .song-list-editor {
   display: flex;
   flex-direction: column;
-  height: 100%;
   height: 100dvh;
   padding: 16px 16px 0;
   background-color: var(--bg-color);
-  overflow: hidden;
 }
 
 .editor-header {
@@ -301,12 +345,11 @@ onUnmounted(() => {
     justify-content: center;
     border-radius: 50%;
     transition: background-color 0.2s;
-
+    min-width: 36px;
+    min-height: 36px;
     &:hover {
       background-color: var(--bg-card-hover);
     }
-    min-width: 36px;
-    min-height: 36px;
   }
 
   h2 {
@@ -323,14 +366,14 @@ onUnmounted(() => {
   align-items: center;
   margin-bottom: 12px;
   gap: 8px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   flex-shrink: 0;
 
   .sort-left {
     display: flex;
     align-items: center;
     gap: 8px;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
   }
 
   .sort-btn {
@@ -347,7 +390,6 @@ onUnmounted(() => {
     white-space: nowrap;
     transition: background-color 0.2s;
     min-height: 36px;
-
     &:hover {
       background: var(--bg-card-hover);
     }
@@ -369,15 +411,31 @@ onUnmounted(() => {
     padding-right: 30px;
   }
 
+  .mode-select {
+    background-color: var(--primary-color-light, rgba(0, 122, 255, 0.1));
+    border-color: var(--primary-color);
+  }
+
   .song-count {
     font-size: 13px;
     color: var(--text-secondary);
     white-space: nowrap;
   }
+
+  @media (max-width: 480px) {
+    .sort-select {
+      min-width: 120px;
+    }
+    .sort-btn {
+      padding: 6px 10px;
+      font-size: 12px;
+    }
+  }
 }
 
 .song-list {
-  flex: 1;
+  flex: 1 1 0;
+  min-height: 0;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
@@ -403,11 +461,11 @@ onUnmounted(() => {
     opacity 0.2s;
   overflow: hidden;
   margin: 0;
+  flex-shrink: 0; // 防止被压缩
 
   &.dragging-source {
     opacity: 0.4;
   }
-
   &.drag-over {
     box-shadow: 0 0 0 2px var(--primary-color);
   }
@@ -421,7 +479,6 @@ onUnmounted(() => {
     align-items: center;
     min-width: 40px;
     justify-content: center;
-
     &:active {
       cursor: grabbing;
     }

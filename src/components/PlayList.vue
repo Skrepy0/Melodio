@@ -141,7 +141,10 @@ const addToSongList = async () => {
       if (newSongs.length > 0) {
         appStore.mergeLikeListData(newSongs)
         toast.success(
-          t('playList.toast.addedToPlaylist', { count: newSongs.length, name: selected.name })
+          t('playList.toast.addedToPlaylist', {
+            count: newSongs.length,
+            name: selected.id === 0 ? t('playList.like.title') : selected.name,
+          })
         )
       } else {
         toast.warning(t('playList.toast.alreadyInLike'))

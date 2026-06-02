@@ -8,9 +8,10 @@
       <div class="song-info" @click="onExpand">
         <div class="cover">
           <img
-            v-if="currentSong.albumArtUri"
-            :src="currentSong.albumArtUri"
+            v-if="coverSrc && coverSrc !== DEFAULT_COVER"
+            :src="coverSrc"
             :alt="currentSong.title"
+            @error="coverSrc = DEFAULT_COVER"
           />
           <Icon v-else icon="mdi:music" :width="40" />
         </div>
@@ -37,18 +38,23 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch, onMounted, onUnmounted } from 'vue'
 import { Icon } from '@iconify/vue'
 import { useAppStore } from '@/stores/app'
 import { audio } from '@/utils/createAudio'
+import { fetchCoverFromWeb, DEFAULT_COVER } from '@/utils/functions'
 
 const appStore = useAppStore()
 
 const currentSong = computed(() => appStore.currentSong)
 const isPlaying = computed(() => appStore.getPlayData().isPlaying)
 const currentTime = ref(appStore.getPlayData().mockCurrentTime)
-const duration = computed(() => currentSong.value?.duration / 1000 || 0)
-const progressPercent = computed(() => (currentTime.value / duration.value) * 100 || 0)
+const duration = computed(() =>
+  currentSong.value?.duration ? currentSong.value.duration / 1000 : 0
+)
+const progressPercent = computed(() =>
+  duration.value > 0 ? (currentTime.value / duration.value) * 100 : 0
+)
 
 const emit = defineEmits<{
   (e: 'expand'): void
@@ -58,20 +64,65 @@ const onExpand = () => {
   emit('expand')
 }
 
-audio.addEventListener('timeupdate', () => {
-  currentTime.value = audio.currentTime
+let timeUpdateHandler: (() => void) | null = null
+
+onMounted(() => {
+  timeUpdateHandler = () => {
+    currentTime.value = audio.currentTime
+  }
+  audio.addEventListener('timeupdate', timeUpdateHandler)
 })
 
-const togglePlay = async () => {
-  await appStore.togglePlay()
+onUnmounted(() => {
+  if (timeUpdateHandler) {
+    audio.removeEventListener('timeupdate', timeUpdateHandler)
+  }
+})
+
+const togglePlay = () => {
+  appStore.togglePlay().catch(() => {})
 }
 
 const formatTime = (seconds: number): string => {
-  if (isNaN(seconds)) return '00:00'
+  if (isNaN(seconds) || !isFinite(seconds)) return '00:00'
   const mins = Math.floor(seconds / 60)
   const secs = Math.floor(seconds % 60)
   return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
 }
+
+const coverSrc = ref('')
+let coverAbort: AbortController | null = null
+
+const resolveCover = async (song: any) => {
+  if (coverAbort) coverAbort.abort()
+  coverAbort = new AbortController()
+  const signal = coverAbort.signal
+
+  if (!song) {
+    coverSrc.value = DEFAULT_COVER
+    return
+  }
+  if ((song.albumArtUri && song.albumArtUri.trim() !== '') || !appStore.getCanFetchCoverFromWeb()) {
+    coverSrc.value = song.albumArtUri
+    return
+  }
+  try {
+    const url = await fetchCoverFromWeb(song.title, song.artist || '')
+    if (!signal.aborted) {
+      coverSrc.value = url || DEFAULT_COVER
+    }
+  } catch {
+    if (!signal.aborted) {
+      coverSrc.value = DEFAULT_COVER
+    }
+  }
+}
+
+watch(currentSong, (s) => resolveCover(s), { immediate: true })
+
+onUnmounted(() => {
+  coverAbort?.abort()
+})
 </script>
 
 <style scoped lang="scss">

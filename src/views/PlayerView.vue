@@ -12,9 +12,10 @@
     <div class="player-header" :class="{ collapsed: isHeaderCollapsed }">
       <div class="album-cover">
         <img
-          v-if="currentSong?.albumArtUri"
-          :src="currentSong.albumArtUri"
-          :alt="currentSong.title"
+          v-if="coverSrc && coverSrc !== DEFAULT_COVER"
+          :src="coverSrc"
+          :alt="currentSong?.title"
+          @error="coverSrc = DEFAULT_COVER"
         />
         <Icon v-else icon="mdi:music" :width="120" color="var(--text-secondary)" />
       </div>
@@ -87,14 +88,22 @@
           </button>
         </div>
       </div>
-      <div class="queue-list" ref="queueListRef" @scroll="handleScroll">
+
+      <TransitionGroup
+        name="queue-list"
+        tag="div"
+        class="queue-list"
+        ref="queueListRef"
+        @scroll="handleScroll"
+      >
         <div
           v-for="(song, idx) in localQueue"
           :key="song.id"
-          class="queue-item"
           :data-index="idx"
+          class="queue-item"
           :class="{
             'drag-over': dragOverIndex === idx,
+            'dragging-source': dragStartIndex === idx,
             'past-song': getRelativeIndex(idx).startsWith('-'),
           }"
           @click="playSong(song)"
@@ -121,7 +130,7 @@
             @click.stop
           />
         </div>
-      </div>
+      </TransitionGroup>
     </div>
   </div>
 </template>
@@ -138,6 +147,7 @@ import toast from '@/utils/createToast'
 import { showConfirm } from '@/utils/createConfirm'
 import { audio } from '@/utils/createAudio'
 import { useI18n } from 'vue-i18n'
+import { fetchCoverFromWeb, DEFAULT_COVER } from '@/utils/functions'
 
 const { t } = useI18n()
 const appStore = useAppStore()
@@ -309,6 +319,7 @@ const menuOptions = computed<DropdownItem[]>(() => [
   { icon: 'mdi:play', description: t('player.menu.play'), value: 'play' },
   { icon: 'mdi:heart-outline', description: t('player.menu.like'), value: 'like' },
   { icon: 'mdi:delete', description: t('player.menu.remove'), value: 'remove' },
+  { icon: 'proicons:cancel', description: t('player.menu.cancel'), value: 'cancel' },
 ])
 
 const onMenuItemSelect = (item: DropdownItem, song: Song) => {
@@ -344,6 +355,7 @@ const onMenuItemSelect = (item: DropdownItem, song: Song) => {
   }
   openDropdownId.value = null
 }
+
 const dragStartIndex = ref<number | null>(null)
 const dragOverIndex = ref<number | null>(null)
 let dragItem: HTMLElement | null = null
@@ -480,6 +492,45 @@ const formatTime = (seconds: number): string => {
   const secs = Math.floor(seconds % 60)
   return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
 }
+
+const coverSrc = ref('')
+let coverAbort: AbortController | null = null
+
+const resolveCover = async (song: Song | null) => {
+  if (coverAbort) coverAbort.abort()
+  coverAbort = new AbortController()
+  const signal = coverAbort.signal
+
+  if (!song) {
+    coverSrc.value = DEFAULT_COVER
+    return
+  }
+  if (song.albumArtUri && song.albumArtUri.trim() !== '') {
+    coverSrc.value = song.albumArtUri
+    return
+  }
+  // 检查设置是否允许联网获取
+  if (appStore.getCanFetchCoverFromWeb?.() === false) {
+    coverSrc.value = DEFAULT_COVER
+    return
+  }
+  try {
+    const url = await fetchCoverFromWeb(song.title, song.artist || '')
+    if (!signal.aborted) {
+      coverSrc.value = url || DEFAULT_COVER
+    }
+  } catch {
+    if (!signal.aborted) {
+      coverSrc.value = DEFAULT_COVER
+    }
+  }
+}
+
+watch(currentSong, (s) => resolveCover(s), { immediate: true })
+
+onUnmounted(() => {
+  coverAbort?.abort()
+})
 </script>
 
 <style scoped lang="scss">
@@ -663,15 +714,14 @@ const formatTime = (seconds: number): string => {
   flex: 1;
   overflow-y: auto;
   padding: 8px 0;
-}
-.queue-item.past-song {
-  background: var(--bg-card-dimmed, rgba(0, 0, 0, 0.02));
-  opacity: 0.7;
-  .queue-index,
-  .queue-song-name {
-    color: var(--text-disabled, #aaa);
+
+  .queue-list-move,
+  .queue-list-enter-active,
+  .queue-list-leave-active {
+    transition: transform 0.3s ease;
   }
 }
+
 .queue-item {
   display: flex;
   align-items: center;
@@ -681,9 +731,8 @@ const formatTime = (seconds: number): string => {
   background: var(--bg-card, transparent);
   border-radius: 8px;
   user-select: none;
-  transition: background 0.2s;
   transition:
-    transform 0.2s cubic-bezier(0.2, 0.9, 0.4, 1.1),
+    transform 0.2s ease,
     background 0.2s,
     opacity 0.2s;
   will-change: transform;
@@ -698,6 +747,7 @@ const formatTime = (seconds: number): string => {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     cursor: grabbing;
   }
+
   &.drag-over {
     border-top: 2px solid var(--primary-color);
   }
@@ -738,6 +788,15 @@ const formatTime = (seconds: number): string => {
       overflow: hidden;
       text-overflow: ellipsis;
     }
+  }
+}
+
+.past-song {
+  background: var(--bg-card-dimmed, rgba(0, 0, 0, 0.02));
+  opacity: 0.7;
+  .queue-index,
+  .queue-song-name {
+    color: var(--text-disabled, #aaa);
   }
 }
 </style>

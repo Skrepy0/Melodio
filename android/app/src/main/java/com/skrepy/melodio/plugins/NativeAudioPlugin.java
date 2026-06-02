@@ -98,6 +98,7 @@ public class NativeAudioPlugin extends Plugin {
             return true;
         });
     }
+
     @PluginMethod
     public void setRepeatMode(PluginCall call) {
         boolean repeat = call.getBoolean("repeatOne", false);
@@ -105,6 +106,7 @@ public class NativeAudioPlugin extends Plugin {
         Log.d(TAG, "Repeat mode set to: " + repeat);
         call.resolve();
     }
+
     private void initSession() {
         mediaSession = new MediaSessionCompat(getContext(), "MelodioAudio");
         mediaSession.setActive(true);
@@ -137,6 +139,7 @@ public class NativeAudioPlugin extends Plugin {
         });
         Log.d(TAG, "MediaSession initialized");
     }
+
     @PluginMethod
     public void setCurrentIndex(PluginCall call) {
         int index = call.getInt("index", -1);
@@ -148,6 +151,7 @@ public class NativeAudioPlugin extends Plugin {
             call.reject("Invalid index");
         }
     }
+
     @PluginMethod
     public void setPlaylist(PluginCall call) {
         JSArray arr = call.getArray("songs");
@@ -183,6 +187,7 @@ public class NativeAudioPlugin extends Plugin {
                 ", currentIndex=" + currentIndex);
         call.resolve();
     }
+
     private void loadBitmap(String urlString, BitmapCallback callback) {
         Executors.newSingleThreadExecutor().execute(() -> {
             Bitmap bitmap = null;
@@ -210,6 +215,7 @@ public class NativeAudioPlugin extends Plugin {
             new Handler(Looper.getMainLooper()).post(() -> callback.onResult(finalBitmap));
         });
     }
+
     @PluginMethod
     public void playIndex(PluginCall call) {
         int index = call.getInt("index", 0);
@@ -370,9 +376,9 @@ public class NativeAudioPlugin extends Plugin {
 
     @PluginMethod
     public void seek(PluginCall call) {
-        double time = call.getDouble("time", 0.0);
-        int msec = (int) (time * 1000);
-        Log.d(TAG, "seek to " + time + "s (" + msec + "ms)");
+        double timeSec = call.getDouble("time", 0.0);
+        int msec = (int) (timeSec * 1000);
+        Log.d(TAG, "seek to " + timeSec + "s (" + msec + "ms)");
         if (prepared) {
             mediaPlayer.seekTo(msec);
             call.resolve();
@@ -530,6 +536,7 @@ public class NativeAudioPlugin extends Plugin {
     static class SongItem {
         String url, title, artist, album, cover;
     }
+
     private interface BitmapCallback {
         void onResult(Bitmap bitmap);
     }

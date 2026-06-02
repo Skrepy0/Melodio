@@ -64,7 +64,8 @@
     "menu": {
       "play": "Play",
       "like": "Like",
-      "remove": "Remove from queue"
+      "remove": "Remove from queue",
+      "cancel": "Cancel"
     },
     "error": "Playback failed"
   },
@@ -201,7 +202,8 @@
   "common": {
     "back": "Back",
     "confirm": "Confirm",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "playFailed": "Play Failed"
   },
   "editor": {
     "title": "Sort Songs",
@@ -211,6 +213,7 @@
     "sortByArtist": "By Artist",
     "sortByAddedTime": "By Date Added",
     "sortByModifiedTime": "By Date Modified",
+    "sortCustom": "Custom",
     "asc": "Ascending",
     "desc": "Descending",
     "totalSongs": "{count} songs",

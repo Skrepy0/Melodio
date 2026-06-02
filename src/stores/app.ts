@@ -326,24 +326,26 @@ export const useAppStore = defineStore('app', () => {
       return
     }
 
-    if (playData.value.currentIndex < 0 || playData.value.currentIndex >= playQueue.value.length) {
-      playData.value.currentIndex = 0
-    }
-
     if (playData.value.isPlaying) {
       await audio.pause()
       playData.value.isPlaying = false
-    } else {
-      try {
-        await audio.play()
-        playData.value.isPlaying = true
-      } catch (e) {
-        console.warn('[Store] play() 失败，尝试 playIndex', e)
-        await audio.playIndex(playData.value.currentIndex)
-        playData.value.isPlaying = true
-      }
+      savePlayData()
+      return
     }
-    savePlayData()
+
+    try {
+      await audio.playIndex(playData.value.currentIndex, false)
+      const savedTime = playData.value.mockCurrentTime
+      if (savedTime > 0) {
+        await audio.seek(savedTime)
+      }
+      await audio.play()
+      playData.value.isPlaying = true
+      savePlayData()
+    } catch (err) {
+      console.error('[Store] togglePlay error', err)
+      toast.error('播放失败')
+    }
   }
 
   async function nextSong() {
@@ -390,25 +392,10 @@ export const useAppStore = defineStore('app', () => {
       initSongLists()
       initPlayMode()
       setupAudioBecomingNoisyListener()
+      await audio.setPlaylist(songsForPlugin.value)
+      setupNativeAudioListeners()
       await audio.setRepeatMode(playMode.value === 'repeatOne')
       initFlag.value = true
-    }
-
-    console.log('[Store] init: setting playlist, count=', playQueue.value.length)
-    await audio.setPlaylist(songsForPlugin.value)
-    setupNativeAudioListeners()
-
-    const savedIndex = playData.value.currentIndex
-    if (savedIndex >= 0 && savedIndex < playQueue.value.length) {
-      await audio.playIndex(savedIndex, false)
-      const savedTime = playData.value.mockCurrentTime
-      if (savedTime > 0) {
-        setTimeout(async () => {
-          await audio.seek(savedTime)
-          setMockCurrentTime(savedTime)
-        }, 500)
-      }
-      playData.value.isPlaying = false
     }
   }
 

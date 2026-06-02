@@ -64,7 +64,8 @@
     "menu": {
       "play": "播放",
       "like": "喜欢",
-      "remove": "从队列移除"
+      "remove": "从队列移除",
+      "cancel": "取消"
     },
     "error": "播放失败"
   },
@@ -201,7 +202,8 @@
   "common": {
     "back": "返回",
     "confirm": "确定",
-    "cancel": "取消"
+    "cancel": "取消",
+    "playFailed": "播放失败"
   },
   "editor": {
     "title": "编辑歌单",
@@ -211,6 +213,7 @@
     "sortByArtist": "按艺术家",
     "sortByAddedTime": "按添加时间",
     "sortByModifiedTime": "按修改时间",
+    "sortCustom": "自定义排序",
     "asc": "升序",
     "desc": "降序",
     "totalSongs": "共 {count} 首",

@@ -16,7 +16,7 @@
             >
               <div class="playlist-cover">
                 <template v-if="playlist.id === 0">
-                  <Icon icon="mdi:heart" :width="40" color="red" />
+                  <Icon icon="si:heart-duotone" :width="40" color="red" />
                 </template>
                 <template v-else>
                   <img

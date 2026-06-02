@@ -120,6 +120,8 @@ const toggleSelect = () => {
   gap: 8px;
   transition: background 0.2s;
   animation: slideInUp 0.3s ease both;
+  min-width: 0;
+  width: 100%;
 }
 
 @keyframes slideInUp {
@@ -145,5 +147,15 @@ const toggleSelect = () => {
 
 .select-mode-offset {
   flex: 1;
+  min-width: 0;
+}
+
+.select-mode-offset :deep(.song-name),
+.select-mode-offset :deep(.song-artist),
+.select-mode-offset :deep(.queue-song-name),
+.select-mode-offset :deep(.queue-song-artist) {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 </style>

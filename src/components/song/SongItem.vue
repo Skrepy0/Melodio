@@ -152,7 +152,11 @@ const onMenuItemSelect = async (item: DropdownItem) => {
       }
       selected.data.push(props.song)
       appStore.setSongListById(selected.id, selected)
-      toast.success(t('song.toast.addedToPlaylist', { name: selected.name }))
+      toast.success(
+        t('song.toast.addedToPlaylist', {
+          name: selected.id === 0 ? t('playList.like.title') : selected.name,
+        })
+      )
     }
   } else if (item.value === 'next') {
     const queue = [...appStore.getPlayQueue()]
