@@ -196,7 +196,7 @@
     "languageSelectorHeader": "Select Language",
     "language": "Language",
     "languageDesc": "Select interface language",
-    "about": "About(TODO)",
+    "about": "About",
     "aboutDesc": "View app information"
   },
   "common": {
@@ -227,5 +227,13 @@
       "invalid_list": "Invalid playlist",
       "list_not_found": "Playlist not found"
     }
+  },
+  "about": {
+    "title": "About",
+    "repository": "Repository",
+    "feedback": "Feedback",
+    "reportIssue": "Report Issue / Suggestion",
+    "author": "Author",
+    "license": "License"
   }
 }

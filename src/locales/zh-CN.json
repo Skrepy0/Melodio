@@ -196,7 +196,7 @@
     "languageSelectorHeader": "选择语言",
     "language": "语言",
     "languageDesc": "选择界面显示语言",
-    "about": "关于(TODO)",
+    "about": "关于",
     "aboutDesc": "查看应用信息"
   },
   "common": {
@@ -227,5 +227,13 @@
       "invalid_list": "无效歌单",
       "list_not_found": "歌单不存在"
     }
+  },
+  "about": {
+    "title": "关于",
+    "repository": "开源仓库",
+    "feedback": "问题反馈",
+    "reportIssue": "报告问题 / 建议",
+    "author": "作者",
+    "license": "许可证"
   }
 }
