@@ -77,7 +77,7 @@ import { Capacitor } from '@capacitor/core'
 import { Browser } from '@capacitor/browser'
 
 const router = useRouter()
-const version = ref('0.0.1')
+const version = ref('0.0.2')
 const repoUrl = 'https://github.com/Skrepy0/Melodio'
 const issuesUrl = 'https://github.com/Skrepy0/Melodio/issues'
 
