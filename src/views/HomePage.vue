@@ -48,6 +48,7 @@
         @batch-delete="handleBatchDelete"
         @song-click="playSong"
         @delete-song="removeSongFromPlaylist"
+        @add-to-blacklist="addSongToBlacklist"
       />
       <PlaylistsList
         v-else-if="selectedCategory === 'play-lists'"
@@ -115,6 +116,7 @@ const operations = computed<DropdownItem[]>(() => [
     value: 'new-songs-list',
   },
   { icon: 'ri:scan-2-line', description: t('home.operations.scanLibrary'), value: 'scan-songs' },
+  { icon: 'mdi:ban', description: t('home.operations.blacklist'), value: 'blacklist' },
   { icon: 'ri:settings-line', description: t('home.operations.settings'), value: 'settings' },
 ])
 
@@ -169,9 +171,10 @@ const synchroShowSongsList = () => {
 const loadAllSongs = async () => {
   const result = await scanAllAudio()
   if (result.success) {
-    songsList.value = result.songs
+    const blacklistSet = new Set(appStore.getBlacklist().map((item) => item.id))
+    songsList.value = result.songs.filter((song) => !blacklistSet.has(song.id))
     synchroShowSongsList()
-    toast.success(t('home.toast.scanSuccess', { count: result.songs.length }))
+    toast.success(t('home.toast.scanSuccess', { count: songsList.value.length }))
     appStore.setAllSongs(songsList.value)
     selectedCategory.value = 'tracks'
   } else {
@@ -227,6 +230,19 @@ const removeSongFromPlaylist = async (song: Song) => {
   songsList.value = newList
   appStore.setAllSongs(newList)
   toast.success(t('songList.toast.removeSuccess', { count: 1 }))
+}
+const addSongToBlacklist = async (ids: string[]) => {
+  const list: Song[] = []
+  const blacklist: Song[] = []
+  songsList.value.forEach((item) => {
+    if (!ids.includes(item.id)) list.push(item)
+    else blacklist.push(item)
+  })
+  songsList.value = list
+  synchroShowSongsList()
+  appStore.setAllSongs(songsList.value)
+  appStore.setBlacklist([...appStore.getBlacklist(), ...blacklist])
+  toast.success(t('blacklist.successAdded', { count: blacklist.length }))
 }
 const playSong = async (song: Song) => {
   if (songsList.value.length === 0) return
@@ -301,6 +317,8 @@ const onSelectOperation = async (item: DropdownItem) => {
     } else {
       console.log('用户取消')
     }
+  } else if (item.value === 'blacklist') {
+    router.push('/blacklist')
   }
 }
 

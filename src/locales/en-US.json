@@ -8,6 +8,7 @@
     "operations": {
       "newPlaylist": "New Playlist",
       "scanLibrary": "Scan Library",
+      "blacklist": "Blacklist",
       "settings": "Settings"
     },
     "newPlaylistPrompt": {
@@ -116,7 +117,8 @@
     "toast": {
       "removeSuccess": "{count} song(s) removed",
       "songNotFound": "Song not found"
-    }
+    },
+    "notFound": "No results found."
   },
   "playlist": {
     "defaultDesc": "{count} song(s)",
@@ -156,6 +158,7 @@
     "addToPlaylist": "Add to Playlist",
     "delete": "Delete ({count})",
     "cancel": "Cancel",
+    "addToBlacklist": "Add to Blacklist({count})",
     "toast": {
       "addedToQueue": "{count} song(s) added to queue",
       "alreadyInQueue": "Selected song(s) already in queue",
@@ -193,6 +196,8 @@
     "autoCleanInvalidSongsDesc": "Automatically remove songs that have been moved or deleted",
     "canFetchCoverFromWeb": "Fetch cover images online",
     "canFetchCoverFromWebDesc": "When enabled, the system will fetch cover images online for songs without local covers.",
+    "blacklist": "Blacklist",
+    "blacklistDesc": "View blacklisted songs. Songs added to the blacklist will be excluded when scanning the library.",
     "languageSelectorHeader": "Select Language",
     "language": "Language",
     "languageDesc": "Select interface language",
@@ -235,5 +240,31 @@
     "reportIssue": "Report Issue / Suggestion",
     "author": "Author",
     "license": "License"
+  },
+  "blacklist": {
+    "title": "Blacklist",
+    "successAdded": "Successfully added {count} song(s) to the blacklist.",
+    "operations": {
+      "delete_all": "Clear Blacklist"
+    },
+    "confirm": {
+      "title": "Prompt",
+      "message": "Are you sure you want to remove these {count} items from the blacklist?",
+      "confirm": "Confirm",
+      "cancel": "Cancel"
+    },
+    "toast": {
+      "removeSuccess": "Successfully removed {count} items from the blacklist!"
+    },
+    "deleteAllSongs": {
+      "title": "Prompt",
+      "message": "Are you sure you want to clear the blacklist?",
+      "confirm": "Confirm",
+      "cancel": "Cancel",
+      "result": {
+        "success": "Blacklist cleared",
+        "emptyList": "The blacklist is empty!"
+      }
+    }
   }
 }

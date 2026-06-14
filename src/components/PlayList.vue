@@ -13,33 +13,38 @@
         @click="handleSongClick"
         @update:dropdown-open="(open) => handleDropdownToggle(song.id, open)"
         :on-delete="handleDeleteSong"
+        :show-operations="props.showOperations"
       />
     </div>
 
     <Transition name="slide-up">
       <div v-if="isSelectMode" class="bottom-actions">
         <div class="actions-container">
-          <button class="action-btn" @click="selectAll">
+          <button v-if="props.visibility.selectAll" class="action-btn" @click="selectAll">
             <Icon icon="mdi:select-all" :width="20" />
             <span>{{ $t('playList.selectAll') }}</span>
           </button>
-          <button class="action-btn" @click="clearSelection">
+          <button v-if="props.visibility.clear" class="action-btn" @click="clearSelection">
             <Icon icon="mdi:select-off" :width="20" />
             <span>{{ $t('playList.clear') }}</span>
           </button>
-          <button class="action-btn" @click="addToQueue">
+          <button v-if="props.visibility.addToQueue" class="action-btn" @click="addToQueue">
             <Icon icon="ic:baseline-queue" :width="20" />
             <span>{{ $t('playList.addToQueue') }}</span>
           </button>
-          <button class="action-btn" @click="addToSongList">
+          <button v-if="props.visibility.addToPlaylist" class="action-btn" @click="addToSongList">
             <Icon icon="mdi:heart-outline" :width="20" />
             <span>{{ $t('playList.addToPlaylist') }}</span>
           </button>
-          <button class="action-btn danger" @click="batchDelete">
+          <button v-if="props.visibility.delete" class="action-btn danger" @click="batchDelete">
             <Icon icon="mdi:delete" :width="20" />
             <span>{{ $t('playList.delete', { count: selectedIds.size }) }}</span>
           </button>
-          <button class="action-btn" @click="exitSelectMode">
+          <button v-if="props.visibility.ban" class="action-btn" @click="addToBlacklist">
+            <Icon icon="tabler:ban" :width="20" />
+            <span>{{ $t('playList.addToBlacklist', { count: selectedIds.size }) }}</span>
+          </button>
+          <button v-if="props.visibility.close" class="action-btn" @click="exitSelectMode">
             <Icon icon="mdi:close" :width="20" />
             <span>{{ $t('playList.cancel') }}</span>
           </button>
@@ -66,14 +71,36 @@ const appStore = useAppStore()
 
 interface Props {
   songs: Song[]
+  showOperations?: boolean
+  visibility?: {
+    selectAll?: boolean
+    clear?: boolean
+    addToQueue?: boolean
+    addToPlaylist?: boolean
+    delete?: boolean
+    ban?: boolean
+    close?: boolean
+  }
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  showOperations: true,
+  visibility: () => ({
+    selectAll: true,
+    clear: true,
+    addToQueue: true,
+    addToPlaylist: true,
+    delete: true,
+    ban: true,
+    close: true,
+  }),
+})
 
 const emit = defineEmits<{
   (e: 'batch-delete', songIds: string[]): void
   (e: 'song-click', song: Song): void
   (e: 'delete-song', song: Song): void
+  (e: 'add-to-blacklist', songIds: string[]): void
 }>()
 
 const isSelectMode = ref(false)
@@ -177,6 +204,11 @@ const clearSelection = () => {
 const batchDelete = () => {
   if (selectedIds.value.size === 0) return
   emit('batch-delete', Array.from(selectedIds.value))
+  exitSelectMode()
+}
+const addToBlacklist = () => {
+  if (selectedIds.value.size === 0) return
+  emit('add-to-blacklist', Array.from(selectedIds.value))
   exitSelectMode()
 }
 const handleDeleteSong = (song: Song) => {

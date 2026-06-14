@@ -19,10 +19,11 @@
     <SongItem
       :song="song"
       :class="{ 'select-mode-offset': selectable }"
-      v-model:dropdownOpen="dropdownOpen"
+      :dropdownOpen="dropdownOpen"
       @click="onSongClick"
       @menu-select="onMenuSelect"
       :on-delete="handleDeleteSong"
+      :showOperations="props.showOperations"
     />
   </div>
 </template>
@@ -33,7 +34,9 @@ import { Icon } from '@iconify/vue'
 import SongItem from './SongItem.vue'
 import type { Song, SongItemSelectableProps } from '@/utils/interface.ts'
 
-const props = defineProps<SongItemSelectableProps>()
+const props = withDefaults(defineProps<SongItemSelectableProps>(), {
+  showOperations: true,
+})
 
 const emit = defineEmits<{
   (e: 'long-press', songId: string): void

@@ -24,6 +24,29 @@ export const useAppStore = defineStore('app', () => {
   const currentLanguage = ref('zh-CN')
   const isI18nReady = ref(false)
   const canFetchCoverFromWeb = ref(true)
+  const blacklist = ref<Song[]>([])
+
+  function initBlacklist() {
+    const obj = localStorage.getItem('blacklist')
+    if (obj) {
+      const parsed = JSON.parse(obj)
+      if (Array.isArray(parsed.data)) blacklist.value = parsed.data
+    }
+  }
+  function getBlacklist() {
+    return blacklist.value
+  }
+  function setBlacklist(val: Song[]) {
+    blacklist.value = val
+    saveBlacklist()
+  }
+  function saveBlacklist() {
+    localStorage.setItem('blacklist', JSON.stringify({ data: blacklist.value }))
+  }
+  function addToBlacklist(val: Song) {
+    blacklist.value.push(val)
+    saveBlacklist()
+  }
 
   function initLanguage() {
     let targetLang: string
@@ -381,6 +404,7 @@ export const useAppStore = defineStore('app', () => {
     if (!initFlag.value) {
       initLanguage()
       loadInitialDarkMode()
+      initBlacklist()
       initAutoPauseOnDisconnect()
       initAutoDelInvalidSongs()
       initCanFetchCoverFromWeb()
@@ -561,6 +585,9 @@ export const useAppStore = defineStore('app', () => {
   return {
     isI18nReady,
     initLanguage,
+    getBlacklist,
+    setBlacklist,
+    addToBlacklist,
     setSelectedCategory,
     getSelectedCategory,
     setCurrentPlayList,

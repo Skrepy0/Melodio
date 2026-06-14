@@ -66,6 +66,7 @@ export interface SongItemSelectableProps {
   selected: boolean
   dropdownOpen?: boolean
   onDelete: (song: Song) => void
+  showOperations?: boolean
 }
 
 export interface NowPlayingSong {

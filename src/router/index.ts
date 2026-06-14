@@ -6,6 +6,7 @@ import PlayerView from '../views/PlayerView.vue'
 import SortSongsPage from '../views/SortSongsPage.vue'
 import SongListPage from '@/views/SongListPage.vue'
 import AboutPage from '@/views/AboutPage.vue'
+import ScanBlacklistPage from '@/views/ScanBlacklistPage.vue'
 const routes: Array<RouteRecordRaw> = [
   {
     path: '/',
@@ -21,6 +22,7 @@ const routes: Array<RouteRecordRaw> = [
   { path: '/song-list', name: 'SongList', component: SongListPage },
   { path: '/sort-song', name: 'SortSongs', component: SortSongsPage },
   { path: '/about', name: 'About', component: AboutPage },
+  { path: '/blacklist', name: 'Blacklist', component: ScanBlacklistPage },
 ]
 
 const router = createRouter({

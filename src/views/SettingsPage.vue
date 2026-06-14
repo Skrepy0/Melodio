@@ -91,6 +91,19 @@
           <div class="setting-desc">{{ $t('settings.canFetchCoverFromWebDesc') }}</div>
         </div>
 
+        <div class="setting-item clickable" @click="goToBlacklist">
+          <div class="setting-row">
+            <div class="item-left">
+              <Icon icon="mdi:ban" :width="22" class="item-icon" />
+              <span class="item-label">{{ $t('settings.blacklist') }}</span>
+            </div>
+            <div class="item-right">
+              <Icon icon="mdi:chevron-right" :width="20" />
+            </div>
+          </div>
+          <div class="setting-desc">{{ $t('settings.blacklistDesc') }}</div>
+        </div>
+
         <div class="setting-item clickable" @click="showLanguageSelector">
           <div class="setting-row">
             <div class="item-left">
@@ -212,7 +225,9 @@ const toggleCanFetchCoverFromWeb = (e: Event) => {
 const goToAbout = () => {
   router.push('/about')
 }
-
+const goToBlacklist = () => {
+  router.push('/blacklist')
+}
 onMounted(() => {
   isDarkMode.value = appStore.darkMode
 })

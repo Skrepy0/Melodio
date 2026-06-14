@@ -8,6 +8,7 @@
     "operations": {
       "newPlaylist": "新建播放列表",
       "scanLibrary": "扫描曲库",
+      "blacklist": "黑名单",
       "settings": "设置"
     },
     "newPlaylistPrompt": {
@@ -116,7 +117,8 @@
     "toast": {
       "removeSuccess": "已移除 {count} 首歌",
       "songNotFound": "未找到歌曲"
-    }
+    },
+    "notFound": "搜索无结果"
   },
   "playlist": {
     "defaultDesc": "{count} 首歌曲",
@@ -156,6 +158,7 @@
     "addToPlaylist": "添加到播放列表",
     "delete": "删除({count})",
     "cancel": "取消",
+    "addToBlacklist": "添加到黑名单({count})",
     "toast": {
       "addedToQueue": "已添加 {count} 首歌到队列",
       "alreadyInQueue": "所选歌曲已在队列中",
@@ -193,6 +196,8 @@
     "autoCleanInvalidSongsDesc": "自动移除已被移动或删除的歌曲条目",
     "canFetchCoverFromWeb": "在线获取歌曲封面",
     "canFetchCoverFromWebDesc": "开启后，系统将自动联网为缺少封面的歌曲补充封面",
+    "blacklist": "黑名单",
+    "blacklistDesc": "查看黑名单歌曲,被加入黑名单的歌曲在扫描曲库时会被排除",
     "languageSelectorHeader": "选择语言",
     "language": "语言",
     "languageDesc": "选择界面显示语言",
@@ -235,5 +240,29 @@
     "reportIssue": "报告问题 / 建议",
     "author": "作者",
     "license": "许可证"
+  },
+  "blacklist": {
+    "title": "黑名单",
+    "successAdded": "成功将这{count}项添加到黑名单",
+    "operations": {
+      "delete_all": "清空黑名单"
+    },
+    "confirm": {
+      "title": "提示",
+      "message": "确定要将这{count}项移出黑名单吗?",
+      "confirm": "确定",
+      "cancel": "取消"
+    },
+    "toast": { "removeSuccess": "已成功将这{count}项移出黑名单!" },
+    "deleteAllSongs": {
+      "title": "提示",
+      "message": "确定要清空黑名单吗?",
+      "confirm": "确定",
+      "cancel": "取消",
+      "result": {
+        "success": "已清空黑名单",
+        "emptyList": "此黑名单为空！"
+      }
+    }
   }
 }
