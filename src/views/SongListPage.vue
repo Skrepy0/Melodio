@@ -116,6 +116,9 @@ const playSong = async (song: Song) => {
   appStore.setCurrentIndex(index)
   appStore.setMockCurrentTime(0)
   try {
+    if (appStore.getPlayData().isPlaying) {
+      appStore.togglePlay()
+    }
     await audio.setPlaylist(
       songsList.value.map((s) => ({
         url: getAccessibleUrl(s.uri),

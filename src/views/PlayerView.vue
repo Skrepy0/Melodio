@@ -147,7 +147,7 @@ import toast from '@/utils/createToast'
 import { showConfirm } from '@/utils/createConfirm'
 import { audio } from '@/utils/createAudio'
 import { useI18n } from 'vue-i18n'
-import { fetchCoverFromWeb, DEFAULT_COVER } from '@/utils/functions'
+import { fetchCoverFromWeb, DEFAULT_COVER, isInList } from '@/utils/functions'
 
 const { t } = useI18n()
 const appStore = useAppStore()
@@ -326,6 +326,11 @@ const onMenuItemSelect = (item: DropdownItem, song: Song) => {
   if (item.value === 'play') {
     playSong(song)
   } else if (item.value === 'like') {
+    if (isInList(song.id, appStore.getLikeList().data)) {
+      toast.warning(t('song.toast.alreadyLiked'))
+      return
+    }
+    appStore.mergeLikeListData([song])
     toast.success(t('player.toast.liked', { songTitle: song.title }))
   } else if (item.value === 'remove') {
     const idx = localQueue.value.findIndex((s) => s.id === song.id)
