@@ -102,25 +102,30 @@ const playSong = async (song: Song) => {
     toast.error(t('songList.toast.songNotFound'))
     return
   }
-  const currentIndex = appStore.getPlayData().currentIndex
+  const playData = appStore.getPlayData()
+  const currentIndex = playData.currentIndex
   const currentQueue = appStore.getPlayQueue()
   if (
     index === currentIndex &&
     currentQueue.length > 0 &&
-    currentQueue[currentIndex]?.id === song.id
+    currentQueue[currentIndex]?.id === song.id // 同一首歌
   ) {
     appStore.togglePlay()
-    return
+    return // 暂停播放
   }
+  // 不是同一首
+  if (playData.isPlaying) {
+    appStore.togglePlay() // 先暂停
+  }
+  // 设置队列信息
+  appStore.setIsSwitchingSong(true)
   appStore.setPlayQueue(songsList.value)
   appStore.setCurrentIndex(index)
   appStore.setMockCurrentTime(0)
   try {
-    if (appStore.getPlayData().isPlaying) {
-      appStore.togglePlay()
-    }
+    const queue = appStore.getPlayQueue()
     await audio.setPlaylist(
-      songsList.value.map((s) => ({
+      queue.map((s) => ({
         url: getAccessibleUrl(s.uri),
         title: s.title,
         artist: s.artist || 'Unknown',
@@ -134,10 +139,11 @@ const playSong = async (song: Song) => {
     console.error('播放失败:', error)
     toast.error(t('common.playFailed'))
   } finally {
-    appStore.setIsSwitchingSong(true)
+    appStore.togglePlay()
     setTimeout(() => {
       appStore.setIsSwitchingSong(false)
-    }, 100)
+      appStore.togglePlay()
+    }, 200)
   }
 }
 

@@ -265,13 +265,18 @@ const playSong = async (song: Song) => {
     return
   }
 
+  if (appStore.getPlayData().isPlaying) {
+    appStore.togglePlay() // 先暂停
+  }
+
+  appStore.setIsSwitchingSong(true)
   appStore.setPlayQueue(songsList.value)
   appStore.setCurrentIndex(index)
   appStore.setMockCurrentTime(0)
 
   try {
     await audio.setPlaylist(
-      songsList.value.map((s) => ({
+      appStore.getPlayQueue().map((s) => ({
         url: getAccessibleUrl(s.uri),
         title: s.title,
         artist: s.artist || 'Unknown',
@@ -279,16 +284,17 @@ const playSong = async (song: Song) => {
         coverUrl: s.albumArtUri || '',
       }))
     )
-    await audio.playIndex(index)
-    appStore.setIsPlaying(true)
+    setTimeout(async () => {
+      await audio.playIndex(appStore.getPlayData().currentIndex)
+      appStore.setIsPlaying(true)
+    }, 50)
   } catch (error) {
     console.error('播放失败:', error)
     toast.error(t('common.playFailed'))
   } finally {
-    appStore.setIsSwitchingSong(true)
     setTimeout(() => {
       appStore.setIsSwitchingSong(false)
-    }, 100)
+    }, 200)
   }
 }
 
