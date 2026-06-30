@@ -186,23 +186,31 @@
   },
   "settings": {
     "title": "Settings",
-    "darkMode": "Dark Mode",
-    "darkModeDesc": "Switch to dark theme",
-    "pinyinSearch": "Pinyin Search",
-    "pinyinSearchDesc": "Enable fuzzy pinyin search",
-    "autoPauseOnDisconnect": "Auto-pause on device disconnect",
-    "autoPauseOnDisconnectDesc": "Automatically pause when headphones are unplugged or Bluetooth disconnected",
-    "autoCleanInvalidSongs": "Auto-clean invalid songs",
-    "autoCleanInvalidSongsDesc": "Automatically remove songs that have been moved or deleted",
-    "canFetchCoverFromWeb": "Fetch cover images online",
-    "canFetchCoverFromWebDesc": "When enabled, the system will fetch cover images online for songs without local covers.",
     "blacklist": "Blacklist",
     "blacklistDesc": "View blacklisted songs. Songs added to the blacklist will be excluded when scanning the library.",
     "languageSelectorHeader": "Select Language",
     "language": "Language",
-    "languageDesc": "Select interface language",
+    "languageDesc": "Select the display language for the interface.",
     "about": "About",
-    "aboutDesc": "View app information"
+    "aboutDesc": "View application information.",
+    "interface": {
+      "title": "Theme Settings",
+      "desc": "Set the application's interface theme.",
+      "darkMode": "Dark Mode",
+      "darkModeDesc": "When enabled, the interface will switch to a dark theme."
+    },
+    "accessibility": {
+      "title": "Accessibility",
+      "desc": "Switches for related features provided by the app.",
+      "pinyinSearch": "Pinyin Search",
+      "pinyinSearchDesc": "When enabled, all searches will support fuzzy Pinyin matching.",
+      "autoPauseOnDisconnect": "Auto-pause on device disconnect",
+      "autoPauseOnDisconnectDesc": "Automatically pause playback when headphones are unplugged or a Bluetooth device is disconnected.",
+      "autoCleanInvalidSongs": "Auto-clean invalid songs",
+      "autoCleanInvalidSongsDesc": "Automatically remove song entries that have been moved or deleted.",
+      "canFetchCoverFromWeb": "Fetch song covers online",
+      "canFetchCoverFromWebDesc": "When enabled, the system will automatically go online to fetch covers for songs that lack them."
+    }
   },
   "common": {
     "back": "Back",
