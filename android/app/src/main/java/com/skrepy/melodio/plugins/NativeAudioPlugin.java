@@ -9,6 +9,8 @@ import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.media.AudioAttributes;
+import android.media.AudioFocusRequest;
+import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.net.Uri;
 import android.os.Build;
@@ -73,6 +75,12 @@ public class NativeAudioPlugin extends Plugin {
     private int durationSec = 0;
     private boolean repeatOne = false;
 
+    //焦点管理
+    private boolean audioFocusEnabled = true;
+    private AudioManager audioManager;
+    private AudioManager.OnAudioFocusChangeListener focusChangeListener;
+    private boolean audioFocusGranted = false;
+
     @Override
     public void load() {
         Log.d(TAG, "Plugin loaded, initializing...");
@@ -102,6 +110,56 @@ public class NativeAudioPlugin extends Plugin {
             nextInternal();
             return true;
         });
+
+        audioManager = (AudioManager) getContext().getSystemService(Context.AUDIO_SERVICE);
+        focusChangeListener = focusChange -> {
+            Log.d(TAG, "AudioFocus changed: " + focusChange);
+            switch (focusChange) {
+                case AudioManager.AUDIOFOCUS_LOSS:
+                    // 永久失去焦点（例如其他应用开始播放），暂停
+                    pauseInternal();
+                    break;
+                case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT:
+                    // 暂时失去焦点（例如通知音），不暂停
+                    break;
+                case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK:
+                    // 短暂失去焦点，不暂停
+                    break;
+                case AudioManager.AUDIOFOCUS_GAIN:
+                    // 重新获得焦点，无操作
+                    break;
+            }
+        };
+    }
+
+    private void requestAudioFocus() {
+        if (!audioFocusEnabled) {
+            audioFocusGranted = true;
+            return;
+        }
+        if (audioManager == null) return;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            AudioAttributes audioAttributes = new AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_MEDIA)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                    .build();
+            AudioFocusRequest focusRequest = new AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
+                    .setAudioAttributes(audioAttributes)
+                    .setOnAudioFocusChangeListener(focusChangeListener)
+                    .build();
+            audioFocusGranted = audioManager.requestAudioFocus(focusRequest) == AudioManager.AUDIOFOCUS_REQUEST_GRANTED;
+        } else {
+            int result = audioManager.requestAudioFocus(focusChangeListener,
+                    AudioManager.STREAM_MUSIC, AudioManager.AUDIOFOCUS_GAIN);
+            audioFocusGranted = (result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED);
+        }
+        Log.d(TAG, "AudioFocus requested: " + audioFocusGranted);
+    }
+
+    private void abandonAudioFocus() {
+        if (!audioFocusEnabled || audioManager == null || focusChangeListener == null) return;
+        audioManager.abandonAudioFocus(focusChangeListener);
+        audioFocusGranted = false;
     }
 
     @PluginMethod
@@ -340,6 +398,13 @@ public class NativeAudioPlugin extends Plugin {
             Log.w(TAG, "playInternal: not prepared, ignoring");
             return;
         }
+        if (!audioFocusGranted) {
+            requestAudioFocus();
+            if (!audioFocusGranted) {
+                // 可提示用户或静默处理
+                return;
+            }
+        }
         if (!mediaPlayer.isPlaying()) {
             mediaPlayer.start();
             isPlaying = true;
@@ -370,6 +435,7 @@ public class NativeAudioPlugin extends Plugin {
             updateState(false);
             stopProgress();
             notifyPlayState(true);
+            abandonAudioFocus();
             Log.d(TAG, "pauseInternal: paused");
         } else {
             Log.d(TAG, "pauseInternal: already paused");
@@ -481,6 +547,15 @@ public class NativeAudioPlugin extends Plugin {
         return true;
     }
 
+    @PluginMethod
+    public void setAudioFocusEnabled(PluginCall call) {
+        Boolean enabledObj = call.getBoolean("enabled");
+        boolean enabled = (enabledObj != null) ? enabledObj : true;
+        this.audioFocusEnabled = enabled;
+        Log.d(TAG, "Audio focus enabled: " + enabled);
+        call.resolve();
+    }
+
     private void notifySongChanged() {
         JSObject o = new JSObject();
         o.put("index", currentIndex);
@@ -540,6 +615,8 @@ public class NativeAudioPlugin extends Plugin {
         stopProgress();
         if (mediaPlayer != null) mediaPlayer.release();
         if (mediaSession != null) mediaSession.release();
+        abandonAudioFocus();
+        audioManager = null;
     }
 
     static class SongItem {

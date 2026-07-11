@@ -87,6 +87,22 @@
             {{ $t('settings.accessibility.canFetchCoverFromWebDesc') }}
           </div>
         </div>
+
+        <div class="setting-item">
+          <div class="setting-row">
+            <div class="item-left">
+              <Icon icon="lucide:focus" :width="22" class="item-icon" />
+              <span class="item-label">{{ $t('settings.accessibility.audioFocusPause') }}</span>
+            </div>
+            <label class="switch">
+              <input type="checkbox" :checked="audioFocusPause" @change="toggleAudioFocusPause" />
+              <span class="slider round"></span>
+            </label>
+          </div>
+          <div class="setting-desc">
+            {{ $t('settings.accessibility.audioFocusPauseDesc') }}
+          </div>
+        </div>
       </div>
     </div>
   </ion-page>
@@ -106,6 +122,7 @@ const goBack = () => {
 
 const autoPauseOnDisconnect = ref(appStore.getAutoPauseOnDisconnect())
 const autoDelInvalidSongs = ref(appStore.getAutoDelInvalidSongs())
+const audioFocusPause = ref(appStore.getAudioFocusPause())
 const canFetchCoverFromWeb = ref(appStore.getCanFetchCoverFromWeb())
 const pinyinSearch = ref(appStore.getPinyinSearch())
 const togglePinyinSearch = (e: Event) => {
@@ -125,7 +142,11 @@ const toggleAutoDelInvalidSongs = (e: Event) => {
   autoDelInvalidSongs.value = target.checked
   appStore.setAutoDelInvalidSongs(autoDelInvalidSongs.value)
 }
-
+const toggleAudioFocusPause = (e: Event) => {
+  const target = e.target as HTMLInputElement
+  audioFocusPause.value = target.checked
+  appStore.setAudioFocusPause(audioFocusPause.value)
+}
 const toggleCanFetchCoverFromWeb = (e: Event) => {
   const target = e.target as HTMLInputElement
   canFetchCoverFromWeb.value = target.checked

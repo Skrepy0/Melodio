@@ -37,4 +37,5 @@ export interface NativeAudioPlugin {
   removeAllListeners(): Promise<void>
   saveFile(options: { fileName: string; data: string }): Promise<{ uri: string }>
   openFile(): Promise<{ data: string }>
+  setAudioFocusEnabled(options: { enabled: boolean }): Promise<void>
 }

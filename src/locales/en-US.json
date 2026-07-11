@@ -219,7 +219,9 @@
       "autoCleanInvalidSongs": "Auto-clean invalid songs",
       "autoCleanInvalidSongsDesc": "Automatically remove song entries that have been moved or deleted.",
       "canFetchCoverFromWeb": "Fetch song covers online",
-      "canFetchCoverFromWebDesc": "When enabled, the system will automatically go online to fetch covers for songs that lack them."
+      "canFetchCoverFromWebDesc": "When enabled, the system will automatically go online to fetch covers for songs that lack them.",
+      "audioFocusPause": "Pause when losing audio focus",
+      "audioFocusPauseDesc": "Automatically pause playback when another app starts playing sound."
     }
   },
   "common": {

@@ -219,7 +219,9 @@
       "autoCleanInvalidSongs": "自动清理无效歌曲",
       "autoCleanInvalidSongsDesc": "自动移除已被移动或删除的歌曲条目",
       "canFetchCoverFromWeb": "在线获取歌曲封面",
-      "canFetchCoverFromWebDesc": "开启后，系统将自动联网为缺少封面的歌曲补充封面"
+      "canFetchCoverFromWebDesc": "开启后，系统将自动联网为缺少封面的歌曲补充封面",
+      "audioFocusPause": "失去焦点时暂停播放",
+      "audioFocusPauseDesc": "当其他应用开始播放音频时，自动暂停当前播放。"
     }
   },
   "common": {

@@ -126,6 +126,9 @@ export class NativeAudioPlayer {
     const result = await NativeAudio.openFile()
     return result.data
   }
+  async setAudioFocusEnabled(enabled: boolean) {
+    await NativeAudio.setAudioFocusEnabled({ enabled })
+  }
 }
 
 export const audio = NativeAudioPlayer.getInstance()

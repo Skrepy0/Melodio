@@ -24,6 +24,7 @@ export const useAppStore = defineStore('app', () => {
   const currentLanguage = ref('zh-CN')
   const isI18nReady = ref(false)
   const canFetchCoverFromWeb = ref(true)
+  const audioFocusPause = ref(true)
   const blacklist = ref<Song[]>([])
 
   function initBlacklist() {
@@ -99,6 +100,22 @@ export const useAppStore = defineStore('app', () => {
     return autoDelInvalidSongs.value
   }
 
+  async function initAudioFocusPause() {
+    const storage = localStorage.getItem('audioFocusPause') || ''
+    if (['true', 'false'].includes(storage)) {
+      audioFocusPause.value = storage === 'true'
+    }
+    await audio.setAudioFocusEnabled(audioFocusPause.value)
+  }
+
+  async function setAudioFocusPause(val: boolean) {
+    audioFocusPause.value = val
+    await audio.setAudioFocusEnabled(val)
+    localStorage.setItem('audioFocusPause', String(val))
+  }
+  function getAudioFocusPause() {
+    return audioFocusPause.value
+  }
   function initCanFetchCoverFromWeb() {
     const storage = localStorage.getItem('canFetchCoverFromWeb') || ''
     if (['true', 'false'].includes(storage)) {
@@ -407,6 +424,7 @@ export const useAppStore = defineStore('app', () => {
       initBlacklist()
       initAutoPauseOnDisconnect()
       initAutoDelInvalidSongs()
+      initAudioFocusPause()
       initCanFetchCoverFromWeb()
       initAllSongs()
       initPlayQueue()
@@ -651,5 +669,7 @@ export const useAppStore = defineStore('app', () => {
     getToBeSortedSongListIndex,
     setCanFetchCoverFromWeb,
     getCanFetchCoverFromWeb,
+    setAudioFocusPause,
+    getAudioFocusPause,
   }
 })
