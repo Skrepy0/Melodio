@@ -20,7 +20,17 @@ export async function exportLocalStorage(keys?: string[], fileName = 'melodio_ba
 
   if (Capacitor.isNativePlatform()) {
     try {
-      const uri = await audio.saveFile(`${fileName}.json`, jsonStr)
+      const baseName = fileName || 'melodio_backup'
+      const counterKey = `exportCounter_${baseName}`
+      let counter = 1
+      const saved = localStorage.getItem(counterKey)
+      if (saved) {
+        counter = parseInt(saved, 10) + 1
+      }
+      localStorage.setItem(counterKey, counter.toString())
+      const uniqueFileName = `${baseName}_${counter}.json`
+
+      const uri = await audio.saveFile(uniqueFileName, jsonStr)
       console.log('文件已保存到：', uri)
       return uri
     } catch (error) {
