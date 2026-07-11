@@ -118,6 +118,14 @@ export class NativeAudioPlayer {
     await NativeAudio.stop()
     this._paused = true
   }
+  async saveFile(fileName: string, jsonData: string): Promise<string> {
+    const result = await NativeAudio.saveFile({ fileName, data: jsonData })
+    return result.uri
+  }
+  async openFile(): Promise<string> {
+    const result = await NativeAudio.openFile()
+    return result.data
+  }
 }
 
 export const audio = NativeAudioPlayer.getInstance()

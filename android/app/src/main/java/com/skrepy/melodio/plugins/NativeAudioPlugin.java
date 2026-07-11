@@ -19,6 +19,7 @@ import android.support.v4.media.session.MediaSessionCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
 import android.util.Log;
 
+import androidx.activity.result.ActivityResult;
 import androidx.core.app.NotificationManagerCompat;
 
 import com.getcapacitor.JSArray;
@@ -26,16 +27,20 @@ import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
+import com.getcapacitor.annotation.ActivityCallback;
 import com.getcapacitor.annotation.CapacitorPlugin;
 
 import org.json.JSONObject;
 
+import java.io.BufferedReader;
 import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.util.ArrayList;
 import java.util.List;
 import java.net.URL;
-import java.util.concurrent.Executors;
+import java.util.Objects;
 
 @CapacitorPlugin(name = "NativeAudio")
 public class NativeAudioPlugin extends Plugin {
@@ -101,7 +106,7 @@ public class NativeAudioPlugin extends Plugin {
 
     @PluginMethod
     public void setRepeatMode(PluginCall call) {
-        boolean repeat = call.getBoolean("repeatOne", false);
+        boolean repeat = Boolean.TRUE.equals(call.getBoolean("repeatOne", false));
         this.repeatOne = repeat;
         Log.d(TAG, "Repeat mode set to: " + repeat);
         call.resolve();
@@ -142,7 +147,8 @@ public class NativeAudioPlugin extends Plugin {
 
     @PluginMethod
     public void setCurrentIndex(PluginCall call) {
-        int index = call.getInt("index", -1);
+        Integer indexObj = call.getInt("index");
+        int index = (indexObj != null) ? indexObj : -1;
         if (index >= 0 && index < playlist.size()) {
             currentIndex = index;
             Log.d(TAG, "Current index updated to: " + index);
@@ -182,18 +188,19 @@ public class NativeAudioPlugin extends Plugin {
             currentIndex = -1;
         }
 
-        Log.d(TAG, "Playlist set: " + playlist.size() + " songs. First URL: " +
-                (playlist.isEmpty() ? "none" : playlist.get(0).url) +
-                ", currentIndex=" + currentIndex);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
+            Log.d(TAG, "Playlist set: " + playlist.size() + " songs. First URL: " +
+                    (playlist.isEmpty() ? "none" : playlist.getFirst().url) +
+                    ", currentIndex=" + currentIndex);
+        }
         call.resolve();
     }
 
     private void loadBitmap(String urlString, BitmapCallback callback) {
-        Executors.newSingleThreadExecutor().execute(() -> {
+        new Thread(() -> {
             Bitmap bitmap = null;
             try {
                 if (urlString.startsWith("data:")) {
-                    // base64 Data URI 解码
                     String base64Str = urlString.substring(urlString.indexOf(",") + 1);
                     byte[] decodedBytes = android.util.Base64.decode(base64Str, android.util.Base64.DEFAULT);
                     bitmap = BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.length);
@@ -213,13 +220,14 @@ public class NativeAudioPlugin extends Plugin {
             }
             Bitmap finalBitmap = bitmap;
             new Handler(Looper.getMainLooper()).post(() -> callback.onResult(finalBitmap));
-        });
+        }).start();
     }
 
     @PluginMethod
     public void playIndex(PluginCall call) {
-        int index = call.getInt("index", 0);
-        boolean autoPlay = call.getBoolean("autoPlay", true); // 默认 true
+        Integer indexObj = call.getInt("index");
+        int index = (indexObj != null) ? indexObj : 0;
+        boolean autoPlay = Boolean.TRUE.equals(call.getBoolean("autoPlay", true)); // 默认 true
 
         Log.d(TAG, "playIndex called with index=" + index + ", autoPlay=" + autoPlay + " (playlist size=" + playlist.size() + ")");
 
@@ -376,7 +384,8 @@ public class NativeAudioPlugin extends Plugin {
 
     @PluginMethod
     public void seek(PluginCall call) {
-        double timeSec = call.getDouble("time", 0.0);
+        Double timeSecObj = call.getDouble("time");
+        double timeSec = (timeSecObj != null) ? timeSecObj : 0.0;
         int msec = (int) (timeSec * 1000);
         Log.d(TAG, "seek to " + timeSec + "s (" + msec + "ms)");
         if (prepared) {
@@ -539,5 +548,95 @@ public class NativeAudioPlugin extends Plugin {
 
     private interface BitmapCallback {
         void onResult(Bitmap bitmap);
+    }
+
+    @PluginMethod
+    public void saveFile(PluginCall call) {
+        String fileName = call.getString("fileName", "backup.json");
+        String data = call.getString("data", "");
+
+        Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType("application/json");
+        intent.putExtra(Intent.EXTRA_TITLE, fileName);
+
+        bridge.saveCall(call);
+        startActivityForResult(call, intent, "saveFileResult");
+    }
+
+    @ActivityCallback
+    private void saveFileResult(PluginCall call, ActivityResult result) {
+        if (call == null) return;
+
+        if (result.getResultCode() == Activity.RESULT_OK) {
+            Intent dataIntent = result.getData();
+            if (dataIntent != null) {
+                Uri uri = dataIntent.getData();
+                if (uri != null) {
+                    try {
+                        OutputStream outputStream = getContext().getContentResolver().openOutputStream(uri);
+                        if (outputStream != null) {
+                            outputStream.write(Objects.requireNonNull(call.getString("data", "")).getBytes());
+                            outputStream.close();
+                            JSObject ret = new JSObject();
+                            ret.put("uri", uri.toString());
+                            call.resolve(ret);
+                            return;
+                        }
+                    } catch (Exception e) {
+                        call.reject("Write failed: " + e.getMessage());
+                        return;
+                    }
+                }
+            }
+        }
+        call.reject("User cancelled");
+    }
+
+    @PluginMethod
+    public void openFile(PluginCall call) {
+        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType("application/json"); // 仅显示 JSON 文件
+        intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, false);
+
+        bridge.saveCall(call);
+        startActivityForResult(call, intent, "openFileResult");
+    }
+
+    @ActivityCallback
+    private void openFileResult(PluginCall call, ActivityResult result) {
+        if (call == null) return;
+
+        if (result.getResultCode() == Activity.RESULT_OK) {
+            Intent dataIntent = result.getData();
+            if (dataIntent != null) {
+                Uri uri = dataIntent.getData();
+                if (uri != null) {
+                    try {
+                        InputStream inputStream = getContext().getContentResolver().openInputStream(uri);
+                        if (inputStream != null) {
+                            BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
+                            StringBuilder stringBuilder = new StringBuilder();
+                            String line;
+                            while ((line = reader.readLine()) != null) {
+                                stringBuilder.append(line);
+                            }
+                            reader.close();
+                            inputStream.close();
+
+                            JSObject ret = new JSObject();
+                            ret.put("data", stringBuilder.toString());
+                            call.resolve(ret);
+                            return;
+                        }
+                    } catch (Exception e) {
+                        call.reject("Read failed: " + e.getMessage());
+                        return;
+                    }
+                }
+            }
+        }
+        call.reject("User cancelled");
     }
 }

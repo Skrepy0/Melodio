@@ -47,6 +47,26 @@
           <div class="setting-desc">{{ $t('settings.blacklistDesc') }}</div>
         </div>
 
+        <div class="setting-item clickable" @click="exportData">
+          <div class="setting-row">
+            <div class="item-left">
+              <Icon icon="majesticons:data" :width="22" class="item-icon" />
+              <span class="item-label">{{ $t('settings.exportData') }}</span>
+            </div>
+          </div>
+          <div class="setting-desc">{{ $t('settings.exportDataDesc') }}</div>
+        </div>
+
+        <div class="setting-item clickable" @click="importData">
+          <div class="setting-row">
+            <div class="item-left">
+              <Icon icon="pajamas:import" :width="22" class="item-icon" />
+              <span class="item-label">{{ $t('settings.importData') }}</span>
+            </div>
+          </div>
+          <div class="setting-desc">{{ $t('settings.importDataDesc') }}</div>
+        </div>
+
         <div class="setting-item clickable" @click="showLanguageSelector">
           <div class="setting-row">
             <div class="item-left">
@@ -80,11 +100,13 @@
 
 <script setup lang="ts">
 import { actionSheetController, IonPage } from '@ionic/vue'
-import { ref, computed } from 'vue'
+import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { Icon } from '@iconify/vue'
 import { useAppStore } from '@/stores/app'
+import toast from '@/utils/createToast'
 import { useI18n } from 'vue-i18n'
+import { exportLocalStorage, importLocalStorage } from '@/utils/ioData'
 
 const { t } = useI18n()
 const appStore = useAppStore()
@@ -142,6 +164,23 @@ const goToInterfaceSettings = () => {
 }
 const goToAccessibility = () => {
   router.push('/settings/accessibility')
+}
+const exportData = async () => {
+  try {
+    await exportLocalStorage()
+    toast.success(t('settings.io.successExport'))
+  } catch (e) {
+    toast.error(t('settings.io.exportError', { e: e }))
+  }
+}
+const importData = async () => {
+  try {
+    await importLocalStorage()
+    window.location.reload()
+    toast.success(t('settings.io.successImport'))
+  } catch (e) {
+    toast.error(t('settings.io.importError', { e: e }))
+  }
 }
 </script>
 

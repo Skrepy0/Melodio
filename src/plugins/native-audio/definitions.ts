@@ -35,4 +35,6 @@ export interface NativeAudioPlugin {
     listener: (data: any) => void
   ): void
   removeAllListeners(): Promise<void>
+  saveFile(options: { fileName: string; data: string }): Promise<{ uri: string }>
+  openFile(): Promise<{ data: string }>
 }
