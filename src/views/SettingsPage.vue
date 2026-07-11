@@ -47,24 +47,17 @@
           <div class="setting-desc">{{ $t('settings.blacklistDesc') }}</div>
         </div>
 
-        <div class="setting-item clickable" @click="exportData">
+        <div class="setting-item clickable" @click="goToOther">
           <div class="setting-row">
             <div class="item-left">
-              <Icon icon="majesticons:data" :width="22" class="item-icon" />
-              <span class="item-label">{{ $t('settings.exportData') }}</span>
+              <Icon icon="ic:baseline-miscellaneous-services" :width="22" class="item-icon" />
+              <span class="item-label">{{ $t('settings.other.title') }}</span>
+            </div>
+            <div class="item-right">
+              <Icon icon="mdi:chevron-right" :width="20" />
             </div>
           </div>
-          <div class="setting-desc">{{ $t('settings.exportDataDesc') }}</div>
-        </div>
-
-        <div class="setting-item clickable" @click="importData">
-          <div class="setting-row">
-            <div class="item-left">
-              <Icon icon="pajamas:import" :width="22" class="item-icon" />
-              <span class="item-label">{{ $t('settings.importData') }}</span>
-            </div>
-          </div>
-          <div class="setting-desc">{{ $t('settings.importDataDesc') }}</div>
+          <div class="setting-desc">{{ $t('settings.other.desc') }}</div>
         </div>
 
         <div class="setting-item clickable" @click="showLanguageSelector">
@@ -104,9 +97,7 @@ import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { Icon } from '@iconify/vue'
 import { useAppStore } from '@/stores/app'
-import toast from '@/utils/createToast'
 import { useI18n } from 'vue-i18n'
-import { exportLocalStorage, importLocalStorage } from '@/utils/ioData'
 
 const { t } = useI18n()
 const appStore = useAppStore()
@@ -165,22 +156,8 @@ const goToInterfaceSettings = () => {
 const goToAccessibility = () => {
   router.push('/settings/accessibility')
 }
-const exportData = async () => {
-  try {
-    await exportLocalStorage()
-    toast.success(t('settings.io.successExport'))
-  } catch (e) {
-    toast.error(t('settings.io.exportError', { e: e }))
-  }
-}
-const importData = async () => {
-  try {
-    await importLocalStorage()
-    window.location.reload()
-    toast.success(t('settings.io.successImport'))
-  } catch (e) {
-    toast.error(t('settings.io.importError', { e: e }))
-  }
+const goToOther = () => {
+  router.push('/settings/other')
 }
 </script>
 

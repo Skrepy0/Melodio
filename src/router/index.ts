@@ -9,6 +9,7 @@ import AboutPage from '@/views/AboutPage.vue'
 import ScanBlacklistPage from '@/views/ScanBlacklistPage.vue'
 import InterfaceSettingsPage from '@/views/settings/InterfaceSettingsPage.vue'
 import AccessibilityPage from '@/views/settings/AccessibilityPage.vue'
+import OtherSettingsPage from '@/views/settings/OtherSettingsPage.vue'
 const routes: Array<RouteRecordRaw> = [
   {
     path: '/',
@@ -22,6 +23,7 @@ const routes: Array<RouteRecordRaw> = [
   { path: '/settings', name: 'Settings', component: SettingsPage },
   { path: '/settings/interface', name: 'Interface Settings', component: InterfaceSettingsPage },
   { path: '/settings/accessibility', name: 'Accessibility', component: AccessibilityPage },
+  { path: '/settings/other', name: 'Other', component: OtherSettingsPage },
   { path: '/player-view', name: 'PlayerView', component: PlayerView },
   { path: '/song-list', name: 'SongList', component: SongListPage },
   { path: '/sort-song', name: 'SortSongs', component: SortSongsPage },

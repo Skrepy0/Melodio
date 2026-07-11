@@ -191,17 +191,21 @@
     "languageSelectorHeader": "选择语言",
     "language": "语言",
     "languageDesc": "选择界面显示语言",
-    "exportData": "数据备份",
-    "exportDataDesc": "导出Melodio的所有数据包括歌曲信息,歌单,设置等到Json文件",
-    "importData": "导入数据",
-    "importDataDesc": "导入Json数据, 注意会覆盖当前数据! 会导致当前数据丢失",
     "about": "关于",
     "aboutDesc": "查看应用信息",
-    "io": {
-      "successExport": "已保存数据",
-      "exportError": "保存失败{e}",
-      "successImport": "导入数据成功，已重新加载",
-      "importError": "导入失败{e}"
+    "other": {
+      "title": "杂项",
+      "desc": "其他设置项",
+      "exportData": "数据备份",
+      "exportDataDesc": "导出Melodio的所有数据包括歌曲信息,歌单,设置等到Json文件",
+      "importData": "导入数据",
+      "importDataDesc": "导入Json数据, 注意会覆盖当前数据! 会导致当前数据丢失",
+      "io": {
+        "successExport": "已保存数据",
+        "exportError": "保存失败{e}",
+        "successImport": "导入数据成功，已重新加载",
+        "importError": "导入失败{e}"
+      }
     },
     "interface": {
       "title": "主题设置",

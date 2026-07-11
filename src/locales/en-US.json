@@ -191,17 +191,21 @@
     "languageSelectorHeader": "Select Language",
     "language": "Language",
     "languageDesc": "Select the display language for the interface.",
-    "exportData": "Export Data",
-    "exportDataDesc": "Export all Melodio data including song information, playlists, settings, etc. to a JSON file.",
-    "importData": "Import Data",
-    "importDataDesc": "Import JSON data. Warning: This will overwrite current data and cause data loss!",
     "about": "About",
     "aboutDesc": "View application information.",
-    "io": {
-      "successExport": "Data saved",
-      "exportError": "Export failed {e}",
-      "successImport": "Data imported successfully. Reloaded!",
-      "importError": "Import failed: {e}"
+    "other": {
+      "title": "Miscellaneous",
+      "desc": "Other settings",
+      "exportData": "Export Data",
+      "exportDataDesc": "Export all Melodio data including song information, playlists, settings, etc. to a JSON file.",
+      "importData": "Import Data",
+      "importDataDesc": "Import JSON data. Warning: This will overwrite current data and cause data loss!",
+      "io": {
+        "successExport": "Data saved",
+        "exportError": "Export failed {e}",
+        "successImport": "Data imported successfully. Reloaded!",
+        "importError": "Import failed: {e}"
+      }
     },
     "interface": {
       "title": "Theme Settings",
