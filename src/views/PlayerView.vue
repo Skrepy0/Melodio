@@ -226,6 +226,10 @@ const playSong = async (song: Song) => {
     console.error('播放失败', e)
     toast.error(t('player.toast.playFailed'))
   }
+  appStore.togglePlay()
+  setTimeout(async () => {
+    appStore.togglePlay() //刷新
+  }, 50)
 }
 
 const progressBarRef = ref<HTMLElement | null>(null)
