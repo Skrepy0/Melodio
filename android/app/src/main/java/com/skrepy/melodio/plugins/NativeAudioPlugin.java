@@ -12,6 +12,7 @@ import android.media.AudioAttributes;
 import android.media.AudioFocusRequest;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
+import android.media.PlaybackParams;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Handler;
@@ -39,41 +40,35 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
-import java.net.URL;
 import java.util.Objects;
 
 @CapacitorPlugin(name = "NativeAudio")
 public class NativeAudioPlugin extends Plugin {
 
     private static final String TAG = "NativeAudio";
-
+    private static final String CHANNEL_ID = "melodio_audio_channel";
+    private static final int NOTIF_ID = 1;
+    private final List<SongItem> playlist = new ArrayList<>();
     private MediaPlayer mediaPlayer;
     private MediaSessionCompat mediaSession;
     private PlaybackStateCompat.Builder stateBuilder;
-
-    private final List<SongItem> playlist = new ArrayList<>();
     private int currentIndex = -1;
-
     private boolean prepared = false;
     private boolean isPlaying = false;
-
     private int loadGeneration = 0;
     private PluginCall pendingPlayCall;
-
     private Handler progressHandler;
     private Runnable progressRunnable;
-
-    private static final String CHANNEL_ID = "melodio_audio_channel";
-    private static final int NOTIF_ID = 1;
-
     private String title = "";
     private String artist = "";
     private String album = "";
     private String cover = "";
     private int durationSec = 0;
     private boolean repeatOne = false;
+    private float playbackSpeed = 1.0f;
 
     //焦点管理
     private boolean audioFocusEnabled = true;
@@ -139,18 +134,11 @@ public class NativeAudioPlugin extends Plugin {
         }
         if (audioManager == null) return;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            AudioAttributes audioAttributes = new AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_MEDIA)
-                    .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
-                    .build();
-            AudioFocusRequest focusRequest = new AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
-                    .setAudioAttributes(audioAttributes)
-                    .setOnAudioFocusChangeListener(focusChangeListener)
-                    .build();
+            AudioAttributes audioAttributes = new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA).setContentType(AudioAttributes.CONTENT_TYPE_MUSIC).build();
+            AudioFocusRequest focusRequest = new AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN).setAudioAttributes(audioAttributes).setOnAudioFocusChangeListener(focusChangeListener).build();
             audioFocusGranted = audioManager.requestAudioFocus(focusRequest) == AudioManager.AUDIOFOCUS_REQUEST_GRANTED;
         } else {
-            int result = audioManager.requestAudioFocus(focusChangeListener,
-                    AudioManager.STREAM_MUSIC, AudioManager.AUDIOFOCUS_GAIN);
+            int result = audioManager.requestAudioFocus(focusChangeListener, AudioManager.STREAM_MUSIC, AudioManager.AUDIOFOCUS_GAIN);
             audioFocusGranted = (result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED);
         }
         Log.d(TAG, "AudioFocus requested: " + audioFocusGranted);
@@ -247,9 +235,7 @@ public class NativeAudioPlugin extends Plugin {
         }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
-            Log.d(TAG, "Playlist set: " + playlist.size() + " songs. First URL: " +
-                    (playlist.isEmpty() ? "none" : playlist.getFirst().url) +
-                    ", currentIndex=" + currentIndex);
+            Log.d(TAG, "Playlist set: " + playlist.size() + " songs. First URL: " + (playlist.isEmpty() ? "none" : playlist.getFirst().url) + ", currentIndex=" + currentIndex);
         }
         call.resolve();
     }
@@ -354,6 +340,7 @@ public class NativeAudioPlugin extends Plugin {
 
                 if (autoPlay) {
                     mp.start();
+                    applyPlaybackRate();
                     isPlaying = true;
                     Log.d(TAG, "Playback started");
                     updateState(true);
@@ -407,6 +394,7 @@ public class NativeAudioPlugin extends Plugin {
         }
         if (!mediaPlayer.isPlaying()) {
             mediaPlayer.start();
+            applyPlaybackRate();
             isPlaying = true;
             updateState(true);
             startProgress();
@@ -498,11 +486,7 @@ public class NativeAudioPlugin extends Plugin {
     }
 
     private void updateMetadata(SongItem song) {
-        MediaMetadataCompat.Builder b = new MediaMetadataCompat.Builder()
-                .putString(MediaMetadataCompat.METADATA_KEY_TITLE, song.title)
-                .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, song.artist)
-                .putString(MediaMetadataCompat.METADATA_KEY_ALBUM, song.album)
-                .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, durationSec * 1000L);
+        MediaMetadataCompat.Builder b = new MediaMetadataCompat.Builder().putString(MediaMetadataCompat.METADATA_KEY_TITLE, song.title).putString(MediaMetadataCompat.METADATA_KEY_ARTIST, song.artist).putString(MediaMetadataCompat.METADATA_KEY_ALBUM, song.album).putLong(MediaMetadataCompat.METADATA_KEY_DURATION, durationSec * 1000L);
 
         if (song.cover != null && !song.cover.isEmpty()) {
             loadBitmap(song.cover, bitmap -> {
@@ -619,14 +603,6 @@ public class NativeAudioPlugin extends Plugin {
         audioManager = null;
     }
 
-    static class SongItem {
-        String url, title, artist, album, cover;
-    }
-
-    private interface BitmapCallback {
-        void onResult(Bitmap bitmap);
-    }
-
     @PluginMethod
     public void saveFile(PluginCall call) {
         String fileName = call.getString("fileName", "backup.json");
@@ -715,5 +691,35 @@ public class NativeAudioPlugin extends Plugin {
             }
         }
         call.reject("User cancelled");
+    }
+
+    @PluginMethod
+    public void setPlaybackRate(PluginCall call) {
+        Double rateObj = call.getDouble("rate");
+        float rate = (rateObj != null) ? rateObj.floatValue() : 1.0f;
+        rate = Math.max(0.5f, Math.min(2.0f, rate));
+        this.playbackSpeed = rate;
+        applyPlaybackRate(); 
+        call.resolve();
+    }
+
+    private void applyPlaybackRate() {
+        if (mediaPlayer != null && prepared) {
+            try {
+                PlaybackParams params = new PlaybackParams();
+                params.setSpeed(playbackSpeed);
+                mediaPlayer.setPlaybackParams(params);
+            } catch (Exception e) {
+                Log.e(TAG, "Failed to set playback rate", e);
+            }
+        }
+    }
+
+    private interface BitmapCallback {
+        void onResult(Bitmap bitmap);
+    }
+
+    static class SongItem {
+        String url, title, artist, album, cover;
     }
 }

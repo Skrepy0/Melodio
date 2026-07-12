@@ -2,22 +2,28 @@
   <div class="player-view">
     <div class="back-button">
       <CircleButton
-        icon="mdi:arrow-left"
         :size="40"
+        icon="mdi:arrow-left"
         icon-color="var(--text-color)"
         @click="$router.back()"
       />
     </div>
 
-    <div class="player-header" :class="{ collapsed: isHeaderCollapsed }">
+    <div class="rate-button-top-right">
+      <button :title="t('player.speed')" class="rate-fab" @click="cyclePlaybackRate">
+        <span class="rate-text">{{ currentRate }}x</span>
+      </button>
+    </div>
+
+    <div :class="{ collapsed: isHeaderCollapsed }" class="player-header">
       <div class="album-cover">
         <img
           v-if="coverSrc && coverSrc !== DEFAULT_COVER"
-          :src="coverSrc"
           :alt="currentSong?.title"
+          :src="coverSrc"
           @error="coverSrc = DEFAULT_COVER"
         />
-        <Icon v-else icon="mdi:music" :width="120" color="var(--text-secondary)" />
+        <Icon v-else :width="120" color="var(--text-secondary)" icon="mdi:music" />
       </div>
       <div class="song-info">
         <div class="song-name">{{ currentSong?.title || $t('player.unknownTitle') }}</div>
@@ -33,20 +39,20 @@
           @touchstart="startDragProgress"
         >
           <div
-            class="progress-bar"
             ref="progressBarRef"
+            class="progress-bar"
             @mousedown="startDragProgress"
             @touchstart="startDragProgress"
           >
             <div
-              class="progress-fill"
               :style="{ width: progressPercent + '%' }"
+              class="progress-fill"
               @mousedown="startDragProgress"
               @touchstart="startDragProgress"
             ></div>
             <div
-              class="progress-handle"
               :style="{ left: progressPercent + '%' }"
+              class="progress-handle"
               @mousedown="startDragProgress"
               @touchstart="startDragProgress"
             ></div>
@@ -56,11 +62,11 @@
       </div>
 
       <div class="controls">
-        <button class="control-btn" @click="togglePlayMode" :title="playModeText">
+        <button :title="playModeText" class="control-btn" @click="togglePlayMode">
           <Icon :icon="playModeIcon" :width="24" color="var(--text-color)" />
         </button>
         <button class="control-btn" @click="prevSong">
-          <Icon icon="mdi:skip-previous" :width="32" color="var(--text-color)" />
+          <Icon :width="32" color="var(--text-color)" icon="mdi:skip-previous" />
         </button>
         <button class="control-btn play-pause" @click="togglePlay">
           <Icon
@@ -70,10 +76,10 @@
           />
         </button>
         <button class="control-btn" @click="nextSong">
-          <Icon icon="mdi:skip-next" :width="32" color="var(--text-color)" />
+          <Icon :width="32" color="var(--text-color)" icon="mdi:skip-next" />
         </button>
         <button class="control-btn" @click="shuffleQueue">
-          <Icon icon="mdi:shuffle-variant" :width="24" color="var(--text-color)" />
+          <Icon :width="24" color="var(--text-color)" icon="mdi:shuffle-variant" />
         </button>
       </div>
     </div>
@@ -83,33 +89,33 @@
         <span>{{ $t('player.queueHeader', { count: localQueue.length }) }}</span>
         <div class="queue-actions">
           <span class="drag-hint">{{ $t('player.dragHint') }}</span>
-          <button class="clear-queue-btn" @click="clearQueue" v-if="localQueue.length > 0">
+          <button v-if="localQueue.length > 0" class="clear-queue-btn" @click="clearQueue">
             {{ $t('player.clearQueue') }}
           </button>
         </div>
       </div>
 
       <TransitionGroup
+        ref="queueListRef"
+        class="queue-list"
         name="queue-list"
         tag="div"
-        class="queue-list"
-        ref="queueListRef"
         @scroll="handleScroll"
       >
         <div
           v-for="(song, idx) in localQueue"
           :key="song.id"
-          :data-index="idx"
-          class="queue-item"
           :class="{
             'drag-over': dragOverIndex === idx,
             'dragging-source': dragStartIndex === idx,
             'past-song': getRelativeIndex(idx).startsWith('-'),
           }"
+          :data-index="idx"
+          class="queue-item"
           @click="playSong(song)"
         >
-          <div class="drag-handle" @pointerdown="startDrag($event, idx)" style="touch-action: none">
-            <Icon icon="mdi:drag-vertical" :width="20" color="var(--text-color)" />
+          <div class="drag-handle" style="touch-action: none" @pointerdown="startDrag($event, idx)">
+            <Icon :width="20" color="var(--text-color)" icon="mdi:drag-vertical" />
           </div>
           <div class="queue-index">{{ getRelativeIndex(idx) }}</div>
           <div class="queue-song-info">
@@ -117,14 +123,14 @@
             <div class="queue-song-artist">{{ song.artist }}</div>
           </div>
           <DropdownButton
-            :visible="openDropdownId === song.id"
             :button-icon="'mdi:dots-vertical'"
-            :size="32"
-            :options="menuOptions"
-            :offset-x="0"
-            :offset-y="4"
             :dx="-40"
             :dy="-60"
+            :offset-x="0"
+            :offset-y="4"
+            :options="menuOptions"
+            :size="32"
+            :visible="openDropdownId === song.id"
             placement="bottom-end"
             @select="(item) => onMenuItemSelect(item, song)"
             @click.stop
@@ -135,19 +141,19 @@
   </div>
 </template>
 
-<script setup lang="ts">
+<script lang="ts" setup>
 defineOptions({ name: 'PlayerView' })
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { Icon } from '@iconify/vue'
 import CircleButton from '@/components/button/CircleButton.vue'
 import DropdownButton from '@/components/button/DropdownButton.vue'
-import { type Song, type DropdownItem, PlayMode } from '@/utils/interface'
+import { type DropdownItem, PlayMode, type Song } from '@/utils/interface'
 import { useAppStore } from '@/stores/app'
 import toast from '@/utils/createToast'
 import { showConfirm } from '@/utils/createConfirm'
 import { audio } from '@/utils/createAudio'
 import { useI18n } from 'vue-i18n'
-import { fetchCoverFromWeb, DEFAULT_COVER, isInList } from '@/utils/functions'
+import { DEFAULT_COVER, fetchCoverFromWeb, isInList } from '@/utils/functions'
 
 const { t } = useI18n()
 const appStore = useAppStore()
@@ -196,7 +202,20 @@ onUnmounted(() => {
     audio.removeEventListener('timeupdate', timeUpdateHandler)
   }
 })
+const RATES = [0.5, 0.65, 0.8, 1.0, 1.25, 1.5, 2.0]
 
+const currentRate = computed(() => appStore.playbackRate)
+
+const cyclePlaybackRate = async () => {
+  const cur = currentRate.value
+  let idx = RATES.indexOf(cur)
+  if (idx === -1 || idx === RATES.length - 1) {
+    idx = 0
+  } else {
+    idx++
+  }
+  await appStore.setPlaybackRate(RATES[idx])
+}
 const togglePlay = () => {
   appStore.togglePlay()
 }
@@ -542,7 +561,7 @@ onUnmounted(() => {
 })
 </script>
 
-<style scoped lang="scss">
+<style lang="scss" scoped>
 .player-view {
   display: flex;
   flex-direction: column;
@@ -654,22 +673,6 @@ onUnmounted(() => {
   }
   .progress-bar:hover .progress-handle {
     opacity: 1;
-  }
-}
-
-.controls {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 20px;
-  .control-btn {
-    background: none;
-    border: none;
-    cursor: pointer;
-    transition: transform 0.1s;
-    &:active {
-      transform: scale(0.95);
-    }
   }
 }
 
@@ -806,6 +809,59 @@ onUnmounted(() => {
   .queue-index,
   .queue-song-name {
     color: var(--text-disabled, #aaa);
+  }
+}
+.controls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 20px;
+}
+
+.control-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.1s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &:active {
+    transform: scale(0.95);
+  }
+}
+.rate-button-top-right {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 200;
+}
+
+.rate-fab {
+  min-width: 48px;
+  height: 40px;
+  border-radius: 20px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color, rgba(128, 128, 128, 0.2));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.2s;
+  padding: 0 12px;
+
+  &:hover {
+    background: var(--bg-card-hover);
+  }
+
+  .rate-text {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--primary-color);
+    font-feature-settings: 'tnum';
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
   }
 }
 </style>

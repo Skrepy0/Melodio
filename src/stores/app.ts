@@ -26,7 +26,13 @@ export const useAppStore = defineStore('app', () => {
   const canFetchCoverFromWeb = ref(true)
   const audioFocusPause = ref(true)
   const blacklist = ref<Song[]>([])
-
+  const firstPlayFlag = ref(false) // 记录是否是应用初始化后第一次播放
+  function getFirstPlayFlag() {
+    return firstPlayFlag.value
+  }
+  function markFirstPlayFlag() {
+    firstPlayFlag.value = true
+  }
   function initBlacklist() {
     const obj = localStorage.getItem('blacklist')
     if (obj) {
@@ -165,6 +171,7 @@ export const useAppStore = defineStore('app', () => {
   const initFlag = ref(false)
   const currentPlayList = ref<number>(-1)
   const currentToBeSortedSongList = ref<number>(-1)
+  const playbackRate = ref(1.0)
 
   function setSelectedCategory(val: string) {
     selectedCategory.value = val
@@ -422,6 +429,7 @@ export const useAppStore = defineStore('app', () => {
       initLanguage()
       loadInitialDarkMode()
       initBlacklist()
+      initPlaybackRate()
       initAutoPauseOnDisconnect()
       initAutoDelInvalidSongs()
       initAudioFocusPause()
@@ -576,6 +584,26 @@ export const useAppStore = defineStore('app', () => {
       }
     }
   }
+
+  function initPlaybackRate() {
+    const saved = localStorage.getItem('playbackRate')
+    if (saved) {
+      playbackRate.value = parseFloat(saved)
+    }
+  }
+
+  async function setPlaybackRate(rate: number) {
+    playbackRate.value = rate
+    localStorage.setItem('playbackRate', rate.toString())
+    await audio.setPlaybackRate(rate)
+    if (!playData.value.isPlaying) {
+      togglePlay()
+      setTimeout(() => {
+        togglePlay()
+      }, 50)
+    }
+  }
+
   function initLikeList() {
     const obj = localStorage.getItem('likeList')
     if (obj) {
@@ -671,5 +699,9 @@ export const useAppStore = defineStore('app', () => {
     getCanFetchCoverFromWeb,
     setAudioFocusPause,
     getAudioFocusPause,
+    setPlaybackRate,
+    playbackRate,
+    getFirstPlayFlag,
+    markFirstPlayFlag,
   }
 })
