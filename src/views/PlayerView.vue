@@ -95,13 +95,7 @@
         </div>
       </div>
 
-      <TransitionGroup
-        ref="queueListRef"
-        class="queue-list"
-        name="queue-list"
-        tag="div"
-        @scroll="handleScroll"
-      >
+      <TransitionGroup class="queue-list" name="queue-list" tag="div" @scroll="handleScroll">
         <div
           v-for="(song, idx) in localQueue"
           :key="song.id"
@@ -391,12 +385,20 @@ let isDraggingQueue = false
 let pointerId: number | null = null
 let wasPlaying = false
 let currentPlayingSongId: string | null = null
+let autoScrollInterval: number | null = null
+let scrollContainer: HTMLElement | null = null
 const currentSongOverride = ref<Song | null>(null)
 const dragCurrentIndex = ref<number | null>(null)
 
 const startDrag = (e: PointerEvent, idx: number) => {
   if (e.button !== 0 && e.pointerType !== 'touch') return
   e.preventDefault()
+
+  // 清理之前的自动滚动
+  if (autoScrollInterval) {
+    clearInterval(autoScrollInterval)
+    autoScrollInterval = null
+  }
 
   wasPlaying = isPlaying.value
   currentPlayingSongId = appStore.currentSong?.id ?? null
@@ -414,6 +416,9 @@ const startDrag = (e: PointerEvent, idx: number) => {
   dragItem.classList.add('dragging-source')
   document.addEventListener('pointermove', onDragMove)
   document.addEventListener('pointerup', stopDrag)
+
+  const queueListEl = document.querySelector('.queue-list') as HTMLElement | null
+  scrollContainer = queueListEl
 }
 
 const onDragMove = (e: PointerEvent) => {
@@ -437,9 +442,7 @@ const onDragMove = (e: PointerEvent) => {
           dragCurrentIndex.value = overIndex
         } else if (dragCurrentIndex.value !== null) {
           const currentPos = newQueue.findIndex((s) => s.id === currentPlayingSongId)
-          if (currentPos !== -1) {
-            dragCurrentIndex.value = currentPos
-          }
+          if (currentPos !== -1) dragCurrentIndex.value = currentPos
         }
 
         dragStartIndex.value = overIndex
@@ -448,11 +451,42 @@ const onDragMove = (e: PointerEvent) => {
       }
     }
   }
+  if (scrollContainer) {
+    const container = scrollContainer
+    const rect = container.getBoundingClientRect()
+    const threshold = 300
+    const maxSpeed = 12
+    const distToTop = e.clientY - rect.top
+    const distToBottom = rect.bottom - e.clientY
+
+    // 清除旧定时器
+    if (autoScrollInterval) {
+      clearInterval(autoScrollInterval)
+      autoScrollInterval = null
+    }
+
+    if (distToTop >= 0 && distToTop < threshold) {
+      const speed = Math.max(1, Math.round(maxSpeed * (1 - distToTop / threshold)))
+      autoScrollInterval = window.setInterval(() => {
+        container.scrollTop -= speed
+      }, 16)
+    } else if (distToBottom >= 0 && distToBottom < threshold) {
+      const speed = Math.max(1, Math.round(maxSpeed * (1 - distToBottom / threshold)))
+      autoScrollInterval = window.setInterval(() => {
+        container.scrollTop += speed
+      }, 16)
+    }
+  }
 }
 
 const stopDrag = async (e: PointerEvent) => {
   if (!isDraggingQueue) return
   if (e.pointerId !== pointerId) return
+  // 停止自动滚动
+  if (autoScrollInterval) {
+    clearInterval(autoScrollInterval)
+    autoScrollInterval = null
+  }
 
   if (dragItem) {
     dragItem.classList.remove('dragging-source')
@@ -463,14 +497,13 @@ const stopDrag = async (e: PointerEvent) => {
   dragItem = null
   isDraggingQueue = false
   pointerId = null
+  scrollContainer = null
 
   const newIdx = currentPlayingSongId
     ? localQueue.value.findIndex((s) => s.id === currentPlayingSongId)
     : -1
 
-  if (newIdx !== -1) {
-    appStore.setCurrentIndex(newIdx)
-  }
+  if (newIdx !== -1) appStore.setCurrentIndex(newIdx)
 
   if (wasPlaying && !appStore.getPlayData().isPlaying) {
     togglePlay()
@@ -723,15 +756,10 @@ onUnmounted(() => {
 }
 
 .queue-list {
-  flex: 1;
+  flex: 1 1 0;
+  min-height: 0;
   overflow-y: auto;
   padding: 8px 0;
-
-  .queue-list-move,
-  .queue-list-enter-active,
-  .queue-list-leave-active {
-    transition: transform 0.3s ease;
-  }
 }
 
 .queue-item {
