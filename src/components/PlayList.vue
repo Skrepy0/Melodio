@@ -4,16 +4,16 @@
       <SongItemSelectable
         v-for="song in songs"
         :key="song.id"
-        :song="song"
+        :dropdown-open="openDropdownId === song.id"
+        :on-delete="handleDeleteSong"
         :selectable="isSelectMode"
         :selected="selectedIds.has(song.id)"
-        :dropdown-open="openDropdownId === song.id"
+        :show-operations="props.showOperations"
+        :song="song"
+        @click="handleSongClick"
         @long-press="enterSelectMode"
         @toggle-select="toggleSelect(song.id)"
-        @click="handleSongClick"
         @update:dropdown-open="(open) => handleDropdownToggle(song.id, open)"
-        :on-delete="handleDeleteSong"
-        :show-operations="props.showOperations"
       />
     </div>
 
@@ -21,31 +21,31 @@
       <div v-if="isSelectMode" class="bottom-actions">
         <div class="actions-container">
           <button v-if="props.visibility.selectAll" class="action-btn" @click="selectAll">
-            <Icon icon="mdi:select-all" :width="20" />
+            <Icon :width="20" icon="mdi:select-all" />
             <span>{{ $t('playList.selectAll') }}</span>
           </button>
           <button v-if="props.visibility.clear" class="action-btn" @click="clearSelection">
-            <Icon icon="mdi:select-off" :width="20" />
+            <Icon :width="20" icon="mdi:select-off" />
             <span>{{ $t('playList.clear') }}</span>
           </button>
           <button v-if="props.visibility.addToQueue" class="action-btn" @click="addToQueue">
-            <Icon icon="ic:baseline-queue" :width="20" />
+            <Icon :width="20" icon="ic:baseline-queue" />
             <span>{{ $t('playList.addToQueue') }}</span>
           </button>
           <button v-if="props.visibility.addToPlaylist" class="action-btn" @click="addToSongList">
-            <Icon icon="mdi:heart-outline" :width="20" />
+            <Icon :width="20" icon="mdi:heart-outline" />
             <span>{{ $t('playList.addToPlaylist') }}</span>
           </button>
           <button v-if="props.visibility.delete" class="action-btn danger" @click="batchDelete">
-            <Icon icon="mdi:delete" :width="20" />
+            <Icon :width="20" icon="mdi:delete" />
             <span>{{ $t('playList.delete', { count: selectedIds.size }) }}</span>
           </button>
           <button v-if="props.visibility.ban" class="action-btn" @click="addToBlacklist">
-            <Icon icon="tabler:ban" :width="20" />
+            <Icon :width="20" icon="tabler:ban" />
             <span>{{ $t('playList.addToBlacklist', { count: selectedIds.size }) }}</span>
           </button>
           <button v-if="props.visibility.close" class="action-btn" @click="exitSelectMode">
-            <Icon icon="mdi:close" :width="20" />
+            <Icon :width="20" icon="mdi:close" />
             <span>{{ $t('playList.cancel') }}</span>
           </button>
         </div>
@@ -54,7 +54,7 @@
   </div>
 </template>
 
-<script setup lang="ts">
+<script lang="ts" setup>
 import { ref } from 'vue'
 import { Icon } from '@iconify/vue'
 import SongItemSelectable from '@/components/song/SongItemSelectable.vue'
@@ -227,7 +227,7 @@ const handleSongClick = (song: Song) => {
 }
 </script>
 
-<style scoped lang="scss">
+<style lang="scss" scoped>
 .playlist {
   position: relative;
   height: 100%;

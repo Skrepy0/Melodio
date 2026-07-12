@@ -26,7 +26,6 @@ import '@ionic/vue/css/display.css'
  * For more info, please see:
  * https://ionicframework.com/docs/theming/dark-mode
  */
-
 /* @import '@ionic/vue/css/palettes/dark.always.css'; */
 /* @import '@ionic/vue/css/palettes/dark.class.css'; */
 import '@ionic/vue/css/palettes/dark.system.css'
@@ -42,6 +41,7 @@ import { showConfirm } from './utils/createConfirm'
 import { addCollection } from '@iconify/vue'
 import mdiIcons from '@iconify-json/mdi/icons.json'
 import { i18n } from './i18n'
+
 const app = createApp(App).use(IonicVue).use(router)
 app.use(createPinia())
 app.use(i18n)

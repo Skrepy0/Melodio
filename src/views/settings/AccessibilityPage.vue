@@ -3,7 +3,7 @@
     <div class="settings-page">
       <div class="settings-header">
         <div class="header-back" @click="goBack">
-          <Icon icon="material-symbols:arrow-back" :width="24" color="var(--text-color)" />
+          <Icon :width="24" color="var(--text-color)" icon="material-symbols:arrow-back" />
         </div>
         <div class="header-title">{{ $t('settings.accessibility.title') }}</div>
       </div>
@@ -12,11 +12,11 @@
         <div class="setting-item">
           <div class="setting-row">
             <div class="item-left">
-              <Icon icon="material-symbols-light:language-pinyin" :width="22" class="item-icon" />
+              <Icon :width="22" class="item-icon" icon="material-symbols-light:language-pinyin" />
               <span class="item-label">{{ $t('settings.accessibility.pinyinSearch') }}</span>
             </div>
             <label class="switch">
-              <input type="checkbox" :checked="pinyinSearch" @change="togglePinyinSearch" />
+              <input :checked="pinyinSearch" type="checkbox" @change="togglePinyinSearch" />
               <span class="slider round"></span>
             </label>
           </div>
@@ -25,15 +25,15 @@
         <div class="setting-item">
           <div class="setting-row">
             <div class="item-left">
-              <Icon icon="ant-design:disconnect-outlined" :width="22" class="item-icon" />
+              <Icon :width="22" class="item-icon" icon="ant-design:disconnect-outlined" />
               <span class="item-label">{{
                 $t('settings.accessibility.autoPauseOnDisconnect')
               }}</span>
             </div>
             <label class="switch">
               <input
-                type="checkbox"
                 :checked="autoPauseOnDisconnect"
+                type="checkbox"
                 @change="toggleAutoPauseOnDisconnect"
               />
               <span class="slider round"></span>
@@ -47,15 +47,15 @@
         <div class="setting-item">
           <div class="setting-row">
             <div class="item-left">
-              <Icon icon="lets-icons:check-fill" :width="22" class="item-icon" />
+              <Icon :width="22" class="item-icon" icon="lets-icons:check-fill" />
               <span class="item-label">{{
                 $t('settings.accessibility.autoCleanInvalidSongs')
               }}</span>
             </div>
             <label class="switch">
               <input
-                type="checkbox"
                 :checked="autoDelInvalidSongs"
+                type="checkbox"
                 @change="toggleAutoDelInvalidSongs"
               />
               <span class="slider round"></span>
@@ -69,15 +69,15 @@
         <div class="setting-item">
           <div class="setting-row">
             <div class="item-left">
-              <Icon icon="dashicons:cover-image" :width="22" class="item-icon" />
+              <Icon :width="22" class="item-icon" icon="dashicons:cover-image" />
               <span class="item-label">{{
                 $t('settings.accessibility.canFetchCoverFromWeb')
               }}</span>
             </div>
             <label class="switch">
               <input
-                type="checkbox"
                 :checked="canFetchCoverFromWeb"
+                type="checkbox"
                 @change="toggleCanFetchCoverFromWeb"
               />
               <span class="slider round"></span>
@@ -91,11 +91,11 @@
         <div class="setting-item">
           <div class="setting-row">
             <div class="item-left">
-              <Icon icon="lucide:focus" :width="22" class="item-icon" />
+              <Icon :width="22" class="item-icon" icon="lucide:focus" />
               <span class="item-label">{{ $t('settings.accessibility.audioFocusPause') }}</span>
             </div>
             <label class="switch">
-              <input type="checkbox" :checked="audioFocusPause" @change="toggleAudioFocusPause" />
+              <input :checked="audioFocusPause" type="checkbox" @change="toggleAudioFocusPause" />
               <span class="slider round"></span>
             </label>
           </div>
@@ -107,7 +107,7 @@
     </div>
   </ion-page>
 </template>
-<script setup lang="ts">
+<script lang="ts" setup>
 import { useAppStore } from '@/stores/app'
 import { IonPage } from '@ionic/vue'
 import { Icon } from '@iconify/vue'
@@ -153,6 +153,6 @@ const toggleCanFetchCoverFromWeb = (e: Event) => {
   appStore.setCanFetchCoverFromWeb(canFetchCoverFromWeb.value)
 }
 </script>
-<style scoped lang="scss">
+<style lang="scss" scoped>
 @use '../../theme/settings.scss';
 </style>

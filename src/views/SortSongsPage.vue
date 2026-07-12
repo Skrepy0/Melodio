@@ -3,11 +3,11 @@
     <div class="editor-header">
       <div class="header-left">
         <button class="back-btn" @click="backWithoutSave">
-          <Icon icon="mdi:arrow-left" :width="24" color="var(--text-color)" />
+          <Icon :width="24" color="var(--text-color)" icon="mdi:arrow-left" />
         </button>
         <h2>{{ $t('editor.title') }}</h2>
       </div>
-      <CircleButton icon="ic:twotone-save" @click="saveOrder" :icon-color="'#1bd96a'" />
+      <CircleButton :icon-color="'#1bd96a'" icon="ic:twotone-save" @click="saveOrder" />
     </div>
 
     <div class="sort-controls">
@@ -28,16 +28,16 @@
       <span class="song-count">{{ $t('editor.totalSongs', { count: localSongs.length }) }}</span>
     </div>
 
-    <div class="song-list" ref="listContainer">
+    <div ref="listContainer" class="song-list">
       <div
         v-for="(song, idx) in localSongs"
         :key="song.id"
-        :data-index="idx"
-        class="song-row"
         :class="{
           'drag-over': dragOverIndex === idx,
           'dragging-source': dragSourceIndex === idx,
         }"
+        :data-index="idx"
+        class="song-row"
       >
         <div
           v-if="sortMode === 'custom'"
@@ -45,15 +45,15 @@
           @pointerdown.prevent="onDragStart($event, idx)"
           @touchstart.prevent
         >
-          <Icon icon="mdi:drag-vertical" :width="24" color="var(--text-secondary)" />
+          <Icon :width="24" color="var(--text-secondary)" icon="mdi:drag-vertical" />
         </div>
         <div class="song-item-wrapper">
           <SongItem
-            :song="song"
             :dropdown-open="false"
             :on-delete="() => {}"
-            @click.stop
             :show-operations="false"
+            :song="song"
+            @click.stop
           />
         </div>
       </div>
@@ -64,8 +64,8 @@
   </div>
 </template>
 
-<script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+<script lang="ts" setup>
+import { computed, onMounted, ref } from 'vue'
 import { Icon } from '@iconify/vue'
 import SongItem from '@/components/song/SongItem.vue'
 import { useAppStore } from '@/stores/app'
@@ -76,6 +76,7 @@ import router from '@/router'
 import { showConfirm } from '@/utils/createConfirm'
 import CircleButton from '@/components/button/CircleButton.vue'
 import { onBeforeRouteLeave } from 'vue-router'
+
 onBeforeRouteLeave(async (to, from, next) => {
   if (hasUnsavedChanges.value) {
     const confirm = await showConfirm({
@@ -313,7 +314,7 @@ const backWithoutSave = () => {
 }
 </script>
 
-<style scoped lang="scss">
+<style lang="scss" scoped>
 .song-list-editor {
   display: flex;
   flex-direction: column;

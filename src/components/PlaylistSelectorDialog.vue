@@ -16,15 +16,15 @@
             >
               <div class="playlist-cover">
                 <template v-if="playlist.id === 0">
-                  <Icon icon="si:heart-duotone" :width="40" color="red" />
+                  <Icon :width="40" color="red" icon="si:heart-duotone" />
                 </template>
                 <template v-else>
                   <img
                     v-if="getCover(playlist) && getCover(playlist) !== DEFAULT_COVER"
-                    :src="getCover(playlist)"
                     :alt="playlist.name"
+                    :src="getCover(playlist)"
                   />
-                  <Icon v-else icon="mdi:playlist-music" :width="40" class="default-cover" />
+                  <Icon v-else :width="40" class="default-cover" icon="mdi:playlist-music" />
                 </template>
               </div>
               <div class="playlist-info">
@@ -47,11 +47,11 @@
   </Teleport>
 </template>
 
-<script setup lang="ts">
+<script lang="ts" setup>
 import { ref, watch } from 'vue'
 import { Icon } from '@iconify/vue'
 import type { Playlist } from '@/utils/interface'
-import { fetchCoverFromWeb, DEFAULT_COVER } from '@/utils/functions'
+import { DEFAULT_COVER, fetchCoverFromWeb } from '@/utils/functions'
 
 const props = withDefaults(
   defineProps<{
@@ -131,7 +131,7 @@ watch(
 defineExpose({ show })
 </script>
 
-<style scoped lang="scss">
+<style lang="scss" scoped>
 .playlist-selector-overlay {
   position: fixed;
   top: 0;

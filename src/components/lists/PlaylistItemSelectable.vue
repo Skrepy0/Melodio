@@ -1,13 +1,13 @@
 <template>
   <div
     class="playlist-item-wrapper"
-    @touchstart="onTouchStart"
-    @touchend="onTouchEnd"
-    @touchmove="onTouchMove"
     @mousedown="onMouseDown"
     @mouseup="onMouseUp"
+    @touchend="onTouchEnd"
+    @touchmove="onTouchMove"
+    @touchstart="onTouchStart"
   >
-    <div class="checkbox-area" v-if="selectable">
+    <div v-if="selectable" class="checkbox-area">
       <Icon
         :icon="selected ? 'mdi:checkbox-marked' : 'mdi:checkbox-blank-outline'"
         :width="22"
@@ -16,9 +16,9 @@
       />
     </div>
     <PlaylistItem
-      :playlist="playlist"
-      :dropdown-open="dropdownOpen"
       :class="{ 'select-mode-offset': selectable }"
+      :dropdown-open="dropdownOpen"
+      :playlist="playlist"
       @click="onItemClick"
       @menu-select="onMenuSelect"
       @update:dropdown-open="(open) => emit('update:dropdownOpen', open)"
@@ -26,8 +26,8 @@
   </div>
 </template>
 
-<script setup lang="ts">
-import { ref, computed } from 'vue'
+<script lang="ts" setup>
+import { computed, ref } from 'vue'
 import { Icon } from '@iconify/vue'
 import PlaylistItem from './PlaylistItem.vue'
 import type { Playlist } from '@/utils/interface'
@@ -112,7 +112,7 @@ const toggleSelect = () => {
 }
 </script>
 
-<style scoped lang="scss">
+<style lang="scss" scoped>
 .playlist-item-wrapper {
   display: flex;
   align-items: center;

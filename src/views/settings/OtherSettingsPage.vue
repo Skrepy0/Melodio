@@ -3,7 +3,7 @@
     <div class="settings-page">
       <div class="settings-header">
         <div class="header-back" @click="goBack">
-          <Icon icon="material-symbols:arrow-back" :width="24" color="var(--text-color)" />
+          <Icon :width="24" color="var(--text-color)" icon="material-symbols:arrow-back" />
         </div>
         <div class="header-title">{{ $t('settings.other.title') }}</div>
       </div>
@@ -12,7 +12,7 @@
         <div class="setting-item clickable" @click="exportData">
           <div class="setting-row">
             <div class="item-left">
-              <Icon icon="majesticons:data" :width="22" class="item-icon" />
+              <Icon :width="22" class="item-icon" icon="majesticons:data" />
               <span class="item-label">{{ $t('settings.other.exportData') }}</span>
             </div>
           </div>
@@ -22,7 +22,7 @@
         <div class="setting-item clickable" @click="importData">
           <div class="setting-row">
             <div class="item-left">
-              <Icon icon="pajamas:import" :width="22" class="item-icon" />
+              <Icon :width="22" class="item-icon" icon="pajamas:import" />
               <span class="item-label">{{ $t('settings.other.importData') }}</span>
             </div>
           </div>
@@ -32,7 +32,7 @@
     </div>
   </ion-page>
 </template>
-<script setup lang="ts">
+<script lang="ts" setup>
 import { IonPage } from '@ionic/vue'
 import { Icon } from '@iconify/vue'
 import { useRouter } from 'vue-router'
@@ -64,6 +64,6 @@ const importData = async () => {
   }
 }
 </script>
-<style scoped lang="scss">
+<style lang="scss" scoped>
 @use '../../theme/settings.scss';
 </style>

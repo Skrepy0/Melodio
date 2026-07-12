@@ -1,5 +1,5 @@
-<script setup lang="ts">
-import { ref, computed } from 'vue'
+<script lang="ts" setup>
+import { computed, ref } from 'vue'
 import { Icon } from '@iconify/vue'
 
 interface Props {
@@ -79,35 +79,35 @@ defineExpose({
 </script>
 
 <template>
-  <div class="search-container" :class="[`size-${size}`, { disabled }]">
+  <div :class="[`size-${size}`, { disabled }]" class="search-container">
     <div class="search-box">
       <span class="search-icon" @click="handleSearch">
-        <Icon icon="mdi:magnify" :width="iconSize" />
+        <Icon :width="iconSize" icon="mdi:magnify" />
       </span>
       <input
         ref="inputRef"
-        :value="modelValue"
-        type="text"
-        :placeholder="placeholder || $t('searchBox.placeholder')"
-        :disabled="disabled"
         :autofocus="autofocus"
+        :disabled="disabled"
+        :placeholder="placeholder || $t('searchBox.placeholder')"
+        :value="modelValue"
+        class="search-input"
+        type="text"
         @input="onInput"
         @keyup.enter="handleSearch"
-        class="search-input"
       />
 
       <span v-if="clearable && modelValue.length > 0" class="clear-icon" @click="clearInput">
-        <Icon icon="mdi:close-circle" :width="iconSize" />
+        <Icon :width="iconSize" icon="mdi:close-circle" />
       </span>
 
-      <button v-if="showButton" class="search-button" :disabled="disabled" @click="handleSearch">
+      <button v-if="showButton" :disabled="disabled" class="search-button" @click="handleSearch">
         {{ $t('searchBox.searchButton') }}
       </button>
     </div>
   </div>
 </template>
 
-<style scoped lang="scss">
+<style lang="scss" scoped>
 .search-container {
   width: 100%;
   box-sizing: border-box;

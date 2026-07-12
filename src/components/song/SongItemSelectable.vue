@@ -1,14 +1,14 @@
 <template>
   <div
     class="song-item-wrapper"
-    @touchstart="onTouchStart"
-    @touchend="onTouchEnd"
-    @touchmove="onTouchMove"
+    @click="onClick"
     @mousedown="onMouseDown"
     @mouseup="onMouseUp"
-    @click="onClick"
+    @touchend="onTouchEnd"
+    @touchmove="onTouchMove"
+    @touchstart="onTouchStart"
   >
-    <div class="checkbox-area" v-if="selectable">
+    <div v-if="selectable" class="checkbox-area">
       <Icon
         :icon="selected ? 'mdi:checkbox-marked' : 'mdi:checkbox-blank-outline'"
         :width="22"
@@ -17,18 +17,18 @@
       />
     </div>
     <SongItem
-      :song="song"
       :class="{ 'select-mode-offset': selectable }"
       :dropdownOpen="dropdownOpen"
-      @click="onSongClick"
-      @menu-select="onMenuSelect"
       :on-delete="handleDeleteSong"
       :showOperations="props.showOperations"
+      :song="song"
+      @click="onSongClick"
+      @menu-select="onMenuSelect"
     />
   </div>
 </template>
 
-<script setup lang="ts">
+<script lang="ts" setup>
 import { computed, ref } from 'vue'
 import { Icon } from '@iconify/vue'
 import SongItem from './SongItem.vue'
@@ -116,7 +116,7 @@ const toggleSelect = () => {
 }
 </script>
 
-<style scoped lang="scss">
+<style lang="scss" scoped>
 .song-item-wrapper {
   display: flex;
   align-items: center;

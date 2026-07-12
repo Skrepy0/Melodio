@@ -1,4 +1,4 @@
-<script setup lang="ts">
+<script lang="ts" setup>
 import { onMounted } from 'vue'
 import { Icon } from '@iconify/vue'
 import type { HorizontalSelectOption, HorizontalSelectProps } from '@/utils/interface.ts'
@@ -29,23 +29,23 @@ onMounted(() => {
 })
 </script>
 <template>
-  <div class="horizontal-select" ref="scrollContainer">
+  <div ref="scrollContainer" class="horizontal-select">
     <div
       v-for="(item, index) in options"
       :key="index"
-      class="select-item"
       :class="{
         selected: modelValue === item.value,
         disabled: item.disabled,
       }"
+      class="select-item"
       @click="selectItem(item)"
     >
-      <Icon v-if="item.icon" :icon="item.icon" class="item-icon" :width="iconSize" />
+      <Icon v-if="item.icon" :icon="item.icon" :width="iconSize" class="item-icon" />
       <span class="item-label">{{ item.label || item.description }}</span>
     </div>
   </div>
 </template>
-<style scoped lang="scss">
+<style lang="scss" scoped>
 .horizontal-select {
   display: flex;
   flex-direction: row;

@@ -3,7 +3,7 @@
     <div class="about-page">
       <div class="about-header">
         <div class="header-back" @click="goBack">
-          <Icon icon="material-symbols:arrow-back" :width="24" color="var(--text-color)" />
+          <Icon :width="24" color="var(--text-color)" icon="material-symbols:arrow-back" />
         </div>
         <div class="header-title">{{ $t('about.title') }}</div>
       </div>
@@ -14,25 +14,25 @@
 
         <div class="info-section">
           <div class="info-item" @click="openUrl(repoUrl)">
-            <Icon icon="mdi:github" :width="24" class="info-icon" />
+            <Icon :width="24" class="info-icon" icon="mdi:github" />
             <div class="info-text">
               <div class="info-label">{{ $t('about.repository') }}</div>
               <div class="info-value">GitHub / Skrepy0/Melodio</div>
             </div>
-            <Icon icon="mdi:open-in-new" :width="20" class="external-icon" />
+            <Icon :width="20" class="external-icon" icon="mdi:open-in-new" />
           </div>
 
           <div class="info-item" @click="openUrl(issuesUrl)">
-            <Icon icon="mdi:bug-outline" :width="24" class="info-icon" />
+            <Icon :width="24" class="info-icon" icon="mdi:bug-outline" />
             <div class="info-text">
               <div class="info-label">{{ $t('about.feedback') }}</div>
               <div class="info-value">{{ $t('about.reportIssue') }}</div>
             </div>
-            <Icon icon="mdi:open-in-new" :width="20" class="external-icon" />
+            <Icon :width="20" class="external-icon" icon="mdi:open-in-new" />
           </div>
 
           <div class="info-item">
-            <Icon icon="mdi:account-circle-outline" :width="24" class="info-icon" />
+            <Icon :width="24" class="info-icon" icon="mdi:account-circle-outline" />
             <div class="info-text">
               <div class="info-label">{{ $t('about.author') }}</div>
               <div class="info-value">Skrepy</div>
@@ -40,7 +40,7 @@
           </div>
 
           <div class="info-item">
-            <Icon icon="mdi:license" :width="24" class="info-icon" />
+            <Icon :width="24" class="info-icon" icon="mdi:license" />
             <div class="info-text">
               <div class="info-label">{{ $t('about.license') }}</div>
               <div class="info-value">Apache License 2.0</div>
@@ -68,7 +68,7 @@
   </ion-page>
 </template>
 
-<script setup lang="ts">
+<script lang="ts" setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { Icon } from '@iconify/vue'
@@ -94,7 +94,7 @@ const openUrl = async (url: string) => {
 }
 </script>
 
-<style scoped lang="scss">
+<style lang="scss" scoped>
 .about-page {
   display: flex;
   flex-direction: column;

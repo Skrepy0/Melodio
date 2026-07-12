@@ -1,4 +1,4 @@
-<script setup lang="ts">
+<script lang="ts" setup>
 import { Icon } from '@iconify/vue'
 import type { CircleButtonProps } from '@/utils/interface.ts'
 
@@ -25,14 +25,14 @@ const iconSize = typeof props.size === 'number' ? props.size * 0.55 : '24px'
 
 <template>
   <button
-    class="circle-button"
+    :disabled="disabled"
     :style="{
       width: buttonSize,
       height: buttonSize,
       backgroundColor: bgColor,
       color: iconColor,
     }"
-    :disabled="disabled"
+    class="circle-button"
     @click="handleClick"
   >
     <Icon :icon="icon" :width="iconSize" />

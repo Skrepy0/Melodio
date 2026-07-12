@@ -2,11 +2,11 @@
   <div class="playlist-item" @click="onCardClick">
     <div class="playlist-cover">
       <template v-if="playlist.id === 0">
-        <Icon icon="si:heart-duotone" :width="36" color="red" />
+        <Icon :width="36" color="red" icon="si:heart-duotone" />
       </template>
       <template v-else>
-        <img v-if="coverSrc && coverSrc !== DEFAULT_COVER" :src="coverSrc" :alt="playlist.name" />
-        <Icon v-else icon="mdi:playlist-music" :width="36" class="default-cover" />
+        <img v-if="coverSrc && coverSrc !== DEFAULT_COVER" :alt="playlist.name" :src="coverSrc" />
+        <Icon v-else :width="36" class="default-cover" icon="mdi:playlist-music" />
       </template>
     </div>
     <div class="playlist-info">
@@ -26,12 +26,12 @@
         v-if="props.showButton"
         v-model:visible="dropdownVisible"
         :button-icon="'mdi:dots-vertical'"
-        :size="32"
-        :options="menuOptions"
-        placement="bottom-end"
-        :offset-y="-4"
         :dx="-40"
         :dy="-60"
+        :offset-y="-4"
+        :options="menuOptions"
+        :size="32"
+        placement="bottom-end"
         @select="onMenuItemSelect"
         @click.stop
       />
@@ -39,18 +39,17 @@
   </div>
 </template>
 
-<script setup lang="ts">
-import { ref, watch, onMounted } from 'vue'
+<script lang="ts" setup>
+import { computed, onMounted, ref, watch } from 'vue'
 import { Icon } from '@iconify/vue'
 import DropdownButton from '@/components/button/DropdownButton.vue'
-import { computed } from 'vue'
 import type { DropdownItem, Playlist } from '@/utils/interface'
 import { showPrompt } from '@/utils/createPrompt'
 import toast from '@/utils/createToast'
 import { useAppStore } from '@/stores/app'
 import { showConfirm } from '@/utils/createConfirm'
 import { useI18n } from 'vue-i18n'
-import { fetchCoverFromWeb, DEFAULT_COVER } from '@/utils/functions'
+import { DEFAULT_COVER, fetchCoverFromWeb } from '@/utils/functions'
 
 const { t } = useI18n()
 const appStore = useAppStore()
@@ -169,7 +168,7 @@ onMounted(() => {
 })
 </script>
 
-<style scoped lang="scss">
+<style lang="scss" scoped>
 .playlist-item {
   width: 100%;
   display: flex;

@@ -3,7 +3,7 @@
     <div class="settings-page">
       <div class="settings-header">
         <div class="header-back" @click="goBack">
-          <Icon icon="material-symbols:arrow-back" :width="24" color="var(--text-color)" />
+          <Icon :width="24" color="var(--text-color)" icon="material-symbols:arrow-back" />
         </div>
         <div class="header-title">{{ $t('settings.title') }}</div>
       </div>
@@ -12,11 +12,11 @@
         <div class="setting-item clickable" @click="goToInterfaceSettings">
           <div class="setting-row">
             <div class="item-left">
-              <Icon icon="mdi:theme" :width="22" class="item-icon" />
+              <Icon :width="22" class="item-icon" icon="mdi:theme" />
               <span class="item-label">{{ $t('settings.interface.title') }}</span>
             </div>
             <div class="item-right">
-              <Icon icon="mdi:chevron-right" :width="20" />
+              <Icon :width="20" icon="mdi:chevron-right" />
             </div>
           </div>
           <div class="setting-desc">{{ $t('settings.interface.desc') }}</div>
@@ -24,11 +24,11 @@
         <div class="setting-item clickable" @click="goToAccessibility">
           <div class="setting-row">
             <div class="item-left">
-              <Icon icon="material-symbols:accessibility" :width="22" class="item-icon" />
+              <Icon :width="22" class="item-icon" icon="material-symbols:accessibility" />
               <span class="item-label">{{ $t('settings.accessibility.title') }}</span>
             </div>
             <div class="item-right">
-              <Icon icon="mdi:chevron-right" :width="20" />
+              <Icon :width="20" icon="mdi:chevron-right" />
             </div>
           </div>
           <div class="setting-desc">{{ $t('settings.accessibility.desc') }}</div>
@@ -37,11 +37,11 @@
         <div class="setting-item clickable" @click="goToBlacklist">
           <div class="setting-row">
             <div class="item-left">
-              <Icon icon="mdi:ban" :width="22" class="item-icon" />
+              <Icon :width="22" class="item-icon" icon="mdi:ban" />
               <span class="item-label">{{ $t('settings.blacklist') }}</span>
             </div>
             <div class="item-right">
-              <Icon icon="mdi:chevron-right" :width="20" />
+              <Icon :width="20" icon="mdi:chevron-right" />
             </div>
           </div>
           <div class="setting-desc">{{ $t('settings.blacklistDesc') }}</div>
@@ -50,11 +50,11 @@
         <div class="setting-item clickable" @click="goToOther">
           <div class="setting-row">
             <div class="item-left">
-              <Icon icon="ic:baseline-miscellaneous-services" :width="22" class="item-icon" />
+              <Icon :width="22" class="item-icon" icon="ic:baseline-miscellaneous-services" />
               <span class="item-label">{{ $t('settings.other.title') }}</span>
             </div>
             <div class="item-right">
-              <Icon icon="mdi:chevron-right" :width="20" />
+              <Icon :width="20" icon="mdi:chevron-right" />
             </div>
           </div>
           <div class="setting-desc">{{ $t('settings.other.desc') }}</div>
@@ -63,12 +63,12 @@
         <div class="setting-item clickable" @click="showLanguageSelector">
           <div class="setting-row">
             <div class="item-left">
-              <Icon icon="mdi:translate" :width="22" class="item-icon" />
+              <Icon :width="22" class="item-icon" icon="mdi:translate" />
               <span class="item-label">{{ $t('settings.language') }}</span>
             </div>
             <div class="item-right">
               <span class="item-value">{{ currentLanguageName }}</span>
-              <Icon icon="mdi:chevron-right" :width="20" />
+              <Icon :width="20" icon="mdi:chevron-right" />
             </div>
           </div>
           <div class="setting-desc">{{ $t('settings.languageDesc') }}</div>
@@ -77,11 +77,11 @@
         <div class="setting-item clickable" @click="goToAbout">
           <div class="setting-row">
             <div class="item-left">
-              <Icon icon="mdi:information-outline" :width="22" class="item-icon" />
+              <Icon :width="22" class="item-icon" icon="mdi:information-outline" />
               <span class="item-label">{{ $t('settings.about') }}</span>
             </div>
             <div class="item-right">
-              <Icon icon="mdi:chevron-right" :width="20" />
+              <Icon :width="20" icon="mdi:chevron-right" />
             </div>
           </div>
           <div class="setting-desc">{{ $t('settings.aboutDesc') }}</div>
@@ -91,7 +91,7 @@
   </ion-page>
 </template>
 
-<script setup lang="ts">
+<script lang="ts" setup>
 import { actionSheetController, IonPage } from '@ionic/vue'
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
@@ -161,6 +161,6 @@ const goToOther = () => {
 }
 </script>
 
-<style scoped lang="scss">
+<style lang="scss" scoped>
 @use '../theme/settings.scss';
 </style>

@@ -1,7 +1,7 @@
 <template>
-  <div class="now-playing-bar" v-if="currentSong">
+  <div v-if="currentSong" class="now-playing-bar">
     <div class="progress-line">
-      <div class="progress-fill-line" :style="{ width: progressPercent + '%' }"></div>
+      <div :style="{ width: progressPercent + '%' }" class="progress-fill-line"></div>
     </div>
 
     <div class="bar-content">
@@ -9,11 +9,11 @@
         <div class="cover">
           <img
             v-if="coverSrc && coverSrc !== DEFAULT_COVER"
-            :src="coverSrc"
             :alt="currentSong.title"
+            :src="coverSrc"
             @error="coverSrc = DEFAULT_COVER"
           />
-          <Icon v-else icon="mdi:music" :width="40" />
+          <Icon v-else :width="40" icon="mdi:music" />
         </div>
         <div class="details">
           <div class="name">{{ currentSong.title }}</div>
@@ -37,12 +37,12 @@
   </div>
 </template>
 
-<script setup lang="ts">
-import { computed, ref, watch, onMounted, onUnmounted } from 'vue'
+<script lang="ts" setup>
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { Icon } from '@iconify/vue'
 import { useAppStore } from '@/stores/app'
 import { audio } from '@/utils/createAudio'
-import { fetchCoverFromWeb, DEFAULT_COVER } from '@/utils/functions'
+import { DEFAULT_COVER, fetchCoverFromWeb } from '@/utils/functions'
 
 const appStore = useAppStore()
 
@@ -125,7 +125,7 @@ onUnmounted(() => {
 })
 </script>
 
-<style scoped lang="scss">
+<style lang="scss" scoped>
 .now-playing-bar {
   position: fixed;
   bottom: 0;

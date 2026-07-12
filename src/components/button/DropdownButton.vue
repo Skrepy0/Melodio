@@ -2,25 +2,25 @@
   <div class="circle-dropdown-container">
     <CircleButton
       ref="buttonRef"
-      :icon="buttonIcon"
-      :size="size"
       :bg-color="bgColor"
-      :icon-color="iconColor"
       :disabled="disabled"
+      :icon="buttonIcon"
+      :icon-color="iconColor"
+      :size="size"
       @click="toggleDropdown"
     />
     <Teleport to="body">
       <Transition name="dropdown-fade">
-        <div v-if="showDropdown" ref="dropdownRef" class="dropdown-menu" :style="dropdownStyle">
+        <div v-if="showDropdown" ref="dropdownRef" :style="dropdownStyle" class="dropdown-menu">
           <div class="dropdown-list">
             <div
               v-for="(item, index) in options"
               :key="index"
-              class="dropdown-item"
               :class="{ disabled: item.disabled }"
+              class="dropdown-item"
               @click="selectItem(item)"
             >
-              <Icon v-if="item.icon" :icon="item.icon" class="item-icon" :width="itemIconSize" />
+              <Icon v-if="item.icon" :icon="item.icon" :width="itemIconSize" class="item-icon" />
               <span class="item-description">{{ item.description }}</span>
             </div>
           </div>
@@ -30,8 +30,8 @@
   </div>
 </template>
 
-<script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue'
+<script lang="ts" setup>
+import { nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { Icon } from '@iconify/vue'
 import CircleButton from './CircleButton.vue'
 import type { DropdownButtonProps, DropdownItem } from '@/utils/interface.ts'
@@ -202,7 +202,7 @@ watch(showDropdown, (val) => {
 })
 </script>
 
-<style scoped lang="scss">
+<style lang="scss" scoped>
 .circle-dropdown-container {
   position: relative;
   display: inline-block;

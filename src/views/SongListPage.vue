@@ -1,4 +1,4 @@
-<script setup lang="ts">
+<script lang="ts" setup>
 import router from '@/router'
 import { computed, ref } from 'vue'
 import { Icon } from '@iconify/vue'
@@ -229,39 +229,39 @@ const onSearch = () => {
     <div class="song-list-page">
       <div class="song-list-header">
         <div class="header-back" @click="goBack">
-          <Icon icon="material-symbols:arrow-back" :width="24" color="var(--text-color)" />
+          <Icon :width="24" color="var(--text-color)" icon="material-symbols:arrow-back" />
         </div>
 
-        <Transition name="fade" mode="out-in">
-          <div v-if="!isSearchMode" class="normal-mode" key="normal">
+        <Transition mode="out-in" name="fade">
+          <div v-if="!isSearchMode" key="normal" class="normal-mode">
             <div class="header-title">{{ title }}</div>
             <div class="button-container">
-              <CircleButton icon="mdi:magnify" :size="36" @click="enterSearchMode" />
+              <CircleButton :size="36" icon="mdi:magnify" @click="enterSearchMode" />
               <DropdownButton
-                button-icon="mingcute:more-2-line"
-                :size="36"
-                :options="operations"
-                @select="onSelectOperation"
                 :dx="-100"
+                :options="operations"
+                :size="36"
+                button-icon="mingcute:more-2-line"
+                @select="onSelectOperation"
               />
             </div>
           </div>
 
-          <div v-else class="search-mode" key="search">
+          <div v-else key="search" class="search-mode">
             <div class="search-wrapper">
               <SearchBox
                 v-model="keyword"
-                autofocus
-                @search="onSearch"
-                size="medium"
                 :clearable="true"
                 :placeholder="$t('home.searchPlaceholder')"
+                autofocus
                 class="search-input-field"
+                size="medium"
+                @search="onSearch"
               />
               <CircleButton
-                icon="mdi:close"
                 :size="36"
                 bg-color="transparent"
+                icon="mdi:close"
                 icon-color="var(--text-color)"
                 @click="exitSearchMode"
               />
@@ -272,18 +272,18 @@ const onSearch = () => {
 
       <div class="content-body">
         <div v-if="isLoading" class="loading-state">
-          <Icon icon="mdi:loading" :width="32" class="loading-icon" />
+          <Icon :width="32" class="loading-icon" icon="mdi:loading" />
           <span>{{ $t('songList.loading') }}</span>
         </div>
         <div v-if="!isLoading && songsList.length === 0" class="empty-state">
-          <Icon icon="mdi:music-off" :width="48" color="var(--text-secondary)" />
+          <Icon :width="48" color="var(--text-secondary)" icon="mdi:music-off" />
           <p>{{ $t('songList.empty') }}</p>
         </div>
         <div
           v-if="!isLoading && songsList.length !== 0 && showSongsList.length === 0"
           class="empty-state"
         >
-          <Icon icon="mdi:music-off" :width="48" color="var(--text-secondary)" />
+          <Icon :width="48" color="var(--text-secondary)" icon="mdi:music-off" />
           <p>{{ $t('songList.notFound') }}</p>
         </div>
         <PlayList
@@ -300,7 +300,7 @@ const onSearch = () => {
   </ion-page>
 </template>
 
-<style scoped lang="scss">
+<style lang="scss" scoped>
 .song-list-page {
   display: flex;
   flex-direction: column;

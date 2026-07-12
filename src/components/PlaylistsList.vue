@@ -4,13 +4,13 @@
       <PlaylistItemSelectable
         v-for="playlist in playlists"
         :key="playlist.id"
+        :dropdown-open="openDropdownId === playlist.id"
         :playlist="playlist"
         :selectable="isSelectMode"
         :selected="selectedIds.has(playlist.id)"
-        :dropdown-open="openDropdownId === playlist.id"
+        @click="onPlaylistClick"
         @long-press="enterSelectMode"
         @toggle-select="toggleSelect"
-        @click="onPlaylistClick"
         @menu-select="onMenuSelect"
         @update:dropdown-open="(open) => handleDropdownToggle(playlist.id, open)"
       />
@@ -20,19 +20,19 @@
       <div v-if="isSelectMode" class="bottom-actions">
         <div class="actions-container">
           <button class="action-btn" @click="selectAll">
-            <Icon icon="mdi:select-all" :width="20" />
+            <Icon :width="20" icon="mdi:select-all" />
             <span>全选</span>
           </button>
           <button class="action-btn" @click="clearSelection">
-            <Icon icon="mdi:select-off" :width="20" />
+            <Icon :width="20" icon="mdi:select-off" />
             <span>清空</span>
           </button>
           <button class="action-btn danger" @click="batchDelete">
-            <Icon icon="mdi:delete" :width="20" />
+            <Icon :width="20" icon="mdi:delete" />
             <span>删除({{ selectedIds.size }})</span>
           </button>
           <button class="action-btn" @click="exitSelectMode">
-            <Icon icon="mdi:close" :width="20" />
+            <Icon :width="20" icon="mdi:close" />
             <span>取消</span>
           </button>
         </div>
@@ -41,7 +41,7 @@
   </div>
 </template>
 
-<script setup lang="ts">
+<script lang="ts" setup>
 import { ref } from 'vue'
 import { Icon } from '@iconify/vue'
 import PlaylistItemSelectable from '@/components/lists/PlaylistItemSelectable.vue'
@@ -113,7 +113,7 @@ const onMenuSelect = (action: string, playlist: Playlist) => {
 }
 </script>
 
-<style scoped lang="scss">
+<style lang="scss" scoped>
 .playlists-list {
   position: relative;
   height: 100%;

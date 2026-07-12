@@ -10,6 +10,7 @@ import ScanBlacklistPage from '@/views/ScanBlacklistPage.vue'
 import InterfaceSettingsPage from '@/views/settings/InterfaceSettingsPage.vue'
 import AccessibilityPage from '@/views/settings/AccessibilityPage.vue'
 import OtherSettingsPage from '@/views/settings/OtherSettingsPage.vue'
+
 const routes: Array<RouteRecordRaw> = [
   {
     path: '/',

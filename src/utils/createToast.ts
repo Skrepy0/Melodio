@@ -1,6 +1,6 @@
 import { createVNode, render } from 'vue'
-import ToastComponent from '@/components/ToastCard.vue'
 import type { ToastType } from '@/components/ToastCard.vue'
+import ToastComponent from '@/components/ToastCard.vue'
 
 let toastInstance: any = null
 let container: HTMLDivElement | null = null

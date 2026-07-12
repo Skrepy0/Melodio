@@ -2,7 +2,7 @@
   <Transition name="fade">
     <div v-if="visible" class="confirm-overlay" @click.self="handleCancel">
       <div class="confirm-container">
-        <div class="confirm-header" v-if="title">
+        <div v-if="title" class="confirm-header">
           <h3>{{ title }}</h3>
         </div>
         <div class="confirm-body">
@@ -17,7 +17,7 @@
   </Transition>
 </template>
 
-<script setup lang="ts">
+<script lang="ts" setup>
 import { ref } from 'vue'
 
 interface Props {

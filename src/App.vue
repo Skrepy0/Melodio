@@ -12,14 +12,15 @@
   </ion-app>
 </template>
 
-<script setup lang="ts">
+<script lang="ts" setup>
 import { IonApp, useBackButton } from '@ionic/vue'
 import { App } from '@capacitor/app'
-import { useRouter, useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { onMounted, ref, watch } from 'vue'
 import { useAppStore } from '@/stores/app'
 import { loadLocaleMessages } from './i18n'
 import { Capacitor } from '@capacitor/core'
+
 console.log('NativeAudio available:', Capacitor.isPluginAvailable('NativeAudio'))
 const appStore = useAppStore()
 appStore.init()

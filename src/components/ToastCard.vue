@@ -1,13 +1,13 @@
 <template>
   <Transition name="fade">
-    <div v-if="visible" class="toast" :class="type">
-      <Icon :icon="iconMap[type]" class="toast-icon" v-if="iconMap[type]" />
+    <div v-if="visible" :class="type" class="toast">
+      <Icon v-if="iconMap[type]" :icon="iconMap[type]" class="toast-icon" />
       <span class="toast-text">{{ message }}</span>
     </div>
   </Transition>
 </template>
 
-<script setup lang="ts">
+<script lang="ts" setup>
 import { ref } from 'vue'
 import { Icon } from '@iconify/vue'
 
@@ -39,7 +39,7 @@ const show = (msg: string, t: ToastType = 'info', duration = 2000) => {
 defineExpose({ show })
 </script>
 
-<style scoped lang="scss">
+<style lang="scss" scoped>
 .toast {
   position: fixed;
   top: 85%;

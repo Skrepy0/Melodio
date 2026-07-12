@@ -3,7 +3,7 @@
     <div class="settings-page">
       <div class="settings-header">
         <div class="header-back" @click="goBack">
-          <Icon icon="material-symbols:arrow-back" :width="24" color="var(--text-color)" />
+          <Icon :width="24" color="var(--text-color)" icon="material-symbols:arrow-back" />
         </div>
         <div class="header-title">{{ $t('settings.interface.title') }}</div>
       </div>
@@ -12,11 +12,11 @@
         <div class="setting-item">
           <div class="setting-row">
             <div class="item-left">
-              <Icon icon="mdi:weather-night" :width="22" class="item-icon" />
+              <Icon :width="22" class="item-icon" icon="mdi:weather-night" />
               <span class="item-label">{{ $t('settings.interface.darkMode') }}</span>
             </div>
             <label class="switch">
-              <input type="checkbox" v-model="isDarkMode" @change="toggleDarkMode" />
+              <input v-model="isDarkMode" type="checkbox" @change="toggleDarkMode" />
               <span class="slider round"></span>
             </label>
           </div>
@@ -26,7 +26,7 @@
     </div>
   </ion-page>
 </template>
-<script setup lang="ts">
+<script lang="ts" setup>
 import { useAppStore } from '@/stores/app'
 import { IonPage } from '@ionic/vue'
 import { Icon } from '@iconify/vue'
@@ -48,6 +48,6 @@ onMounted(() => {
   isDarkMode.value = appStore.darkMode
 })
 </script>
-<style scoped lang="scss">
+<style lang="scss" scoped>
 @use '../../theme/settings.scss';
 </style>

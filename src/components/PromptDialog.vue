@@ -10,9 +10,9 @@
           <input
             ref="inputRef"
             v-model="inputValue"
-            type="text"
-            class="prompt-input"
             :placeholder="placeholder"
+            class="prompt-input"
+            type="text"
             @keyup.enter="confirm"
           />
         </div>
@@ -25,8 +25,8 @@
   </Transition>
 </template>
 
-<script setup lang="ts">
-import { ref, onMounted } from 'vue'
+<script lang="ts" setup>
+import { onMounted, ref } from 'vue'
 
 interface Props {
   title?: string
@@ -75,7 +75,7 @@ onMounted(() => {
 })
 </script>
 
-<style scoped lang="scss">
+<style lang="scss" scoped>
 .prompt-overlay {
   position: fixed;
   top: 0;

@@ -3,11 +3,11 @@
     <div class="song-cover">
       <img
         v-if="coverSrc && coverSrc !== DEFAULT_COVER && !isCoverLoading"
-        :src="coverSrc"
         :alt="song.title"
+        :src="coverSrc"
         @error="coverSrc = DEFAULT_COVER"
       />
-      <Icon v-else icon="mdi:music" :width="36" class="default-cover" />
+      <Icon v-else :width="36" class="default-cover" icon="mdi:music" />
     </div>
 
     <div class="song-info">
@@ -21,12 +21,12 @@
         v-if="props.showOperations"
         v-model:visible="dropdownVisible"
         :button-icon="'mdi:dots-vertical'"
-        :size="32"
-        :options="menuOptions"
-        :offset-x="0"
-        :offset-y="4"
         :dx="-40"
         :dy="-60"
+        :offset-x="0"
+        :offset-y="4"
+        :options="menuOptions"
+        :size="32"
         placement="bottom-end"
         @select="onMenuItemSelect"
         @click.stop
@@ -35,17 +35,17 @@
   </div>
 </template>
 
-<script setup lang="ts">
+<script lang="ts" setup>
 import { Icon } from '@iconify/vue'
 import DropdownButton from '@/components/button/DropdownButton.vue'
 import { useDropdownControl } from '@/composables/useDropdownControl'
 import type { DropdownItem, Song } from '@/utils/interface'
 import { useAppStore } from '@/stores/app'
 import toast from '@/utils/createToast'
-import { getAccessibleUrl, isInList, fetchCoverFromWeb, DEFAULT_COVER } from '@/utils/functions'
+import { DEFAULT_COVER, fetchCoverFromWeb, getAccessibleUrl, isInList } from '@/utils/functions'
 import { showPlaylistSelector } from '@/utils/createPlaylistSelector'
 import { useI18n } from 'vue-i18n'
-import { computed, ref, watch, onUnmounted } from 'vue'
+import { computed, onUnmounted, ref, watch } from 'vue'
 import { audio } from '@/utils/createAudio'
 
 const { t } = useI18n()
@@ -215,7 +215,7 @@ const onMenuItemSelect = async (item: DropdownItem) => {
 }
 </script>
 
-<style scoped lang="scss">
+<style lang="scss" scoped>
 .song-item {
   width: 100%;
   display: flex;

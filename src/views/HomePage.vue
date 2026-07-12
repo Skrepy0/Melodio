@@ -4,21 +4,21 @@
       <div class="search-box-container">
         <SearchBox
           v-model="keyword"
-          autofocus
-          @search="onSearch"
-          size="small"
           :clearable="false"
           :placeholder="$t('home.searchPlaceholder')"
+          autofocus
+          size="small"
+          @search="onSearch"
         />
       </div>
       <div class="button-container">
-        <CircleButton icon="stash:play-duotone" :size="36" @click="playShownSongs" />
+        <CircleButton :size="36" icon="stash:play-duotone" @click="playShownSongs" />
         <DropdownButton
-          button-icon="mingcute:more-2-line"
-          :size="36"
-          :options="operations"
-          @select="onSelectOperation"
           :dx="-100"
+          :options="operations"
+          :size="36"
+          button-icon="mingcute:more-2-line"
+          @select="onSelectOperation"
         />
       </div>
     </div>
@@ -32,14 +32,14 @@
         />
       </div>
       <div v-if="selectedCategory === 'tracks' && songsList.length === 0" class="empty-state">
-        <Icon icon="mdi:music-off" :width="48" color="var(--text-secondary)" />
+        <Icon :width="48" color="var(--text-secondary)" icon="mdi:music-off" />
         <p>{{ $t('songList.empty') }}</p>
       </div>
       <div
         v-if="selectedCategory === 'tracks' && songsList.length !== 0 && showSongsList.length === 0"
         class="empty-state"
       >
-        <Icon icon="mdi:music-off" :width="48" color="var(--text-secondary)" />
+        <Icon :width="48" color="var(--text-secondary)" icon="mdi:music-off" />
         <p>{{ $t('songList.notFound') }}</p>
       </div>
       <PlayList
@@ -62,7 +62,7 @@
   </ion-page>
 </template>
 
-<script setup lang="ts">
+<script lang="ts" setup>
 import { Icon } from '@iconify/vue'
 import { IonPage } from '@ionic/vue'
 import SearchBox from '@/components/SearchBox.vue'
@@ -384,7 +384,7 @@ watch(selectedCategory, () => {
   appStore.setSelectedCategory(selectedCategory.value)
 })
 </script>
-<style scoped lang="scss">
+<style lang="scss" scoped>
 .header {
   height: 64px;
   width: 100%;
