@@ -220,6 +220,7 @@ export const useAppStore = defineStore('app', () => {
   }
 
   const isSwitchingSong = ref(false)
+  let switchPromise: Promise<void> | null = null
 
   const likeList = ref<Playlist>({
     id: 0,
@@ -316,8 +317,6 @@ export const useAppStore = defineStore('app', () => {
 
   const currentSong = computed(() => playQueue.value[playData.value.currentIndex] || null)
 
-  const songsForPlugin = ref<SongItem[]>([])
-
   watch(
     playQueue,
     async (newQueue) => {
@@ -330,36 +329,27 @@ export const useAppStore = defineStore('app', () => {
           coverUrl: canFetchCoverFromWeb.value ? await resolveCoverUrl(s) : s.albumArtUri,
         }))
       )
-      songsForPlugin.value = list
       await audio.setPlaylist(list)
-    },
-    { deep: true, immediate: true }
-  )
-  watch(
-    playQueue,
-    async () => {
-      await audio.setPlaylist(songsForPlugin.value)
-      if (playData.value.currentIndex >= playQueue.value.length) {
+      // Clamp currentIndex if queue shrank below it
+      if (playData.value.currentIndex >= newQueue.length) {
         playData.value.currentIndex = 0
         savePlayData()
       }
     },
-    { deep: true }
+    { deep: true, immediate: true }
   )
   watch(playMode, (newMode) => {
     audio.setRepeatMode(newMode === 'repeatOne')
   })
-  watch(
-    () => audio.paused,
-    (newPaused) => {
-      playData.value.isPlaying = !newPaused
-    }
-  )
 
   function setupNativeAudioListeners() {
     audio.addEventListener('songChanged', (data: { index: number }) => {
       playData.value.currentIndex = data.index
       playData.value.isPlaying = true
+      savePlayData()
+    })
+    audio.addEventListener('playStateChange', (data: { isPlaying: boolean }) => {
+      playData.value.isPlaying = data.isPlaying
       savePlayData()
     })
     audio.addEventListener('timeupdate', () => {
@@ -379,9 +369,21 @@ export const useAppStore = defineStore('app', () => {
 
     if (playData.value.isPlaying) {
       await audio.pause()
+      // playStateChange event will update isPlaying; set locally for immediate UI feedback
       playData.value.isPlaying = false
       savePlayData()
       return
+    }
+
+    // Try to resume first — if the song is already prepared (normal pause/resume),
+    // this avoids reloading the track entirely.
+    try {
+      await audio.play()
+      playData.value.isPlaying = true
+      savePlayData()
+      return
+    } catch {
+      // Song not prepared yet (first play or after error) — full load path
     }
 
     try {
@@ -400,32 +402,52 @@ export const useAppStore = defineStore('app', () => {
   }
 
   async function nextSong() {
-    if (isSwitchingSong.value || playQueue.value.length === 0) return
+    if (switchPromise || playQueue.value.length === 0) return
     isSwitchingSong.value = true
-    const nextIndex = (playData.value.currentIndex + 1) % playQueue.value.length
-    console.log('[Store] nextSong: playing index=', nextIndex)
-    await audio.playIndex(nextIndex)
-    playData.value.currentIndex = nextIndex
-    playData.value.isPlaying = true
-    savePlayData()
-    setTimeout(() => {
-      isSwitchingSong.value = false
-    }, 100)
+
+    switchPromise = (async () => {
+      try {
+        const nextIndex = (playData.value.currentIndex + 1) % playQueue.value.length
+        console.log('[Store] nextSong: playing index=', nextIndex)
+        await audio.playIndex(nextIndex)
+        // currentIndex is updated by the 'songChanged' event from native — do NOT set it here
+        playData.value.isPlaying = true
+        savePlayData()
+      } catch (err) {
+        console.error('[Store] nextSong error', err)
+        toast.error('切歌失败')
+      } finally {
+        isSwitchingSong.value = false
+        switchPromise = null
+      }
+    })()
+
+    await switchPromise
   }
 
   async function prevSong() {
-    if (isSwitchingSong.value || playQueue.value.length === 0) return
+    if (switchPromise || playQueue.value.length === 0) return
     isSwitchingSong.value = true
-    const prevIndex =
-      (playData.value.currentIndex - 1 + playQueue.value.length) % playQueue.value.length
-    console.log('[Store] prevSong: playing index=', prevIndex)
-    await audio.playIndex(prevIndex)
-    playData.value.currentIndex = prevIndex
-    playData.value.isPlaying = true
-    savePlayData()
-    setTimeout(() => {
-      isSwitchingSong.value = false
-    }, 100)
+
+    switchPromise = (async () => {
+      try {
+        const prevIndex =
+          (playData.value.currentIndex - 1 + playQueue.value.length) % playQueue.value.length
+        console.log('[Store] prevSong: playing index=', prevIndex)
+        await audio.playIndex(prevIndex)
+        // currentIndex is updated by the 'songChanged' event from native — do NOT set it here
+        playData.value.isPlaying = true
+        savePlayData()
+      } catch (err) {
+        console.error('[Store] prevSong error', err)
+        toast.error('切歌失败')
+      } finally {
+        isSwitchingSong.value = false
+        switchPromise = null
+      }
+    })()
+
+    await switchPromise
   }
 
   async function init() {
@@ -446,7 +468,7 @@ export const useAppStore = defineStore('app', () => {
       initSongLists()
       initPlayMode()
       setupAudioBecomingNoisyListener()
-      await audio.setPlaylist(songsForPlugin.value)
+      // playQueue watcher (immediate: true) already syncs playlist to native
       setupNativeAudioListeners()
       await audio.setRepeatMode(playMode.value === 'repeatOne')
       initFlag.value = true
@@ -605,12 +627,7 @@ export const useAppStore = defineStore('app', () => {
     playbackRate.value = rate
     localStorage.setItem('playbackRate', rate.toString())
     await audio.setPlaybackRate(rate)
-    if (!playData.value.isPlaying) {
-      togglePlay()
-      setTimeout(() => {
-        togglePlay()
-      }, 50)
-    }
+    // MediaPlayer applies PlaybackParams even while paused — no need to toggle
   }
 
   function initLikeList() {

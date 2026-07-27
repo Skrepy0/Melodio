@@ -12,6 +12,7 @@ export type AudioEvent =
   | 'nexttrack'
   | 'previoustrack'
   | 'songChanged'
+  | 'playStateChange'
 
 type EventCallback = (data?: any) => void
 
@@ -23,8 +24,6 @@ export class NativeAudioPlayer {
     this.setupListeners()
     NativeAudio.addListener('playStateChange', (data: { isPlaying: boolean }) => {
       this._paused = !data.isPlaying
-      const store = useAppStore()
-      store.setIsPlaying(!data.isPlaying)
     })
   }
 
@@ -85,11 +84,7 @@ export class NativeAudioPlayer {
 
   async playIndex(index: number, autoPlay = true) {
     await NativeAudio.playIndex({ index, autoPlay })
-    if (autoPlay) {
-      this._paused = false
-    } else {
-      this._paused = true
-    }
+    // State (_paused, _currentTime) is set by native events (songChanged, playStateChange)
   }
 
   async play() {

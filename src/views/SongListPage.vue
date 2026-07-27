@@ -108,16 +108,14 @@ const playSong = async (song: Song) => {
   if (
     index === currentIndex &&
     currentQueue.length > 0 &&
-    currentQueue[currentIndex]?.id === song.id // 同一首歌
+    currentQueue[currentIndex]?.id === song.id
   ) {
     appStore.togglePlay()
-    return // 暂停播放
+    return
   }
-  // 不是同一首
-  if (playData.isPlaying) {
-    appStore.togglePlay() // 先暂停
-  }
-  // 设置队列信息
+
+  if (appStore.getIsSwitchingSong()) return
+
   appStore.setIsSwitchingSong(true)
   appStore.setPlayQueue(songsList.value)
   appStore.setCurrentIndex(index)
@@ -134,16 +132,12 @@ const playSong = async (song: Song) => {
       }))
     )
     await audio.playIndex(index)
-    appStore.setIsPlaying(true)
+    // songChanged event from native updates isPlaying and currentIndex
   } catch (error) {
     console.error('播放失败:', error)
     toast.error(t('common.playFailed'))
   } finally {
-    appStore.togglePlay()
-    setTimeout(() => {
-      appStore.setIsSwitchingSong(false)
-      appStore.togglePlay()
-    }, 200)
+    appStore.setIsSwitchingSong(false)
   }
 }
 

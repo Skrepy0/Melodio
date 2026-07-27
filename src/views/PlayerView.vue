@@ -231,18 +231,19 @@ const playSong = async (song: Song) => {
     return
   }
 
+  if (appStore.getIsSwitchingSong()) return
+
+  appStore.setIsSwitchingSong(true)
   try {
     await audio.playIndex(targetIdx)
-    appStore.setIsPlaying(true)
+    // songChanged event from native updates currentIndex and isPlaying
     appStore.setMockCurrentTime(0)
   } catch (e) {
     console.error('播放失败', e)
     toast.error(t('player.toast.playFailed'))
+  } finally {
+    appStore.setIsSwitchingSong(false)
   }
-  appStore.togglePlay()
-  setTimeout(async () => {
-    appStore.togglePlay() //刷新
-  }, 50)
 }
 
 const progressBarRef = ref<HTMLElement | null>(null)

@@ -60,6 +60,7 @@ public class NativeAudioPlugin extends Plugin {
     private boolean isPlaying = false;
     private int loadGeneration = 0;
     private PluginCall pendingPlayCall;
+    private volatile boolean loading = false;
     private Handler progressHandler;
     private Runnable progressRunnable;
     private String title = "";
@@ -101,6 +102,7 @@ public class NativeAudioPlugin extends Plugin {
 
         mediaPlayer.setOnErrorListener((mp, what, extra) -> {
             Log.e(TAG, "MediaPlayer error: what=" + what + " extra=" + extra);
+            rejectPendingCall("MediaPlayer error what=" + what + " extra=" + extra);
             notifyError(what, extra);
             nextInternal();
             return true;
@@ -271,7 +273,7 @@ public class NativeAudioPlugin extends Plugin {
     public void playIndex(PluginCall call) {
         Integer indexObj = call.getInt("index");
         int index = (indexObj != null) ? indexObj : 0;
-        boolean autoPlay = Boolean.TRUE.equals(call.getBoolean("autoPlay", true)); // 默认 true
+        boolean autoPlay = Boolean.TRUE.equals(call.getBoolean("autoPlay", true));
 
         Log.d(TAG, "playIndex called with index=" + index + ", autoPlay=" + autoPlay + " (playlist size=" + playlist.size() + ")");
 
@@ -281,6 +283,9 @@ public class NativeAudioPlugin extends Plugin {
             return;
         }
 
+        // Supersede any previous pending call — only the latest request matters
+        rejectPendingCall("superseded by newer playIndex call");
+
         pendingPlayCall = call;
         loadAndPlay(index, autoPlay);
     }
@@ -288,10 +293,11 @@ public class NativeAudioPlugin extends Plugin {
     private void loadAndPlay(int index, boolean autoPlay) {
         if (index < 0 || index >= playlist.size()) {
             Log.e(TAG, "loadAndPlay: invalid index " + index);
+            rejectPendingCall("invalid index");
             return;
         }
 
-        currentIndex = index;
+        loading = true;
         SongItem song = playlist.get(index);
         Log.d(TAG, "loadAndPlay: loading index=" + index + " url=" + song.url + " autoPlay=" + autoPlay);
 
@@ -322,10 +328,13 @@ public class NativeAudioPlugin extends Plugin {
             mediaPlayer.setOnPreparedListener(mp -> {
                 Log.d(TAG, "onPrepared called, generation=" + gen + " current=" + loadGeneration);
                 if (gen != loadGeneration) {
-                    Log.w(TAG, "Skipping onPrepared because loadGeneration changed (gen=" + gen + " current=" + loadGeneration + ")");
+                    Log.w(TAG, "Skipping onPrepared — superseded (gen=" + gen + " current=" + loadGeneration + ")");
+                    loading = false;
                     return;
                 }
 
+                // Only now confirm the index — prepare succeeded
+                currentIndex = index;
                 prepared = true;
 
                 durationSec = mp.getDuration() / 1000;
@@ -352,11 +361,8 @@ public class NativeAudioPlugin extends Plugin {
                 }
 
                 notifySongChanged();
-
-                if (pendingPlayCall != null) {
-                    pendingPlayCall.resolve();
-                    pendingPlayCall = null;
-                }
+                resolvePendingCall();
+                loading = false;
             });
 
             mediaPlayer.prepareAsync();
@@ -364,8 +370,27 @@ public class NativeAudioPlugin extends Plugin {
 
         } catch (Exception e) {
             Log.e(TAG, "Exception in loadAndPlay for url=" + song.url, e);
+            rejectPendingCall("load failed: " + e.getMessage());
+            loading = false;
             notifyError(-1, -1);
             nextInternal();
+        }
+    }
+
+    /** Resolve the current pending call. Safe to call when none is pending. */
+    private void resolvePendingCall() {
+        if (pendingPlayCall != null) {
+            pendingPlayCall.resolve();
+            pendingPlayCall = null;
+        }
+    }
+
+    /** Reject the current pending call with a reason. Safe to call when none is pending. */
+    private void rejectPendingCall(String reason) {
+        if (pendingPlayCall != null) {
+            Log.d(TAG, "Rejecting pending call: " + reason);
+            pendingPlayCall.reject(reason);
+            pendingPlayCall = null;
         }
     }
 
@@ -398,7 +423,7 @@ public class NativeAudioPlugin extends Plugin {
             isPlaying = true;
             updateState(true);
             startProgress();
-            notifyPlayState(false);
+            notifyPlayState(true);
             Log.d(TAG, "playInternal: started playback");
         } else {
             Log.d(TAG, "playInternal: already playing");
@@ -422,7 +447,7 @@ public class NativeAudioPlugin extends Plugin {
             isPlaying = false;
             updateState(false);
             stopProgress();
-            notifyPlayState(true);
+            notifyPlayState(false);
             abandonAudioFocus();
             Log.d(TAG, "pauseInternal: paused");
         } else {
@@ -596,6 +621,7 @@ public class NativeAudioPlugin extends Plugin {
     @Override
     protected void handleOnDestroy() {
         Log.d(TAG, "Plugin destroyed");
+        rejectPendingCall("plugin destroyed");
         stopProgress();
         if (mediaPlayer != null) mediaPlayer.release();
         if (mediaSession != null) mediaSession.release();

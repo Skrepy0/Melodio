@@ -173,44 +173,44 @@ const onMenuItemSelect = async (item: DropdownItem) => {
       props.onDelete(props.song)
     }
   } else if (item.value === 'play') {
+    if (appStore.getIsSwitchingSong()) return
+
     appStore.setIsSwitchingSong(true)
-    const queue = [...appStore.getPlayQueue()]
-    const currentIndex = appStore.getPlayData().currentIndex
-    let targetIndex: number
-
-    if (queue.length === 0 || currentIndex < 0) {
-      queue.push(props.song)
-      targetIndex = queue.length - 1
-    } else {
-      const insertPos = currentIndex + 1
-      queue.splice(insertPos, 0, props.song)
-      targetIndex = insertPos
-    }
-
-    appStore.setPlayQueue(queue)
-    appStore.setCurrentIndex(targetIndex)
-    appStore.setMockCurrentTime(0)
-
-    await audio.setPlaylist(
-      queue.map((s) => ({
-        url: getAccessibleUrl(s.uri),
-        title: s.title,
-        artist: s.artist || 'Unknown',
-        album: s.album || '',
-        coverUrl: s.albumArtUri || '',
-      }))
-    )
-
     try {
+      const queue = [...appStore.getPlayQueue()]
+      const currentIndex = appStore.getPlayData().currentIndex
+      let targetIndex: number
+
+      if (queue.length === 0 || currentIndex < 0) {
+        queue.push(props.song)
+        targetIndex = queue.length - 1
+      } else {
+        const insertPos = currentIndex + 1
+        queue.splice(insertPos, 0, props.song)
+        targetIndex = insertPos
+      }
+
+      appStore.setPlayQueue(queue)
+      appStore.setCurrentIndex(targetIndex)
+      appStore.setMockCurrentTime(0)
+
+      await audio.setPlaylist(
+        queue.map((s) => ({
+          url: getAccessibleUrl(s.uri),
+          title: s.title,
+          artist: s.artist || 'Unknown',
+          album: s.album || '',
+          coverUrl: s.albumArtUri || '',
+        }))
+      )
+
       await audio.playIndex(targetIndex)
-      appStore.setIsPlaying(true)
+      // songChanged event from native updates isPlaying and currentIndex
     } catch (e) {
       toast.error(t('common.playFailed'))
-    }
-
-    setTimeout(() => {
+    } finally {
       appStore.setIsSwitchingSong(false)
-    }, 100)
+    }
   }
 }
 </script>
