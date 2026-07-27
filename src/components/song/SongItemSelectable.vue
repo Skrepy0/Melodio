@@ -24,6 +24,7 @@
       :song="song"
       @click="onSongClick"
       @menu-select="onMenuSelect"
+      @update:dropdownOpen="(val) => (dropdownOpen = val)"
     />
   </div>
 </template>
