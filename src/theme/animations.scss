@@ -78,6 +78,70 @@
   transform: scale(0.95);
 }
 
+// ===== New Micro-interaction Keyframes =====
+
+// Skeleton loading shimmer — moving gradient sweep
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+// Subtle float for album art / hero elements
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+// Pulsing glow ring for play button
+@keyframes pulse-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(var(--primary-color-rgb), 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 12px rgba(var(--primary-color-rgb), 0);
+  }
+}
+
+// Scale pop for button toggle feedback
+@keyframes scale-bounce {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(0.88);
+  }
+  70% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+// Fade in from bottom (for toasts, notifications)
+@keyframes slideDownIn {
+  from {
+    opacity: 0;
+    transform: translateY(-16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+// ===== Shared Transition Classes (unchanged above) =====
+
 // ===== Utility Classes =====
 
 // Single-line text truncation with ellipsis
@@ -98,4 +162,48 @@
   flex-direction: column;
   height: 100%;
   background-color: var(--bg-color);
+}
+
+// Tactile button press — scale down on active
+.scale-press {
+  transition: transform var(--duration-fast, 0.15s) ease;
+
+  &:active {
+    transform: scale(0.96);
+  }
+}
+
+// Skeleton placeholder — shimmer loading animation
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--bg-placeholder) 25%,
+    var(--bg-card-hover) 37%,
+    var(--bg-placeholder) 63%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease infinite;
+  border-radius: var(--radius-sm, 8px);
+}
+
+// Staggered list entrance — add transition-delay via inline style or nth-child
+.stagger-children > * {
+  opacity: 0;
+  animation: slideInUp 0.4s var(--ease-out-expo, cubic-bezier(0.19, 1, 0.22, 1)) forwards;
+
+  @for $i from 1 through 20 {
+    &:nth-child(#{$i}) {
+      animation-delay: #{$i * 0.04}s;
+    }
+  }
+}
+
+// Floating element — subtle up/down bob
+.is-floating {
+  animation: float 3s var(--ease-in-out, ease) infinite;
+}
+
+// Pulsing glow — for active state indicators
+.is-pulsing {
+  animation: pulse-glow 2s ease infinite;
 }

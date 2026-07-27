@@ -71,7 +71,7 @@ onMounted(() => {
 
 .zoom-enter-active,
 .zoom-leave-active {
-  transition: all 0.25s ease;
+  transition: all var(--duration-normal) var(--ease-out-back);
 }
 .zoom-enter-from {
   opacity: 0;

@@ -312,3 +312,82 @@
     }
   }
 }
+
+// ===== NEW: Elevation System =====
+// Apply a layered shadow based on elevation level (0-4)
+@mixin elevation($level: 1) {
+  @if $level == 0 {
+    box-shadow: var(--elevation-0);
+  } @else if $level == 1 {
+    box-shadow: var(--elevation-1);
+  } @else if $level == 2 {
+    box-shadow: var(--elevation-2);
+  } @else if $level == 3 {
+    box-shadow: var(--elevation-3);
+  } @else if $level == 4 {
+    box-shadow: var(--elevation-4);
+  }
+}
+
+// ===== NEW: Glass Morphism =====
+// Frosted glass panel with backdrop blur
+@mixin glass($opacity: 0.75, $blur: 20px) {
+  background: rgba(var(--bg-color-rgb, 248, 249, 252), $opacity);
+  backdrop-filter: blur($blur);
+  -webkit-backdrop-filter: blur($blur);
+  border: 1px solid var(--glass-border, rgba(var(--text-color-rgb, 0, 0, 0), 0.06));
+  box-shadow: var(--glass-shadow, 0 8px 32px rgba(0, 0, 0, 0.08));
+}
+
+// ===== NEW: Card Base =====
+// Shared card with hover lift + active press
+@mixin card-base($radius: var(--radius-lg)) {
+  background-color: var(--bg-card);
+  border-radius: $radius;
+  @include elevation(1);
+  transition:
+    transform var(--duration-normal, 0.25s) var(--ease-out-expo, cubic-bezier(0.19, 1, 0.22, 1)),
+    box-shadow var(--duration-normal, 0.25s) var(--ease-out-expo, cubic-bezier(0.19, 1, 0.22, 1)),
+    background-color var(--duration-normal, 0.25s) ease;
+
+  &:hover {
+    transform: translateY(-3px);
+    @include elevation(2);
+  }
+
+  &:active {
+    transform: translateY(-1px) scale(0.985);
+    @include elevation(1);
+  }
+}
+
+// ===== NEW: Button Press =====
+// Tactile scale-down on active for any button/element
+@mixin button-press {
+  transition: transform var(--duration-fast, 0.15s) ease;
+
+  &:active {
+    transform: scale(0.96);
+  }
+
+  &:hover {
+    transform: scale(1.05);
+  }
+}
+
+// ===== NEW: Safe Area Padding =====
+// Add env(safe-area-inset-*) to specified side
+@mixin safe-area($side: bottom, $base: 0px) {
+  padding-#{$side}: calc(#{$base} + env(safe-area-inset-#{$side}, 0px));
+}
+
+// ===== NEW: Focus Ring =====
+// Keyboard-visible focus ring using primary color
+@mixin focus-ring {
+  outline: none;
+
+  &:focus-visible {
+    box-shadow: 0 0 0 3px rgba(var(--primary-color-rgb, 0, 122, 255), 0.4);
+    border-color: var(--primary-color);
+  }
+}

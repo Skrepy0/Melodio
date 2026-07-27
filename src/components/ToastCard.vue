@@ -1,5 +1,5 @@
 <template>
-  <Transition name="fade">
+  <Transition name="toast">
     <div v-if="visible" :class="type" class="toast">
       <Icon v-if="iconMap[type]" :icon="iconMap[type]" class="toast-icon" />
       <span class="toast-text">{{ message }}</span>
@@ -77,12 +77,22 @@ defineExpose({ show })
   background: var(--info-bg, rgba(25, 118, 210, 0.9));
 }
 
-.fade-enter-active,
-.fade-leave-active {
-  transition: opacity 0.3s ease;
+.toast-enter-active {
+  transition:
+    opacity var(--duration-normal) var(--ease-out-back),
+    transform var(--duration-normal) var(--ease-out-back);
 }
-.fade-enter-from,
-.fade-leave-to {
+.toast-leave-active {
+  transition:
+    opacity var(--duration-fast) ease,
+    transform var(--duration-fast) ease;
+}
+.toast-enter-from {
   opacity: 0;
+  transform: translateY(-16px) scale(0.92);
+}
+.toast-leave-to {
+  opacity: 0;
+  transform: translateY(-8px) scale(0.96);
 }
 </style>

@@ -162,13 +162,16 @@ defineExpose({
   display: flex;
   align-items: center;
   gap: 8px;
-  background-color: var(--bg-color);
+  background-color: var(--bg-input);
   border: 1px solid var(--input-border);
-  transition: all 0.3s ease;
-  box-shadow: var(--shadow-sm);
+  transition:
+    border-color var(--duration-normal) ease,
+    box-shadow var(--duration-normal) ease;
+  box-shadow: var(--elevation-1);
+
   &:focus-within {
-    box-shadow: 0 0 0 2px rgba(var(--text-color-rgb, 26, 28, 30), 0.2);
-    border-color: transparent;
+    box-shadow: 0 0 0 3px rgba(var(--primary-color-rgb), 0.25);
+    border-color: var(--primary-color);
   }
 }
 

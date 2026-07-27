@@ -1,3 +1,81 @@
+// ===== Design Tokens: Elevation =====
+// Layered shadows for depth — light mode
+:root {
+  --elevation-0: 0 0 0 0 transparent;
+  --elevation-1: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --elevation-2: 0 4px 12px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.04);
+  --elevation-3: 0 8px 24px rgba(0, 0, 0, 0.1), 0 4px 8px rgba(0, 0, 0, 0.05);
+  --elevation-4: 0 12px 40px rgba(0, 0, 0, 0.14), 0 6px 12px rgba(0, 0, 0, 0.06);
+}
+
+// ===== Design Tokens: Border Radius Scale =====
+:root {
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-2xl: 24px;
+  --radius-pill: 9999px;
+  --radius-full: 50%;
+}
+
+// ===== Design Tokens: Animation Timing =====
+:root {
+  --duration-instant: 0.05s;
+  --duration-fast: 0.15s;
+  --duration-normal: 0.25s;
+  --duration-slow: 0.4s;
+  --duration-slower: 0.6s;
+
+  --ease-out-expo: cubic-bezier(0.19, 1, 0.22, 1);
+  --ease-out-back: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+// ===== Design Tokens: Glass Morphism =====
+:root {
+  --glass-bg: rgba(var(--bg-color-rgb), 0.75);
+  --glass-border: rgba(var(--text-color-rgb), 0.06);
+  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+  --glass-blur: 20px;
+
+  --overlay-color: rgba(0, 0, 0, 0.45);
+}
+
+// ===== Design Tokens: Typography =====
+:root {
+  --font-family:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-size-xs: 11px;
+  --font-size-sm: 13px;
+  --font-size-base: 15px;
+  --font-size-lg: 17px;
+  --font-size-xl: 20px;
+  --font-size-2xl: 24px;
+  --font-size-3xl: 30px;
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  --line-height-tight: 1.2;
+  --line-height-normal: 1.5;
+}
+
+// ===== Design Tokens: Spacing =====
+:root {
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+}
+
+// ===== Existing Color Variables (unchanged but reorganized) =====
 :root {
   --bg-color: #f8f9fc;
   --bg-card: #ffffff;
@@ -24,11 +102,11 @@
   --border-light-hover: rgba(0, 0, 0, 0.08);
   --header-back-hover: rgba(0, 0, 0, 0.05);
   --setting-hover-bg: rgba(0, 0, 0, 0.02);
-  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.08);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.12);
-  --shadow-bottom: 0 -2px 10px rgba(0, 0, 0, 0.1);
-  --selected-shadow: 0 4px 10px rgba(179, 213, 251, 0.3);
-  --dropdown-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  --shadow-sm: var(--elevation-1);
+  --shadow-md: var(--elevation-2);
+  --shadow-bottom: 0 -2px 10px rgba(0, 0, 0, 0.08);
+  --selected-shadow: 0 4px 16px rgba(var(--primary-color-rgb), 0.25);
+  --dropdown-shadow: var(--elevation-3);
   --progress-track: rgba(0, 0, 0, 0.2);
   --scrollbar-track: rgba(0, 0, 0, 0.05);
   --scrollbar-thumb: rgba(0, 0, 0, 0.2);
@@ -49,6 +127,18 @@
 }
 
 .dark {
+  // Elevation — deeper, softer shadows for dark mode
+  --elevation-0: 0 0 0 0 transparent;
+  --elevation-1: 0 1px 3px rgba(0, 0, 0, 0.5);
+  --elevation-2: 0 4px 16px rgba(0, 0, 0, 0.55);
+  --elevation-3: 0 8px 30px rgba(0, 0, 0, 0.6);
+  --elevation-4: 0 14px 50px rgba(0, 0, 0, 0.7);
+
+  // Glass — darker glass with stronger blur
+  --glass-bg: rgba(var(--bg-color-rgb), 0.8);
+  --glass-border: rgba(var(--text-color-rgb), 0.06);
+  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  --overlay-color: rgba(0, 0, 0, 0.6);
   --bg-color: #0a0a0c;
   --bg-card: #1c1c1e;
   --bg-card-hover: #2c2c2e;

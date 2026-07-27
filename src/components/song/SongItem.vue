@@ -220,41 +220,14 @@ const onMenuItemSelect = async (item: DropdownItem) => {
   width: 100%;
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 12px 16px;
-  background-color: var(--bg-card);
-  border-radius: 16px;
-  box-shadow: var(--shadow-sm);
-  transition: all 0.2s ease;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  @include card-base;
   cursor: pointer;
-  animation: slideInUp 0.3s ease both;
-
-  &:hover {
-    background-color: var(--bg-card-hover);
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-md);
-  }
+  animation: slideInUp 0.35s var(--ease-out-expo) both;
 
   .song-cover {
-    flex-shrink: 0;
-    width: 56px;
-    height: 56px;
-    border-radius: 12px;
-    overflow: hidden;
-    background-color: var(--bg-placeholder);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-
-    .default-cover {
-      color: var(--text-secondary);
-    }
+    @include cover-thumbnail(var(--radius-md), 56px);
   }
 
   .song-info {

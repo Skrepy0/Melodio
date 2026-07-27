@@ -1,6 +1,6 @@
 <template>
   <div class="playlist">
-    <div class="song-list">
+    <div class="song-list stagger-children">
       <SongItemSelectable
         v-for="song in songs"
         :key="song.id"

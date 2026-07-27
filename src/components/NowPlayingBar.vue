@@ -131,12 +131,12 @@ onUnmounted(() => {
   bottom: 0;
   left: 0;
   right: 0;
-  background: var(--bg-header);
-  backdrop-filter: blur(10px);
-  background-color: rgba(var(--bg-header-rgb), 0.95);
-  border-top: 1px solid var(--bottom-actions-border);
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border-top: 1px solid var(--glass-border);
   z-index: 100;
-  box-shadow: var(--shadow-bottom);
+  box-shadow: var(--elevation-3);
 }
 
 .progress-line {
@@ -144,42 +144,69 @@ onUnmounted(() => {
   background-color: var(--progress-track);
   width: 100%;
   overflow: hidden;
+  position: relative;
 }
 
 .progress-fill-line {
   height: 100%;
-  background-color: var(--primary-color);
+  background: linear-gradient(90deg, var(--primary-color), var(--primary-color-dark));
   width: 0%;
-  transition: width 0.1s linear;
+  transition: width 0.15s linear;
+  border-radius: 0 2px 2px 0;
+
+  &::after {
+    content: '';
+    position: absolute;
+    right: -2px;
+    top: -2px;
+    width: 6px;
+    height: 6px;
+    background: var(--primary-color);
+    border-radius: 50%;
+    opacity: 0.6;
+  }
 }
 
 .bar-content {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  padding: 8px 16px;
+  gap: var(--space-4);
+  padding: var(--space-2) var(--space-4);
 }
 
 .song-info {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--space-3);
   cursor: pointer;
   flex: 1;
   min-width: 0;
+  border-radius: var(--radius-md);
+  padding: var(--space-1);
+  margin: -4px;
+  transition: background var(--duration-fast) ease;
+
+  &:hover {
+    background: var(--setting-hover-bg);
+  }
+
+  &:active {
+    transform: scale(0.98);
+  }
 }
 
 .cover {
   width: 48px;
   height: 48px;
-  border-radius: 8px;
-  background: var(--bg-placeholder, #e0e0e0);
+  border-radius: var(--radius-md);
+  background: var(--bg-placeholder);
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
   flex-shrink: 0;
+  box-shadow: var(--elevation-1);
 
   img {
     width: 100%;
@@ -229,10 +256,19 @@ onUnmounted(() => {
     align-items: center;
     justify-content: center;
     padding: 8px;
-    transition: transform 0.1s;
+    border-radius: var(--radius-full);
+    transition:
+      transform var(--duration-fast) var(--ease-out-back),
+      background var(--duration-fast) ease,
+      color var(--duration-fast) ease;
+
+    &:hover {
+      transform: scale(1.15);
+      color: var(--primary-color);
+    }
 
     &:active {
-      transform: scale(0.96);
+      animation: scale-bounce 0.35s var(--ease-out-back);
     }
   }
 }

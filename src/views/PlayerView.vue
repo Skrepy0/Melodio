@@ -20,6 +20,7 @@
         <img
           v-if="coverSrc && coverSrc !== DEFAULT_COVER"
           :alt="currentSong?.title"
+          :class="{ playing: isPlaying }"
           :src="coverSrc"
           @error="coverSrc = DEFAULT_COVER"
         />
@@ -608,32 +609,43 @@ onUnmounted(() => {
   top: 16px;
   left: 16px;
   z-index: 200;
+
+  :deep(.circle-button) {
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    box-shadow: var(--elevation-1);
+  }
 }
 
 .player-header {
-  background: var(--bg-header);
-  padding: 20px;
-  transition: all 0.3s ease;
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  padding: var(--space-5);
+  transition:
+    padding var(--duration-normal) var(--ease-out-expo),
+    min-height var(--duration-normal) var(--ease-out-expo);
   flex-shrink: 0;
   overflow: hidden;
 
   &.collapsed {
-    padding: 10px 20px;
+    padding: 10px var(--space-5);
     .album-cover img,
     .album-cover svg {
       width: 60px;
       height: 60px;
     }
     .song-name {
-      font-size: 14px;
+      font-size: var(--font-size-base);
     }
     .song-artist {
-      font-size: 12px;
+      font-size: var(--font-size-sm);
     }
     .progress-section {
-      margin: 8px 0;
+      margin: var(--space-2) 0;
     }
-    .control-btn.play-pause svg {
+    .control-btn.play-pause :deep(svg) {
       width: 32px;
       height: 32px;
     }
@@ -642,27 +654,39 @@ onUnmounted(() => {
 
 .album-cover {
   text-align: center;
-  margin-bottom: 16px;
+  margin-bottom: var(--space-4);
+
   img,
   svg {
     width: 180px;
     height: 180px;
-    border-radius: 12px;
+    border-radius: var(--radius-md);
     object-fit: cover;
-    transition: all 0.3s ease;
+    box-shadow:
+      0 8px 30px rgba(0, 0, 0, 0.12),
+      0 2px 8px rgba(0, 0, 0, 0.06);
+    transition:
+      width var(--duration-normal) var(--ease-out-expo),
+      height var(--duration-normal) var(--ease-out-expo),
+      border-radius var(--duration-normal) var(--ease-out-expo);
+
+    &.playing {
+      animation: float 4s var(--ease-in-out) infinite;
+    }
   }
 }
 
 .song-info {
   text-align: center;
-  margin-bottom: 20px;
+  margin-bottom: var(--space-5);
+
   .song-name {
-    font-size: 20px;
-    font-weight: bold;
+    font-size: var(--font-size-xl);
+    font-weight: var(--font-weight-bold);
     color: var(--text-color);
   }
   .song-artist {
-    font-size: 14px;
+    font-size: var(--font-size-base);
     color: var(--text-secondary);
   }
 }
@@ -670,43 +694,67 @@ onUnmounted(() => {
 .progress-section {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 20px;
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
+
   .time-current,
   .time-duration {
-    font-size: 12px;
+    font-size: var(--font-size-xs);
     color: var(--text-secondary);
     font-feature-settings: 'tnum';
+    min-width: 36px;
   }
   .progress-bar-container {
     flex: 1;
     cursor: pointer;
+    padding: 6px 0;
   }
   .progress-bar {
     position: relative;
     height: 4px;
-    background: var(--progress-bar);
-    border-radius: 2px;
+    background: var(--progress-track);
+    border-radius: var(--radius-xs);
+    transition: height var(--duration-fast) ease;
+
+    &:hover {
+      height: 6px;
+    }
   }
   .progress-fill {
     position: absolute;
     height: 100%;
-    background: var(--primary-color);
-    border-radius: 2px;
+    background: linear-gradient(90deg, var(--primary-color), var(--primary-color-dark));
+    border-radius: var(--radius-xs);
+    transition: width 0.3s var(--ease-out-expo);
+
+    &::after {
+      content: '';
+      position: absolute;
+      right: 0;
+      top: 50%;
+      transform: translate(50%, -50%);
+      width: 12px;
+      height: 12px;
+      background: var(--primary-color);
+      border-radius: var(--radius-full);
+      opacity: 0;
+      transition: opacity var(--duration-fast) ease;
+    }
+  }
+  .progress-bar:hover .progress-fill::after {
+    opacity: 1;
   }
   .progress-handle {
+    // kept for JS interaction but visually replaced by ::after pseudo-element above
     position: absolute;
     top: 50%;
     width: 12px;
     height: 12px;
-    background: var(--primary-color);
+    background: transparent;
     border-radius: 50%;
     transform: translate(-50%, -50%);
     opacity: 0;
-    transition: opacity 0.2s;
-  }
-  .progress-bar:hover .progress-handle {
-    opacity: 1;
+    pointer-events: none;
   }
 }
 
@@ -761,6 +809,25 @@ onUnmounted(() => {
   min-height: 0;
   overflow-y: auto;
   padding: 8px 0;
+}
+
+// TransitionGroup animations for queue reordering
+.queue-list-enter-active,
+.queue-list-leave-active {
+  transition:
+    opacity var(--duration-normal) var(--ease-out-expo),
+    transform var(--duration-normal) var(--ease-out-expo);
+}
+.queue-list-enter-from {
+  opacity: 0;
+  transform: translateX(-20px);
+}
+.queue-list-leave-to {
+  opacity: 0;
+  transform: translateX(20px);
+}
+.queue-list-move {
+  transition: transform var(--duration-normal) var(--ease-out-expo);
 }
 
 .queue-item {
@@ -840,20 +907,33 @@ onUnmounted(() => {
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 20px;
+  gap: var(--space-5);
 }
 
 .control-btn {
   background: none;
   border: none;
   cursor: pointer;
-  transition: transform 0.1s;
+  transition: transform var(--duration-fast) ease;
   display: flex;
   align-items: center;
   justify-content: center;
 
+  &:hover {
+    transform: scale(1.1);
+  }
+
   &:active {
-    transform: scale(0.95);
+    transform: scale(0.92);
+  }
+
+  &.play-pause {
+    &:hover {
+      transform: scale(1.08);
+    }
+    &:active {
+      animation: scale-bounce 0.35s var(--ease-out-back);
+    }
   }
 }
 .rate-button-top-right {
@@ -866,18 +946,28 @@ onUnmounted(() => {
 .rate-fab {
   min-width: 48px;
   height: 40px;
-  border-radius: 20px;
-  background: var(--bg-card);
-  border: 1px solid var(--border-color, rgba(128, 128, 128, 0.2));
+  border-radius: var(--radius-xl);
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--elevation-1);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: background 0.2s;
-  padding: 0 12px;
+  transition:
+    transform var(--duration-fast) ease,
+    background var(--duration-fast) ease;
+  padding: 0 var(--space-3);
 
   &:hover {
     background: var(--bg-card-hover);
+    transform: scale(1.05);
+  }
+
+  &:active {
+    transform: scale(0.95);
   }
 
   .rate-text {
