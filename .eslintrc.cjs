@@ -8,6 +8,8 @@ module.exports = {
     ecmaVersion: 2020,
   },
   rules: {
+    'no-extra-semi': 'off',
+    '@typescript-eslint/no-extra-semi': 'off',
     'no-console': process.env.NODE_ENV === 'production' ? 'warn' : 'off',
     'no-debugger': process.env.NODE_ENV === 'production' ? 'warn' : 'off',
     'vue/no-deprecated-slot-attribute': 'off',
