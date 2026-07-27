@@ -8,6 +8,7 @@ import { i18n } from '@/i18n'
 import type { SongItem } from '@/plugins/native-audio/definitions'
 import { registerPlugin } from '@capacitor/core'
 import type { SystemBarPlugin } from '@/plugins/system-bar/definitions'
+import { requestMediaPermissions } from '@/utils/audioScanner'
 
 const SystemBar = registerPlugin<SystemBarPlugin>('SystemBar')
 
@@ -454,6 +455,9 @@ export const useAppStore = defineStore('app', () => {
     if (!initFlag.value) {
       initLanguage()
       loadInitialDarkMode()
+      // Request media permissions on app startup so the user
+      // doesn't have to grant them later when scanning for music
+      requestMediaPermissions().catch(() => {})
       initBlacklist()
       initPlaybackRate()
       initAutoPauseOnDisconnect()
