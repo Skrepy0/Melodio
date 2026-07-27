@@ -162,6 +162,10 @@ public class NativeAudioPlugin extends Plugin {
 
     private void initSession() {
         mediaSession = new MediaSessionCompat(getContext(), "MelodioAudio");
+        mediaSession.setFlags(
+            MediaSessionCompat.FLAG_HANDLES_MEDIA_BUTTONS |
+            MediaSessionCompat.FLAG_HANDLES_TRANSPORT_CONTROLS
+        );
         mediaSession.setActive(true);
 
         mediaSession.setCallback(new MediaSessionCompat.Callback() {

@@ -24,6 +24,7 @@ export class NativeAudioPlayer {
     this.setupListeners()
     NativeAudio.addListener('playStateChange', (data: { isPlaying: boolean }) => {
       this._paused = !data.isPlaying
+      this.emit('playStateChange', data)
     })
   }
 
