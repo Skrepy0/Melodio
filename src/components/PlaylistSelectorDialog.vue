@@ -252,17 +252,13 @@ defineExpose({ show })
     font-size: 15px;
     font-weight: 500;
     color: var(--text-color);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    @include text-ellipsis;
     margin-bottom: 4px;
   }
   .playlist-desc {
     font-size: 12px;
     color: var(--text-secondary);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    @include text-ellipsis;
   }
 }
 

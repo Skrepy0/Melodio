@@ -127,17 +127,6 @@ const toggleSelect = () => {
   width: 100%;
 }
 
-@keyframes slideInUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
 .checkbox-area {
   flex-shrink: 0;
   cursor: pointer;
@@ -157,8 +146,6 @@ const toggleSelect = () => {
 .select-mode-offset :deep(.song-artist),
 .select-mode-offset :deep(.queue-song-name),
 .select-mode-offset :deep(.queue-song-artist) {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  @include text-ellipsis;
 }
 </style>

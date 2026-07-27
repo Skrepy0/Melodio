@@ -1,0 +1,314 @@
+// ===== Text Truncation =====
+// Single-line text with ellipsis overflow
+@mixin text-ellipsis {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+// ===== Custom Scrollbar =====
+// Thin custom scrollbar using theme variables
+@mixin custom-scrollbar($width: 4px, $direction: 'vertical') {
+  @if $direction == 'vertical' {
+    &::-webkit-scrollbar {
+      width: $width;
+    }
+  } @else {
+    &::-webkit-scrollbar {
+      height: $width;
+    }
+  }
+
+  &::-webkit-scrollbar-track {
+    background: var(--scrollbar-track);
+    border-radius: $width;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-thumb);
+    border-radius: $width;
+
+    &:hover {
+      background: var(--scrollbar-thumb-hover);
+    }
+  }
+
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+}
+
+// ===== Page Layout =====
+// Full-height flex column page with theme background
+@mixin page-layout {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background-color: var(--bg-color);
+}
+
+// ===== Page Header =====
+// Standard page header bar
+@mixin page-header($height: 60px) {
+  display: flex;
+  align-items: center;
+  height: $height;
+  padding: 0 16px;
+  background-color: var(--bg-header);
+  border-bottom: 1px solid var(--header-border-bottom);
+  flex-shrink: 0;
+}
+
+// ===== Header Back Button =====
+// Circular back button with hover effect
+@mixin header-back {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+  flex-shrink: 0;
+  color: var(--text-color);
+
+  &:hover {
+    background-color: var(--header-back-hover);
+  }
+}
+
+// ===== Header Title =====
+// Title in the header, truncates with ellipsis
+@mixin header-title {
+  flex: 1;
+  min-width: 0;
+  @include text-ellipsis;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-color);
+  margin-left: 12px;
+}
+
+// ===== Button Container (header actions) =====
+// Row of action buttons in page header
+@mixin button-container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+// ===== Search Wrapper =====
+// Search bar row for page headers
+@mixin search-wrapper {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: 12px;
+
+  .search-input-field {
+    flex: 1;
+  }
+}
+
+// ===== Empty / Loading State =====
+// Centered placeholder for empty lists
+@mixin empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 48px 20px;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+// ===== Cover Thumbnail =====
+// Square cover image container with rounded corners
+@mixin cover-thumbnail($radius: 12px, $size: 48px) {
+  flex-shrink: 0;
+  width: $size;
+  height: $size;
+  border-radius: $radius;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-placeholder);
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+}
+
+// ===== Song / Playlist Info (text next to cover) =====
+// Flex column for title + subtitle next to cover image
+@mixin media-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+}
+
+// ===== Dialog Overlay =====
+// Full-screen modal backdrop with blur
+@mixin dialog-overlay($z: 10000) {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: $z;
+  backdrop-filter: blur(4px);
+}
+
+// ===== Dialog Container =====
+// Modal dialog card
+@mixin dialog-container($width: 280px) {
+  width: $width;
+  background: var(--bg-color);
+  border-radius: 16px;
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+  animation: scaleIn 0.2s ease;
+}
+
+// ===== Dialog Header =====
+// Title area of a dialog
+@mixin dialog-header {
+  padding: 20px 20px 8px;
+  text-align: center;
+
+  h3 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-color);
+  }
+}
+
+// ===== Dialog Body =====
+// Content area of a dialog
+@mixin dialog-body {
+  padding: 8px 20px 20px;
+  text-align: center;
+
+  p {
+    margin: 0;
+    font-size: 14px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+  }
+}
+
+// ===== Dialog Footer =====
+// Button row at bottom of dialog
+@mixin dialog-footer {
+  display: flex;
+  border-top: 1px solid var(--setting-border);
+}
+
+// ===== Dialog Button =====
+// Single button in dialog footer
+@mixin dialog-btn {
+  flex: 1;
+  padding: 12px;
+  font-size: 14px;
+  font-weight: 500;
+  border: none;
+  background: transparent;
+  color: var(--primary-color);
+  cursor: pointer;
+  transition: background 0.15s;
+
+  &:hover {
+    background: var(--setting-hover-bg);
+  }
+
+  &.danger {
+    color: var(--danger-color);
+  }
+
+  &.cancel {
+    border-right: 1px solid var(--setting-border);
+  }
+
+  &.confirm {
+    font-weight: 600;
+  }
+}
+
+// ===== Bottom Actions Bar =====
+// Fixed bottom action bar with backdrop blur
+@mixin bottom-actions {
+  position: sticky;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--bottom-actions-bg);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-top: 1px solid var(--bottom-actions-border);
+  box-shadow: var(--shadow-bottom);
+  padding: 12px 16px;
+  padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  z-index: 100;
+
+  .actions-container {
+    display: flex;
+    gap: 12px;
+  }
+}
+
+// ===== Bottom Action Button =====
+// Button in the bottom actions bar
+@mixin action-btn {
+  flex: 1;
+  padding: 12px 20px;
+  border-radius: 12px;
+  border: 1px solid var(--input-border);
+  background: var(--bg-card);
+  color: var(--text-color);
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+
+  &:hover {
+    background: var(--bg-card-hover);
+  }
+
+  &.primary {
+    background: var(--primary-color);
+    color: #fff;
+    border-color: var(--primary-color);
+
+    &:hover {
+      background: var(--primary-color-dark);
+    }
+  }
+
+  &.danger {
+    color: var(--danger-color);
+    border-color: var(--danger-color);
+
+    &:hover {
+      background: var(--danger-color);
+      color: #fff;
+    }
+  }
+}

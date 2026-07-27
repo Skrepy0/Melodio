@@ -13,6 +13,13 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  css: {
+    preprocessorOptions: {
+      scss: {
+        additionalData: `@use "@/theme/mixins.scss" as *;\n`,
+      },
+    },
+  },
   test: {
     globals: true,
     environment: 'jsdom',

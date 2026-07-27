@@ -219,17 +219,13 @@ onMounted(() => {
     font-size: 16px;
     font-weight: 600;
     color: var(--text-color);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    @include text-ellipsis;
   }
 
   .playlist-desc {
     font-size: 13px;
     color: var(--text-secondary);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    @include text-ellipsis;
   }
 }
 
@@ -243,17 +239,6 @@ onMounted(() => {
     font-size: 13px;
     color: var(--text-secondary);
     font-feature-settings: 'tnum';
-  }
-}
-
-@keyframes slideInUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
   }
 }
 </style>

@@ -195,16 +195,12 @@ onUnmounted(() => {
     font-weight: 600;
     font-size: 14px;
     color: var(--text-color);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    @include text-ellipsis;
   }
   .artist {
     font-size: 12px;
     color: var(--text-secondary);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    @include text-ellipsis;
   }
 }
 

@@ -268,17 +268,13 @@ const onMenuItemSelect = async (item: DropdownItem) => {
       font-size: 16px;
       font-weight: 600;
       color: var(--text-color);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      @include text-ellipsis;
     }
 
     .song-artist {
       font-size: 13px;
       color: var(--text-secondary);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      @include text-ellipsis;
     }
   }
 
@@ -294,17 +290,6 @@ const onMenuItemSelect = async (item: DropdownItem) => {
       font-feature-settings: 'tnum';
       font-variant-numeric: tabular-nums;
     }
-  }
-}
-
-@keyframes slideInUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
   }
 }
 </style>

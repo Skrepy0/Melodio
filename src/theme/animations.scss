@@ -1,0 +1,101 @@
+// ===== Shared Keyframe Animations =====
+// These are always global (keyframes ignore scoping), so they belong
+// in a single place to avoid duplication across .vue files.
+
+// Item entrance — slides up and fades in
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+// Dialog entrance — scales from slightly smaller
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+// Spinner — continuous rotation for loading indicators
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+// ===== Shared Transition Classes =====
+
+// Fade in/out (used by dialogs, toasts, overlays)
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
+// Slide up from bottom (used by bottom sheets, player view)
+.slide-up-enter-active {
+  transition: transform 0.3s cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+.slide-up-leave-active {
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.slide-up-enter-from {
+  transform: translateY(100%);
+}
+.slide-up-leave-to {
+  transform: translateY(100%);
+}
+
+// Fade with slight scale + slide (used by header mode transitions)
+.fade-slide-enter-active {
+  transition: all 0.25s cubic-bezier(0.2, 0.9, 0.4, 1.1);
+}
+.fade-slide-leave-active {
+  transition: all 0.2s ease;
+}
+.fade-slide-enter-from {
+  opacity: 0;
+  transform: translateX(-10px);
+}
+.fade-slide-leave-to {
+  opacity: 0;
+  transform: scale(0.95);
+}
+
+// ===== Utility Classes =====
+
+// Single-line text truncation with ellipsis
+.text-ellipsis {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+// Centered loading spinner icon
+.loading-icon {
+  animation: spin 1s linear infinite;
+}
+
+// Page-level flex column layout
+.page-layout {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background-color: var(--bg-color);
+}

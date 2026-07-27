@@ -334,9 +334,7 @@ const onSearch = () => {
   font-size: 18px;
   font-weight: 600;
   color: var(--text-color);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  @include text-ellipsis;
 }
 
 .button-container {
@@ -377,15 +375,6 @@ const onSearch = () => {
 
 .loading-icon {
   animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
 }
 
 .header-title,
