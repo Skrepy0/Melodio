@@ -1,6 +1,6 @@
 <template>
   <div class="playlist">
-    <div class="song-list stagger-children">
+    <div class="song-list">
       <SongItemSelectable
         v-for="song in songs"
         :key="song.id"
@@ -55,7 +55,7 @@
 </template>
 
 <script lang="ts" setup>
-import { ref } from 'vue'
+import { nextTick, ref } from 'vue'
 import { Icon } from '@iconify/vue'
 import SongItemSelectable from '@/components/song/SongItemSelectable.vue'
 import { useDropdownManager } from '@/composables/useDropdownManager'
@@ -111,25 +111,36 @@ const enterSelectMode = (songId?: string) => {
   if (isSelectMode.value) return
   isSelectMode.value = true
   if (songId !== undefined) {
-    selectedIds.value.add(songId)
+    selectedIds.value = new Set([...selectedIds.value, songId])
   }
+  // Force a repaint on Android WebView which can skip rendering
+  // child components after a v-show toggle in a v-for list
+  nextTick(() => {
+    const el = document.querySelector('.song-list')
+    if (el) {
+      ;(el as HTMLElement).style.transform = 'translateZ(0)'
+      requestAnimationFrame(() => {
+        ;(el as HTMLElement).style.transform = ''
+      })
+    }
+  })
 }
 
 const toggleSelect = (id: string) => {
   if (selectedIds.value.has(id)) {
-    selectedIds.value.delete(id)
-    if (selectedIds.value.size === 0) {
+    const next = new Set(selectedIds.value)
+    next.delete(id)
+    selectedIds.value = next
+    if (next.size === 0) {
       exitSelectMode()
     }
   } else {
-    selectedIds.value.add(id)
+    selectedIds.value = new Set([...selectedIds.value, id])
   }
 }
 
 const selectAll = () => {
-  props.songs.forEach((song) => {
-    selectedIds.value.add(song.id)
-  })
+  selectedIds.value = new Set(props.songs.map((s) => s.id))
 }
 
 const addToQueue = () => {
@@ -197,7 +208,7 @@ const addToSongList = async () => {
 }
 
 const clearSelection = () => {
-  selectedIds.value.clear()
+  selectedIds.value = new Set()
   exitSelectMode()
 }
 
@@ -216,7 +227,7 @@ const handleDeleteSong = (song: Song) => {
 }
 const exitSelectMode = () => {
   isSelectMode.value = false
-  selectedIds.value.clear()
+  selectedIds.value = new Set()
   openDropdownId.value = null
 }
 

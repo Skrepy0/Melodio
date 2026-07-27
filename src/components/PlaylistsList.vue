@@ -42,7 +42,7 @@
 </template>
 
 <script lang="ts" setup>
-import { ref } from 'vue'
+import { nextTick, ref } from 'vue'
 import { Icon } from '@iconify/vue'
 import PlaylistItemSelectable from '@/components/lists/PlaylistItemSelectable.vue'
 import { useDropdownManager } from '@/composables/useDropdownManager'
@@ -68,25 +68,37 @@ const enterSelectMode = (id?: number) => {
   if (isSelectMode.value) return
   isSelectMode.value = true
   if (id !== undefined) {
-    selectedIds.value.add(id)
+    selectedIds.value = new Set([...selectedIds.value, id])
   }
+  // Force repaint on Android WebView
+  nextTick(() => {
+    const el = document.querySelector('.playlists-list')
+    if (el) {
+      ;(el as HTMLElement).style.transform = 'translateZ(0)'
+      requestAnimationFrame(() => {
+        ;(el as HTMLElement).style.transform = ''
+      })
+    }
+  })
 }
 
 const toggleSelect = (id: number) => {
   if (selectedIds.value.has(id)) {
-    selectedIds.value.delete(id)
-    if (selectedIds.value.size === 0) exitSelectMode()
+    const next = new Set(selectedIds.value)
+    next.delete(id)
+    selectedIds.value = next
+    if (next.size === 0) exitSelectMode()
   } else {
-    selectedIds.value.add(id)
+    selectedIds.value = new Set([...selectedIds.value, id])
   }
 }
 
 const selectAll = () => {
-  props.playlists.forEach((p) => selectedIds.value.add(p.id))
+  selectedIds.value = new Set(props.playlists.map((p) => p.id))
 }
 
 const clearSelection = () => {
-  selectedIds.value.clear()
+  selectedIds.value = new Set()
   exitSelectMode()
 }
 
@@ -98,7 +110,7 @@ const batchDelete = () => {
 
 const exitSelectMode = () => {
   isSelectMode.value = false
-  selectedIds.value.clear()
+  selectedIds.value = new Set()
   openDropdownId.value = null
 }
 

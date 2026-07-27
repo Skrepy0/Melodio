@@ -186,12 +186,13 @@
   border-radius: var(--radius-sm, 8px);
 }
 
-// Staggered list entrance — add transition-delay via inline style or nth-child
+// Staggered list entrance — add to any list container
+// Children enter one-by-one with slideInUp
 .stagger-children > * {
   opacity: 0;
-  animation: slideInUp 0.4s var(--ease-out-expo, cubic-bezier(0.19, 1, 0.22, 1)) forwards;
+  animation: slideInUp 0.35s var(--ease-out-expo, cubic-bezier(0.19, 1, 0.22, 1)) forwards;
 
-  @for $i from 1 through 20 {
+  @for $i from 1 through 30 {
     &:nth-child(#{$i}) {
       animation-delay: #{$i * 0.04}s;
     }

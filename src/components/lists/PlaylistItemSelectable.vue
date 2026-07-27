@@ -7,7 +7,7 @@
     @touchmove="onTouchMove"
     @touchstart="onTouchStart"
   >
-    <div v-if="selectable" class="checkbox-area">
+    <div v-show="selectable" class="checkbox-area">
       <Icon
         :icon="selected ? 'mdi:checkbox-marked' : 'mdi:checkbox-blank-outline'"
         :width="22"
