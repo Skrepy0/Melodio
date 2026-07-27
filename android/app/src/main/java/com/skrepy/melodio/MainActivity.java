@@ -8,6 +8,8 @@ import android.media.AudioManager;
 import android.os.Bundle;
 
 import com.getcapacitor.BridgeActivity;
+import com.skrepy.melodio.plugins.NativeAudioPlugin;
+import com.skrepy.melodio.plugins.SystemBarPlugin;
 
 public class MainActivity extends BridgeActivity {
 
@@ -17,6 +19,17 @@ public class MainActivity extends BridgeActivity {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         registerNoisyAudioReceiver();
+    }
+
+    /**
+     * Register app-local plugins that are not npm packages and therefore
+     * not auto-discovered by capacitor.plugins.json during cap sync.
+     */
+    @Override
+    protected void load() {
+        this.registerPlugin(NativeAudioPlugin.class);
+        this.registerPlugin(SystemBarPlugin.class);
+        super.load();
     }
 
     @Override

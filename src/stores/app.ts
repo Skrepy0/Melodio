@@ -6,6 +6,10 @@ import { getAccessibleUrl, resolveCoverUrl } from '@/utils/functions'
 import toast from '@/utils/createToast'
 import { i18n } from '@/i18n'
 import type { SongItem } from '@/plugins/native-audio/definitions'
+import { registerPlugin } from '@capacitor/core'
+import type { SystemBarPlugin } from '@/plugins/system-bar/definitions'
+
+const SystemBar = registerPlugin<SystemBarPlugin>('SystemBar')
 
 const SUPPORTED_LOCALES = ['zh-CN', 'en-US']
 function getSystemLanguage(): string {
@@ -451,9 +455,16 @@ export const useAppStore = defineStore('app', () => {
 
   function toggleDarkMode() {
     darkMode.value = !darkMode.value
+    applyDarkMode()
+    localStorage.setItem('darkMode', String(darkMode.value))
+  }
+
+  function applyDarkMode() {
     if (darkMode.value) document.documentElement.classList.add('dark')
     else document.documentElement.classList.remove('dark')
-    localStorage.setItem('darkMode', String(darkMode.value))
+    SystemBar.setTheme({ mode: darkMode.value ? 'dark' : 'light' }).catch(() => {
+      // SystemBar plugin not available on web / iOS — ignore silently
+    })
   }
 
   function setAllSongs(songs: Song[]) {
@@ -543,15 +554,13 @@ export const useAppStore = defineStore('app', () => {
     const saved = localStorage.getItem('darkMode')
     if (saved === 'true') {
       darkMode.value = true
-      document.documentElement.classList.add('dark')
     } else if (saved === 'false') {
       darkMode.value = false
-      document.documentElement.classList.remove('dark')
     } else {
       const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
       darkMode.value = prefersDark
-      if (prefersDark) document.documentElement.classList.add('dark')
     }
+    applyDarkMode()
   }
 
   function initAllSongs() {
