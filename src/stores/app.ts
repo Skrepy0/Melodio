@@ -1,11 +1,10 @@
 import { Playlist, PlayMode, Song } from '@/utils/interface'
 import { defineStore } from 'pinia'
-import { ref, computed, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { audio } from '@/utils/createAudio'
 import { getAccessibleUrl, resolveCoverUrl } from '@/utils/functions'
 import toast from '@/utils/createToast'
 import { i18n } from '@/i18n'
-import type { SongItem } from '@/plugins/native-audio/definitions'
 import { registerPlugin } from '@capacitor/core'
 import type { SystemBarPlugin } from '@/plugins/system-bar/definitions'
 import { requestMediaPermissions } from '@/utils/audioScanner'
@@ -331,8 +330,9 @@ export const useAppStore = defineStore('app', () => {
         }))
       )
       await audio.setPlaylist(list)
-      // Clamp currentIndex if queue shrank below it
-      if (playData.value.currentIndex >= newQueue.length) {
+      try {
+        console.log(newQueue[playData.value.currentIndex])
+      } catch (IndexError) {
         playData.value.currentIndex = 0
         savePlayData()
       }
@@ -340,7 +340,7 @@ export const useAppStore = defineStore('app', () => {
     { deep: true, immediate: true }
   )
   watch(playMode, (newMode) => {
-    audio.setRepeatMode(newMode === 'repeatOne')
+    audio.setRepeatMode(newMode === 'repeatOne').then((r) => console.log('repeatOne', r))
   })
 
   function setupNativeAudioListeners() {
@@ -349,7 +349,7 @@ export const useAppStore = defineStore('app', () => {
       playData.value.isPlaying = true
       savePlayData()
     })
-    audio.addEventListener('playStateChange', (data: { isPlaying: boolean }) => {
+    audio.addEventListener('playStateChange' as any, (data: { isPlaying: boolean }) => {
       playData.value.isPlaying = data.isPlaying
       savePlayData()
     })
@@ -519,7 +519,7 @@ export const useAppStore = defineStore('app', () => {
 
   function setCurrentIndex(index: number) {
     playData.value.currentIndex = index
-    audio.setCurrentIndex(index)
+    audio.setCurrentIndex(index).then((r) => console.log(r))
     savePlayData()
   }
   function setIsPlaying(status: boolean) {
@@ -583,8 +583,7 @@ export const useAppStore = defineStore('app', () => {
     } else if (saved === 'false') {
       darkMode.value = false
     } else {
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
-      darkMode.value = prefersDark
+      darkMode.value = window.matchMedia('(prefers-color-scheme: dark)').matches
     }
     applyDarkMode()
   }
@@ -608,6 +607,7 @@ export const useAppStore = defineStore('app', () => {
   }
   function initPlayData() {
     const obj = localStorage.getItem('playData')
+    console.log(`已加载上次播放数据: ${obj}`)
     if (obj) {
       try {
         const data = JSON.parse(obj)
@@ -616,6 +616,7 @@ export const useAppStore = defineStore('app', () => {
         playData.value.mockCurrentTime = data.mockCurrentTime ?? 0
       } catch (e) {
         console.error(e)
+        toast.error('播放数据解析失败')
       }
     }
   }
@@ -656,7 +657,6 @@ export const useAppStore = defineStore('app', () => {
       currentPlayListIndex.value = 0
     }
   }
-  async function loadCurrentSong() {}
 
   return {
     isI18nReady,
@@ -722,7 +722,6 @@ export const useAppStore = defineStore('app', () => {
     initFlag,
     setInitFlag,
     getInitFlag,
-    loadCurrentSong,
     setToBeSortedSongListIndex,
     getToBeSortedSongListIndex,
     setCanFetchCoverFromWeb,
