@@ -89,8 +89,7 @@ const removeSongFromPlaylist = async (song: Song) => {
     cancelText: t('songList.confirm.cancel'),
   })
   if (!result) return
-  const newList = songsList.value.filter((item) => item.id !== song.id)
-  songsList.value = newList
+  songsList.value = songsList.value.filter((item) => item.id !== song.id)
   synchroShowSongsList()
   saveSongList()
   toast.success(t('songList.toast.removeSuccess', { count: 1 }))

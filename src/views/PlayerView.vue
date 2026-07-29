@@ -282,8 +282,7 @@ const startDrag = (e: PointerEvent, idx: number) => {
   document.addEventListener('pointermove', onDragMove)
   document.addEventListener('pointerup', stopDrag)
 
-  const queueListEl = document.querySelector('.queue-list') as HTMLElement | null
-  scrollContainer = queueListEl
+  scrollContainer = document.querySelector('.queue-list') as HTMLElement | null
 }
 
 const onDragMove = (e: PointerEvent) => {
