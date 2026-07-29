@@ -1,3 +1,73 @@
+<script lang="ts" setup>
+import { actionSheetController, IonPage } from '@ionic/vue'
+import { computed } from 'vue'
+import { useRouter } from 'vue-router'
+import { Icon } from '@iconify/vue'
+import { useAppStore } from '@/stores/app'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
+const appStore = useAppStore()
+const router = useRouter()
+
+const currentLanguage = computed(() => appStore.getLanguage())
+const currentLanguageName = computed(() => {
+  switch (currentLanguage.value) {
+    case 'zh-CN':
+      return '简体中文'
+    case 'en-US':
+      return 'English'
+    default:
+      return currentLanguage.value
+  }
+})
+
+const showLanguageSelector = async () => {
+  const actionSheet = await actionSheetController.create({
+    header: t('settings.languageSelectorHeader'),
+    buttons: [
+      {
+        text: '简体中文',
+        handler: () => changeLanguage('zh-CN'),
+      },
+      {
+        text: 'English',
+        handler: () => changeLanguage('en-US'),
+      },
+      {
+        text: t('common.cancel', '取消'),
+        role: 'cancel',
+      },
+    ],
+  })
+  await actionSheet.present()
+}
+
+const changeLanguage = (lang: string) => {
+  appStore.setLanguage(lang)
+}
+
+const goBack = () => {
+  router.back()
+}
+
+const goToAbout = () => {
+  router.push('/about')
+}
+const goToBlacklist = () => {
+  router.push('/blacklist')
+}
+const goToInterfaceSettings = () => {
+  router.push('/settings/interface')
+}
+const goToAccessibility = () => {
+  router.push('/settings/accessibility')
+}
+const goToOther = () => {
+  router.push('/settings/other')
+}
+</script>
+
 <template>
   <ion-page>
     <div class="settings-page">
@@ -90,76 +160,6 @@
     </div>
   </ion-page>
 </template>
-
-<script lang="ts" setup>
-import { actionSheetController, IonPage } from '@ionic/vue'
-import { computed } from 'vue'
-import { useRouter } from 'vue-router'
-import { Icon } from '@iconify/vue'
-import { useAppStore } from '@/stores/app'
-import { useI18n } from 'vue-i18n'
-
-const { t } = useI18n()
-const appStore = useAppStore()
-const router = useRouter()
-
-const currentLanguage = computed(() => appStore.getLanguage())
-const currentLanguageName = computed(() => {
-  switch (currentLanguage.value) {
-    case 'zh-CN':
-      return '简体中文'
-    case 'en-US':
-      return 'English'
-    default:
-      return currentLanguage.value
-  }
-})
-
-const showLanguageSelector = async () => {
-  const actionSheet = await actionSheetController.create({
-    header: t('settings.languageSelectorHeader'),
-    buttons: [
-      {
-        text: '简体中文',
-        handler: () => changeLanguage('zh-CN'),
-      },
-      {
-        text: 'English',
-        handler: () => changeLanguage('en-US'),
-      },
-      {
-        text: t('common.cancel', '取消'),
-        role: 'cancel',
-      },
-    ],
-  })
-  await actionSheet.present()
-}
-
-const changeLanguage = (lang: string) => {
-  appStore.setLanguage(lang)
-}
-
-const goBack = () => {
-  router.back()
-}
-
-const goToAbout = () => {
-  router.push('/about')
-}
-const goToBlacklist = () => {
-  router.push('/blacklist')
-}
-const goToInterfaceSettings = () => {
-  router.push('/settings/interface')
-}
-const goToAccessibility = () => {
-  router.push('/settings/accessibility')
-}
-const goToOther = () => {
-  router.push('/settings/other')
-}
-</script>
 
 <style lang="scss" scoped>
 @use '../theme/settings.scss';

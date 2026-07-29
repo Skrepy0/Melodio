@@ -1,3 +1,36 @@
+<script lang="ts" setup>
+import { IonPage } from '@ionic/vue'
+import { Icon } from '@iconify/vue'
+import { useRouter } from 'vue-router'
+import { exportLocalStorage, importLocalStorage } from '@/utils/ioData'
+import toast from '@/utils/createToast'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
+const router = useRouter()
+const goBack = () => {
+  router.back()
+}
+
+const exportData = async () => {
+  try {
+    await exportLocalStorage()
+    toast.success(t('settings.other.io.successExport'))
+  } catch (e) {
+    toast.error(t('settings.other.io.exportError', { e: e }))
+  }
+}
+const importData = async () => {
+  try {
+    await importLocalStorage()
+    window.location.reload()
+    toast.success(t('settings.other.io.successImport'))
+  } catch (e) {
+    toast.error(t('settings.other.io.importError', { e: e }))
+  }
+}
+</script>
+
 <template>
   <ion-page>
     <div class="settings-page">
@@ -32,38 +65,7 @@
     </div>
   </ion-page>
 </template>
-<script lang="ts" setup>
-import { IonPage } from '@ionic/vue'
-import { Icon } from '@iconify/vue'
-import { useRouter } from 'vue-router'
-import { exportLocalStorage, importLocalStorage } from '@/utils/ioData'
-import toast from '@/utils/createToast'
-import { useI18n } from 'vue-i18n'
 
-const { t } = useI18n()
-const router = useRouter()
-const goBack = () => {
-  router.back()
-}
-
-const exportData = async () => {
-  try {
-    await exportLocalStorage()
-    toast.success(t('settings.other.io.successExport'))
-  } catch (e) {
-    toast.error(t('settings.other.io.exportError', { e: e }))
-  }
-}
-const importData = async () => {
-  try {
-    await importLocalStorage()
-    window.location.reload()
-    toast.success(t('settings.other.io.successImport'))
-  } catch (e) {
-    toast.error(t('settings.other.io.importError', { e: e }))
-  }
-}
-</script>
 <style lang="scss" scoped>
 @use '../../theme/settings.scss';
 </style>

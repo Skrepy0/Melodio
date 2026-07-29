@@ -1,30 +1,3 @@
-<template>
-  <Transition name="fade">
-    <div v-if="visible" class="prompt-overlay" @click.self="cancel">
-      <div class="prompt-container">
-        <div class="prompt-header">
-          <h3>{{ title }}</h3>
-        </div>
-        <div class="prompt-body">
-          <p v-if="message">{{ message }}</p>
-          <input
-            ref="inputRef"
-            v-model="inputValue"
-            :placeholder="placeholder"
-            class="prompt-input"
-            type="text"
-            @keyup.enter="confirm"
-          />
-        </div>
-        <div class="prompt-footer">
-          <button class="prompt-btn cancel" @click="cancel">{{ props.cancelContent }}</button>
-          <button class="prompt-btn confirm" @click="confirm">{{ props.confirmContent }}</button>
-        </div>
-      </div>
-    </div>
-  </Transition>
-</template>
-
 <script lang="ts" setup>
 import { onMounted, ref } from 'vue'
 
@@ -74,6 +47,33 @@ onMounted(() => {
   inputRef.value?.focus()
 })
 </script>
+
+<template>
+  <Transition name="fade">
+    <div v-if="visible" class="prompt-overlay" @click.self="cancel">
+      <div class="prompt-container">
+        <div class="prompt-header">
+          <h3>{{ title }}</h3>
+        </div>
+        <div class="prompt-body">
+          <p v-if="message">{{ message }}</p>
+          <input
+            ref="inputRef"
+            v-model="inputValue"
+            :placeholder="placeholder"
+            class="prompt-input"
+            type="text"
+            @keyup.enter="confirm"
+          />
+        </div>
+        <div class="prompt-footer">
+          <button class="prompt-btn cancel" @click="cancel">{{ props.cancelContent }}</button>
+          <button class="prompt-btn confirm" @click="confirm">{{ props.confirmContent }}</button>
+        </div>
+      </div>
+    </div>
+  </Transition>
+</template>
 
 <style lang="scss" scoped>
 .prompt-overlay {

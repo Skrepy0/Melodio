@@ -1,42 +1,3 @@
-<template>
-  <div v-if="currentSong" class="now-playing-bar">
-    <div class="progress-line">
-      <div :style="{ width: progressPercent + '%' }" class="progress-fill-line"></div>
-    </div>
-
-    <div class="bar-content">
-      <div class="song-info" @click="onExpand">
-        <div class="cover">
-          <img
-            v-if="coverSrc && coverSrc !== DEFAULT_COVER"
-            :alt="currentSong.title"
-            :src="coverSrc"
-            @error="coverSrc = DEFAULT_COVER"
-          />
-          <Icon v-else :width="40" icon="mdi:music" />
-        </div>
-        <div class="details">
-          <div class="name">{{ currentSong.title }}</div>
-          <div class="artist">{{ currentSong.artist }}</div>
-        </div>
-      </div>
-
-      <div class="player-controls">
-        <div class="time-info">
-          <span>{{ formatTime(currentTime) }}</span>
-          <span>/</span>
-          <span>{{ formatTime(duration) }}</span>
-        </div>
-        <div class="action-buttons">
-          <button class="play-pause-btn" @click="togglePlay">
-            <Icon :icon="isPlaying ? 'mdi:pause' : 'mdi:play'" :width="28" />
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-</template>
-
 <script lang="ts" setup>
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { Icon } from '@iconify/vue'
@@ -125,6 +86,45 @@ onUnmounted(() => {
 })
 </script>
 
+<template>
+  <div v-if="currentSong" class="now-playing-bar">
+    <div class="progress-line">
+      <div :style="{ width: progressPercent + '%' }" class="progress-fill-line"></div>
+    </div>
+
+    <div class="bar-content">
+      <div class="song-info" @click="onExpand">
+        <div class="cover">
+          <img
+            v-if="coverSrc && coverSrc !== DEFAULT_COVER"
+            :alt="currentSong.title"
+            :src="coverSrc"
+            @error="coverSrc = DEFAULT_COVER"
+          />
+          <Icon v-else :width="40" icon="mdi:music" />
+        </div>
+        <div class="details">
+          <div class="name">{{ currentSong.title }}</div>
+          <div class="artist">{{ currentSong.artist }}</div>
+        </div>
+      </div>
+
+      <div class="player-controls">
+        <div class="time-info">
+          <span>{{ formatTime(currentTime) }}</span>
+          <span>/</span>
+          <span>{{ formatTime(duration) }}</span>
+        </div>
+        <div class="action-buttons">
+          <button class="play-pause-btn" @click="togglePlay">
+            <Icon :icon="isPlaying ? 'mdi:pause' : 'mdi:play'" :width="28" />
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
 <style lang="scss" scoped>
 .now-playing-bar {
   position: fixed;
@@ -150,7 +150,7 @@ onUnmounted(() => {
 .progress-fill-line {
   height: 100%;
   background: linear-gradient(90deg, var(--primary-color), var(--primary-color-dark));
-  width: 0%;
+  width: 0;
   transition: width 0.15s linear;
   border-radius: 0 2px 2px 0;
 

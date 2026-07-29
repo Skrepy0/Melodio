@@ -1,69 +1,3 @@
-<template>
-  <div class="song-list-editor">
-    <div class="editor-header">
-      <div class="header-left">
-        <button class="back-btn" @click="backWithoutSave">
-          <Icon :width="24" color="var(--text-color)" icon="mdi:arrow-left" />
-        </button>
-        <h2>{{ $t('editor.title') }}</h2>
-      </div>
-      <CircleButton :icon-color="'#1bd96a'" icon="ic:twotone-save" @click="saveOrder" />
-    </div>
-
-    <div class="sort-controls">
-      <div class="sort-left">
-        <select v-model="sortMode" class="sort-select mode-select" @change="onSortModeChange">
-          <option value="custom">{{ $t('editor.sortCustom') }}</option>
-          <option value="title">{{ $t('editor.sortByTitle') }}</option>
-          <option value="artist">{{ $t('editor.sortByArtist') }}</option>
-          <option value="addedTime">{{ $t('editor.sortByAddedTime') }}</option>
-          <option value="modifiedTime">{{ $t('editor.sortByModifiedTime') }}</option>
-        </select>
-
-        <button class="sort-btn" @click="handleOrderToggle">
-          <Icon :icon="orderIcon" :width="20" />
-          <span>{{ orderText }}</span>
-        </button>
-      </div>
-      <span class="song-count">{{ $t('editor.totalSongs', { count: localSongs.length }) }}</span>
-    </div>
-
-    <div ref="listContainer" class="song-list">
-      <div
-        v-for="(song, idx) in localSongs"
-        :key="song.id"
-        :class="{
-          'drag-over': dragOverIndex === idx,
-          'dragging-source': dragSourceIndex === idx,
-        }"
-        :data-index="idx"
-        class="song-row"
-      >
-        <div
-          v-if="sortMode === 'custom'"
-          class="drag-handle"
-          @pointerdown.prevent="onDragStart($event, idx)"
-          @touchstart.prevent
-        >
-          <Icon :width="24" color="var(--text-secondary)" icon="mdi:drag-vertical" />
-        </div>
-        <div class="song-item-wrapper">
-          <SongItem
-            :dropdown-open="false"
-            :on-delete="() => {}"
-            :show-operations="false"
-            :song="song"
-            @click.stop
-          />
-        </div>
-      </div>
-      <div v-if="localSongs.length === 0" class="empty-hint">
-        {{ $t('editor.empty') }}
-      </div>
-    </div>
-  </div>
-</template>
-
 <script lang="ts" setup>
 import { computed, onMounted, ref } from 'vue'
 import { Icon } from '@iconify/vue'
@@ -314,6 +248,72 @@ const backWithoutSave = () => {
 }
 </script>
 
+<template>
+  <div class="song-list-editor">
+    <div class="editor-header">
+      <div class="header-left">
+        <button class="back-btn" @click="backWithoutSave">
+          <Icon :width="24" color="var(--text-color)" icon="mdi:arrow-left" />
+        </button>
+        <h2>{{ $t('editor.title') }}</h2>
+      </div>
+      <CircleButton :icon-color="'#1bd96a'" icon="ic:twotone-save" @click="saveOrder" />
+    </div>
+
+    <div class="sort-controls">
+      <div class="sort-left">
+        <select v-model="sortMode" class="sort-select mode-select" @change="onSortModeChange">
+          <option value="custom">{{ $t('editor.sortCustom') }}</option>
+          <option value="title">{{ $t('editor.sortByTitle') }}</option>
+          <option value="artist">{{ $t('editor.sortByArtist') }}</option>
+          <option value="addedTime">{{ $t('editor.sortByAddedTime') }}</option>
+          <option value="modifiedTime">{{ $t('editor.sortByModifiedTime') }}</option>
+        </select>
+
+        <button class="sort-btn" @click="handleOrderToggle">
+          <Icon :icon="orderIcon" :width="20" />
+          <span>{{ orderText }}</span>
+        </button>
+      </div>
+      <span class="song-count">{{ $t('editor.totalSongs', { count: localSongs.length }) }}</span>
+    </div>
+
+    <div ref="listContainer" class="song-list">
+      <div
+        v-for="(song, idx) in localSongs"
+        :key="song.id"
+        :class="{
+          'drag-over': dragOverIndex === idx,
+          'dragging-source': dragSourceIndex === idx,
+        }"
+        :data-index="idx"
+        class="song-row"
+      >
+        <div
+          v-if="sortMode === 'custom'"
+          class="drag-handle"
+          @pointerdown.prevent="onDragStart($event, idx)"
+          @touchstart.prevent
+        >
+          <Icon :width="24" color="var(--text-secondary)" icon="mdi:drag-vertical" />
+        </div>
+        <div class="song-item-wrapper">
+          <SongItem
+            :dropdown-open="false"
+            :on-delete="() => {}"
+            :show-operations="false"
+            :song="song"
+            @click.stop
+          />
+        </div>
+      </div>
+      <div v-if="localSongs.length === 0" class="empty-hint">
+        {{ $t('editor.empty') }}
+      </div>
+    </div>
+  </div>
+</template>
+
 <style lang="scss" scoped>
 .song-list-editor {
   display: flex;
@@ -397,7 +397,6 @@ const backWithoutSave = () => {
   }
 
   .sort-select {
-    padding: 8px 10px;
     background: var(--bg-card);
     border: 1px solid var(--border-color, rgba(128, 128, 128, 0.2));
     border-radius: 10px;
@@ -409,7 +408,7 @@ const backWithoutSave = () => {
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24'%3E%3Cpath fill='%23888' d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
     background-position: right 10px center;
-    padding-right: 30px;
+    padding: 8px 30px 8px 10px;
   }
 
   .mode-select {

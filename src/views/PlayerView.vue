@@ -1,141 +1,3 @@
-<template>
-  <div class="player-view">
-    <div class="back-button">
-      <CircleButton
-        :size="40"
-        icon="mdi:arrow-left"
-        icon-color="var(--text-color)"
-        @click="$router.back()"
-      />
-    </div>
-
-    <div class="rate-button-top-right">
-      <button :title="t('player.speed')" class="rate-fab" @click="cyclePlaybackRate">
-        <span class="rate-text">{{ currentRate }}x</span>
-      </button>
-    </div>
-
-    <div :class="{ collapsed: isHeaderCollapsed }" class="player-header">
-      <div class="album-cover">
-        <img
-          v-if="coverSrc && coverSrc !== DEFAULT_COVER"
-          :alt="currentSong?.title"
-          :class="{ playing: isPlaying }"
-          :src="coverSrc"
-          @error="coverSrc = DEFAULT_COVER"
-        />
-        <Icon v-else :width="120" color="var(--text-secondary)" icon="mdi:music" />
-      </div>
-      <div class="song-info">
-        <div class="song-name">{{ currentSong?.title || $t('player.unknownTitle') }}</div>
-        <div class="song-artist">{{ currentSong?.artist || $t('player.unknownArtist') }}</div>
-      </div>
-
-      <div class="progress-section">
-        <div class="time-current">{{ formatTime(mockCurrentTime) }}</div>
-        <div
-          class="progress-bar-container"
-          @click="mockSeek"
-          @mousedown="startDragProgress"
-          @touchstart="startDragProgress"
-        >
-          <div
-            ref="progressBarRef"
-            class="progress-bar"
-            @mousedown="startDragProgress"
-            @touchstart="startDragProgress"
-          >
-            <div
-              :style="{ width: progressPercent + '%' }"
-              class="progress-fill"
-              @mousedown="startDragProgress"
-              @touchstart="startDragProgress"
-            ></div>
-            <div
-              :style="{ left: progressPercent + '%' }"
-              class="progress-handle"
-              @mousedown="startDragProgress"
-              @touchstart="startDragProgress"
-            ></div>
-          </div>
-        </div>
-        <div class="time-duration">{{ formatTime(mockDuration) }}</div>
-      </div>
-
-      <div class="controls">
-        <button :title="playModeText" class="control-btn" @click="togglePlayMode">
-          <Icon :icon="playModeIcon" :width="24" color="var(--text-color)" />
-        </button>
-        <button class="control-btn" @click="prevSong">
-          <Icon :width="32" color="var(--text-color)" icon="mdi:skip-previous" />
-        </button>
-        <button class="control-btn play-pause" @click="togglePlay">
-          <Icon
-            :icon="isPlaying ? 'mdi:pause-circle' : 'mdi:play-circle'"
-            :width="48"
-            color="var(--primary-color, #007aff)"
-          />
-        </button>
-        <button class="control-btn" @click="nextSong">
-          <Icon :width="32" color="var(--text-color)" icon="mdi:skip-next" />
-        </button>
-        <button class="control-btn" @click="shuffleQueue">
-          <Icon :width="24" color="var(--text-color)" icon="mdi:shuffle-variant" />
-        </button>
-      </div>
-    </div>
-
-    <div class="queue-container">
-      <div class="queue-header">
-        <span>{{ $t('player.queueHeader', { count: localQueue.length }) }}</span>
-        <div class="queue-actions">
-          <span class="drag-hint">{{ $t('player.dragHint') }}</span>
-          <button v-if="localQueue.length > 0" class="clear-queue-btn" @click="clearQueue">
-            {{ $t('player.clearQueue') }}
-          </button>
-        </div>
-      </div>
-
-      <TransitionGroup class="queue-list" name="queue-list" tag="div" @scroll="handleScroll">
-        <div
-          v-for="(song, idx) in localQueue"
-          :key="song.id"
-          :class="{
-            'drag-over': dragOverIndex === idx,
-            'dragging-source': dragStartIndex === idx,
-            'past-song': getRelativeIndex(idx).startsWith('-'),
-          }"
-          :data-index="idx"
-          class="queue-item"
-          @click="playSong(song)"
-        >
-          <div class="drag-handle" style="touch-action: none" @pointerdown="startDrag($event, idx)">
-            <Icon :width="20" color="var(--text-color)" icon="mdi:drag-vertical" />
-          </div>
-          <div class="queue-index">{{ getRelativeIndex(idx) }}</div>
-          <div class="queue-song-info">
-            <div class="queue-song-name">{{ song.title }}</div>
-            <div class="queue-song-artist">{{ song.artist }}</div>
-          </div>
-          <DropdownButton
-            :button-icon="'mdi:dots-vertical'"
-            :dx="-40"
-            :dy="-60"
-            :offset-x="0"
-            :offset-y="4"
-            :options="menuOptions"
-            :size="32"
-            :visible="openDropdownId === song.id"
-            placement="bottom-end"
-            @select="(item) => onMenuItemSelect(item, song)"
-            @click.stop
-          />
-        </div>
-      </TransitionGroup>
-    </div>
-  </div>
-</template>
-
 <script lang="ts" setup>
 defineOptions({ name: 'PlayerView' })
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
@@ -149,6 +11,7 @@ import { showConfirm } from '@/utils/createConfirm'
 import { audio } from '@/utils/createAudio'
 import { useI18n } from 'vue-i18n'
 import { DEFAULT_COVER, fetchCoverFromWeb, isInList } from '@/utils/functions'
+import router from '@/router'
 
 const { t } = useI18n()
 const appStore = useAppStore()
@@ -595,6 +458,144 @@ onUnmounted(() => {
   coverAbort?.abort()
 })
 </script>
+
+<template>
+  <div class="player-view">
+    <div class="back-button">
+      <CircleButton
+        :size="40"
+        icon="mdi:arrow-left"
+        icon-color="var(--text-color)"
+        @click="router.back()"
+      />
+    </div>
+
+    <div class="rate-button-top-right">
+      <button :title="t('player.speed')" class="rate-fab" @click="cyclePlaybackRate">
+        <span class="rate-text">{{ currentRate }}x</span>
+      </button>
+    </div>
+
+    <div :class="{ collapsed: isHeaderCollapsed }" class="player-header">
+      <div class="album-cover">
+        <img
+          v-if="coverSrc && coverSrc !== DEFAULT_COVER"
+          :alt="currentSong?.title"
+          :class="{ playing: isPlaying }"
+          :src="coverSrc"
+          @error="coverSrc = DEFAULT_COVER"
+        />
+        <Icon v-else :width="120" color="var(--text-secondary)" icon="mdi:music" />
+      </div>
+      <div class="song-info">
+        <div class="song-name">{{ currentSong?.title || $t('player.unknownTitle') }}</div>
+        <div class="song-artist">{{ currentSong?.artist || $t('player.unknownArtist') }}</div>
+      </div>
+
+      <div class="progress-section">
+        <div class="time-current">{{ formatTime(mockCurrentTime) }}</div>
+        <div
+          class="progress-bar-container"
+          @click="mockSeek"
+          @mousedown="startDragProgress"
+          @touchstart="startDragProgress"
+        >
+          <div
+            ref="progressBarRef"
+            class="progress-bar"
+            @mousedown="startDragProgress"
+            @touchstart="startDragProgress"
+          >
+            <div
+              :style="{ width: progressPercent + '%' }"
+              class="progress-fill"
+              @mousedown="startDragProgress"
+              @touchstart="startDragProgress"
+            ></div>
+            <div
+              :style="{ left: progressPercent + '%' }"
+              class="progress-handle"
+              @mousedown="startDragProgress"
+              @touchstart="startDragProgress"
+            ></div>
+          </div>
+        </div>
+        <div class="time-duration">{{ formatTime(mockDuration) }}</div>
+      </div>
+
+      <div class="controls">
+        <button :title="playModeText" class="control-btn" @click="togglePlayMode">
+          <Icon :icon="playModeIcon" :width="24" color="var(--text-color)" />
+        </button>
+        <button class="control-btn" @click="prevSong">
+          <Icon :width="32" color="var(--text-color)" icon="mdi:skip-previous" />
+        </button>
+        <button class="control-btn play-pause" @click="togglePlay">
+          <Icon
+            :icon="isPlaying ? 'mdi:pause-circle' : 'mdi:play-circle'"
+            :width="48"
+            color="var(--primary-color, #007aff)"
+          />
+        </button>
+        <button class="control-btn" @click="nextSong">
+          <Icon :width="32" color="var(--text-color)" icon="mdi:skip-next" />
+        </button>
+        <button class="control-btn" @click="shuffleQueue">
+          <Icon :width="24" color="var(--text-color)" icon="mdi:shuffle-variant" />
+        </button>
+      </div>
+    </div>
+
+    <div class="queue-container">
+      <div class="queue-header">
+        <span>{{ $t('player.queueHeader', { count: localQueue.length }) }}</span>
+        <div class="queue-actions">
+          <span class="drag-hint">{{ $t('player.dragHint') }}</span>
+          <button v-if="localQueue.length > 0" class="clear-queue-btn" @click="clearQueue">
+            {{ $t('player.clearQueue') }}
+          </button>
+        </div>
+      </div>
+
+      <TransitionGroup class="queue-list" name="queue-list" tag="div" @scroll="handleScroll">
+        <div
+          v-for="(song, idx) in localQueue"
+          :key="song.id"
+          :class="{
+            'drag-over': dragOverIndex === idx,
+            'dragging-source': dragStartIndex === idx,
+            'past-song': getRelativeIndex(idx).startsWith('-'),
+          }"
+          :data-index="idx"
+          class="queue-item"
+          @click="playSong(song)"
+        >
+          <div class="drag-handle" style="touch-action: none" @pointerdown="startDrag($event, idx)">
+            <Icon :width="20" color="var(--text-color)" icon="mdi:drag-vertical" />
+          </div>
+          <div class="queue-index">{{ getRelativeIndex(idx) }}</div>
+          <div class="queue-song-info">
+            <div class="queue-song-name">{{ song.title }}</div>
+            <div class="queue-song-artist">{{ song.artist }}</div>
+          </div>
+          <DropdownButton
+            :button-icon="'mdi:dots-vertical'"
+            :dx="-40"
+            :dy="-60"
+            :offset-x="0"
+            :offset-y="4"
+            :options="menuOptions"
+            :size="32"
+            :visible="openDropdownId === song.id"
+            placement="bottom-end"
+            @select="(item) => onMenuItemSelect(item, song)"
+            @click.stop
+          />
+        </div>
+      </TransitionGroup>
+    </div>
+  </div>
+</template>
 
 <style lang="scss" scoped>
 .player-view {

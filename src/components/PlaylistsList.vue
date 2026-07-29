@@ -1,3 +1,75 @@
+<script lang="ts" setup>
+import { ref } from 'vue'
+import { Icon } from '@iconify/vue'
+import PlaylistItemSelectable from '@/components/lists/PlaylistItemSelectable.vue'
+import { useDropdownManager } from '@/composables/useDropdownManager'
+import type { Playlist } from '@/utils/interface'
+
+interface Props {
+  playlists: Playlist[]
+}
+
+const props = defineProps<Props>()
+
+const emit = defineEmits<{
+  (e: 'batch-delete', playlistIds: number[]): void
+  (e: 'playlist-click', playlist: Playlist): void
+  (e: 'menu-select', action: string, playlist: Playlist): void
+}>()
+
+const isSelectMode = ref(false)
+const selectedIds = ref<Set<number>>(new Set())
+const { openDropdownId, handleDropdownToggle } = useDropdownManager()
+
+const enterSelectMode = (id?: number) => {
+  if (isSelectMode.value) return
+  isSelectMode.value = true
+  if (id !== undefined) {
+    selectedIds.value.add(id)
+  }
+}
+
+const toggleSelect = (id: number) => {
+  if (selectedIds.value.has(id)) {
+    selectedIds.value.delete(id)
+    if (selectedIds.value.size === 0) exitSelectMode()
+  } else {
+    selectedIds.value.add(id)
+  }
+}
+
+const selectAll = () => {
+  props.playlists.forEach((p) => selectedIds.value.add(p.id))
+}
+
+const clearSelection = () => {
+  selectedIds.value.clear()
+  exitSelectMode()
+}
+
+const batchDelete = () => {
+  if (selectedIds.value.size === 0) return
+  emit('batch-delete', Array.from(selectedIds.value))
+  exitSelectMode()
+}
+
+const exitSelectMode = () => {
+  isSelectMode.value = false
+  selectedIds.value.clear()
+  openDropdownId.value = null
+}
+
+const onPlaylistClick = (playlist: Playlist) => {
+  if (!isSelectMode.value) {
+    emit('playlist-click', playlist)
+  }
+}
+
+const onMenuSelect = (action: string, playlist: Playlist) => {
+  emit('menu-select', action, playlist)
+}
+</script>
+
 <template>
   <div class="playlists-list">
     <div class="list-container">
@@ -40,90 +112,6 @@
     </Transition>
   </div>
 </template>
-
-<script lang="ts" setup>
-import { nextTick, ref } from 'vue'
-import { Icon } from '@iconify/vue'
-import PlaylistItemSelectable from '@/components/lists/PlaylistItemSelectable.vue'
-import { useDropdownManager } from '@/composables/useDropdownManager'
-import type { Playlist } from '@/utils/interface'
-
-interface Props {
-  playlists: Playlist[]
-}
-
-const props = defineProps<Props>()
-
-const emit = defineEmits<{
-  (e: 'batch-delete', playlistIds: number[]): void
-  (e: 'playlist-click', playlist: Playlist): void
-  (e: 'menu-select', action: string, playlist: Playlist): void
-}>()
-
-const isSelectMode = ref(false)
-const selectedIds = ref<Set<number>>(new Set())
-const { openDropdownId, handleDropdownToggle } = useDropdownManager()
-
-const enterSelectMode = (id?: number) => {
-  if (isSelectMode.value) return
-  isSelectMode.value = true
-  if (id !== undefined) {
-    selectedIds.value = new Set([...selectedIds.value, id])
-  }
-  // Force repaint on Android WebView
-  nextTick(() => {
-    const el = document.querySelector('.playlists-list')
-    if (el) {
-      ;(el as HTMLElement).style.transform = 'translateZ(0)'
-      requestAnimationFrame(() => {
-        ;(el as HTMLElement).style.transform = ''
-      })
-    }
-  })
-}
-
-const toggleSelect = (id: number) => {
-  if (selectedIds.value.has(id)) {
-    const next = new Set(selectedIds.value)
-    next.delete(id)
-    selectedIds.value = next
-    if (next.size === 0) exitSelectMode()
-  } else {
-    selectedIds.value = new Set([...selectedIds.value, id])
-  }
-}
-
-const selectAll = () => {
-  selectedIds.value = new Set(props.playlists.map((p) => p.id))
-}
-
-const clearSelection = () => {
-  selectedIds.value = new Set()
-  exitSelectMode()
-}
-
-const batchDelete = () => {
-  if (selectedIds.value.size === 0) return
-  emit('batch-delete', Array.from(selectedIds.value))
-  exitSelectMode()
-}
-
-const exitSelectMode = () => {
-  isSelectMode.value = false
-  selectedIds.value = new Set()
-  openDropdownId.value = null
-}
-
-const onPlaylistClick = (playlist: Playlist) => {
-  if (!isSelectMode.value) {
-    emit('playlist-click', playlist)
-  }
-}
-
-const onMenuSelect = (action: string, playlist: Playlist) => {
-  emit('menu-select', action, playlist)
-}
-</script>
 
 <style lang="scss" scoped>
 .playlists-list {

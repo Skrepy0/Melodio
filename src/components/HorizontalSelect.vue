@@ -28,6 +28,7 @@ onMounted(() => {
   }
 })
 </script>
+
 <template>
   <div ref="scrollContainer" class="horizontal-select">
     <div
@@ -45,6 +46,7 @@ onMounted(() => {
     </div>
   </div>
 </template>
+
 <style lang="scss" scoped>
 .horizontal-select {
   display: flex;

@@ -1,22 +1,3 @@
-<template>
-  <Transition name="fade">
-    <div v-if="visible" class="confirm-overlay" @click.self="handleCancel">
-      <div class="confirm-container">
-        <div v-if="title" class="confirm-header">
-          <h3>{{ title }}</h3>
-        </div>
-        <div class="confirm-body">
-          <p>{{ message }}</p>
-        </div>
-        <div class="confirm-footer">
-          <button class="confirm-btn cancel" @click="handleCancel">{{ cancelText }}</button>
-          <button class="confirm-btn confirm" @click="handleConfirm">{{ confirmText }}</button>
-        </div>
-      </div>
-    </div>
-  </Transition>
-</template>
-
 <script lang="ts" setup>
 import { ref } from 'vue'
 
@@ -55,6 +36,25 @@ const show = (): Promise<boolean> => {
 
 defineExpose({ show })
 </script>
+
+<template>
+  <Transition name="fade">
+    <div v-if="visible" class="confirm-overlay" @click.self="handleCancel">
+      <div class="confirm-container">
+        <div v-if="title" class="confirm-header">
+          <h3>{{ title }}</h3>
+        </div>
+        <div class="confirm-body">
+          <p>{{ message }}</p>
+        </div>
+        <div class="confirm-footer">
+          <button class="confirm-btn cancel" @click="handleCancel">{{ cancelText }}</button>
+          <button class="confirm-btn confirm" @click="handleConfirm">{{ confirmText }}</button>
+        </div>
+      </div>
+    </div>
+  </Transition>
+</template>
 
 <style scoped>
 .confirm-overlay {
@@ -127,14 +127,5 @@ defineExpose({ show })
       background: rgba(var(--primary-color-rgb), 0.05);
     }
   }
-}
-
-.fade-enter-active,
-.fade-leave-active {
-  transition: opacity 0.2s;
-}
-.fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
 }
 </style>

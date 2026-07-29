@@ -1,35 +1,3 @@
-<template>
-  <div class="circle-dropdown-container">
-    <CircleButton
-      ref="buttonRef"
-      :bg-color="bgColor"
-      :disabled="disabled"
-      :icon="buttonIcon"
-      :icon-color="iconColor"
-      :size="size"
-      @click="toggleDropdown"
-    />
-    <Teleport to="body">
-      <Transition name="dropdown-fade">
-        <div v-if="showDropdown" ref="dropdownRef" :style="dropdownStyle" class="dropdown-menu">
-          <div class="dropdown-list">
-            <div
-              v-for="(item, index) in options"
-              :key="index"
-              :class="{ disabled: item.disabled }"
-              class="dropdown-item"
-              @click="selectItem(item)"
-            >
-              <Icon v-if="item.icon" :icon="item.icon" :width="itemIconSize" class="item-icon" />
-              <span class="item-description">{{ item.description }}</span>
-            </div>
-          </div>
-        </div>
-      </Transition>
-    </Teleport>
-  </div>
-</template>
-
 <script lang="ts" setup>
 import { nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { Icon } from '@iconify/vue'
@@ -83,46 +51,30 @@ const calculatePosition = async () => {
   const spaceLeft = buttonRect.left
   const spaceRight = viewportWidth - buttonRect.right
 
-  let useTop = false
+  let useTop: boolean
   if (isBottomPref) {
     if (spaceBelow >= dropdownRect.height + (props.dy || 0)) {
       useTop = false
-    } else if (spaceAbove >= dropdownRect.height + (props.dy || 0)) {
-      useTop = true
-    } else {
-      useTop = false
-    }
+    } else useTop = spaceAbove >= dropdownRect.height + (props.dy || 0)
   } else {
     if (spaceAbove >= dropdownRect.height + (props.dy || 0)) {
       useTop = true
-    } else if (spaceBelow >= dropdownRect.height + (props.dy || 0)) {
-      useTop = false
-    } else {
-      useTop = true
-    }
+    } else useTop = spaceBelow < dropdownRect.height + (props.dy || 0)
   }
 
-  let leftAlign = !isEndPref
+  let leftAlign: boolean
   if (isEndPref) {
     if (spaceRight >= dropdownRect.width + (props.dx || 0)) {
       leftAlign = false
-    } else if (spaceLeft >= dropdownRect.width + (props.dx || 0)) {
-      leftAlign = true
-    } else {
-      leftAlign = false
-    }
+    } else leftAlign = spaceLeft >= dropdownRect.width + (props.dx || 0)
   } else {
     if (spaceLeft >= dropdownRect.width + (props.dx || 0)) {
       leftAlign = true
-    } else if (spaceRight >= dropdownRect.width + (props.dx || 0)) {
-      leftAlign = false
-    } else {
-      leftAlign = true
-    }
+    } else leftAlign = spaceRight < dropdownRect.width + (props.dx || 0)
   }
 
-  let top = 0
-  let left = 0
+  let top: number
+  let left: number
   if (useTop) {
     top = buttonRect.top - dropdownRect.height - (props.dy || 0)
   } else {
@@ -157,7 +109,7 @@ const toggleDropdown = async () => {
   showDropdown.value = newVal
   if (newVal) {
     await nextTick()
-    calculatePosition()
+    await calculatePosition()
   }
 }
 
@@ -201,6 +153,38 @@ watch(showDropdown, (val) => {
   if (val) calculatePosition()
 })
 </script>
+
+<template>
+  <div class="circle-dropdown-container">
+    <CircleButton
+      ref="buttonRef"
+      :bg-color="bgColor"
+      :disabled="disabled"
+      :icon="buttonIcon"
+      :icon-color="iconColor"
+      :size="size"
+      @click="toggleDropdown"
+    />
+    <Teleport to="body">
+      <Transition name="dropdown-fade">
+        <div v-if="showDropdown" ref="dropdownRef" :style="dropdownStyle" class="dropdown-menu">
+          <div class="dropdown-list">
+            <div
+              v-for="(item, index) in options"
+              :key="index"
+              :class="{ disabled: item.disabled }"
+              class="dropdown-item"
+              @click="selectItem(item)"
+            >
+              <Icon v-if="item.icon" :icon="item.icon" :width="itemIconSize" class="item-icon" />
+              <span class="item-description">{{ item.description }}</span>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
+  </div>
+</template>
 
 <style lang="scss" scoped>
 .circle-dropdown-container {

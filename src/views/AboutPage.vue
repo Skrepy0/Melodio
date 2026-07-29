@@ -1,3 +1,29 @@
+<script lang="ts" setup>
+import { ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { Icon } from '@iconify/vue'
+import { IonPage } from '@ionic/vue'
+import { Capacitor } from '@capacitor/core'
+import { Browser } from '@capacitor/browser'
+
+const router = useRouter()
+const version = ref('0.0.4')
+const repoUrl = 'https://github.com/Skrepy0/Melodio'
+const issuesUrl = 'https://github.com/Skrepy0/Melodio/issues'
+
+const goBack = () => {
+  router.back()
+}
+
+const openUrl = async (url: string) => {
+  if (Capacitor.isNativePlatform()) {
+    await Browser.open({ url })
+  } else {
+    window.open(url, '_blank')
+  }
+}
+</script>
+
 <template>
   <ion-page>
     <div class="about-page">
@@ -67,32 +93,6 @@
     </div>
   </ion-page>
 </template>
-
-<script lang="ts" setup>
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
-import { Icon } from '@iconify/vue'
-import { IonPage } from '@ionic/vue'
-import { Capacitor } from '@capacitor/core'
-import { Browser } from '@capacitor/browser'
-
-const router = useRouter()
-const version = ref('0.0.4')
-const repoUrl = 'https://github.com/Skrepy0/Melodio'
-const issuesUrl = 'https://github.com/Skrepy0/Melodio/issues'
-
-const goBack = () => {
-  router.back()
-}
-
-const openUrl = async (url: string) => {
-  if (Capacitor.isNativePlatform()) {
-    await Browser.open({ url })
-  } else {
-    window.open(url, '_blank')
-  }
-}
-</script>
 
 <style lang="scss" scoped>
 .about-page {

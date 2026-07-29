@@ -1,3 +1,26 @@
+<script lang="ts" setup>
+import { useAppStore } from '@/stores/app'
+import { IonPage } from '@ionic/vue'
+import { Icon } from '@iconify/vue'
+import { onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
+
+const appStore = useAppStore()
+const router = useRouter()
+const goBack = () => {
+  router.back()
+}
+
+const isDarkMode = ref(false)
+const toggleDarkMode = () => {
+  appStore.toggleDarkMode()
+  isDarkMode.value = appStore.darkMode
+}
+onMounted(() => {
+  isDarkMode.value = appStore.darkMode
+})
+</script>
+
 <template>
   <ion-page>
     <div class="settings-page">
@@ -26,28 +49,7 @@
     </div>
   </ion-page>
 </template>
-<script lang="ts" setup>
-import { useAppStore } from '@/stores/app'
-import { IonPage } from '@ionic/vue'
-import { Icon } from '@iconify/vue'
-import { onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
 
-const appStore = useAppStore()
-const router = useRouter()
-const goBack = () => {
-  router.back()
-}
-
-const isDarkMode = ref(false)
-const toggleDarkMode = () => {
-  appStore.toggleDarkMode()
-  isDarkMode.value = appStore.darkMode
-}
-onMounted(() => {
-  isDarkMode.value = appStore.darkMode
-})
-</script>
 <style lang="scss" scoped>
 @use '../../theme/settings.scss';
 </style>

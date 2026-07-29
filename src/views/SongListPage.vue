@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import { IonPage } from '@ionic/vue'
 import router from '@/router'
 import { computed, ref } from 'vue'
 import { Icon } from '@iconify/vue'
@@ -108,14 +109,16 @@ const playSong = async (song: Song) => {
   if (
     index === currentIndex &&
     currentQueue.length > 0 &&
-    currentQueue[currentIndex]?.id === song.id
+    currentQueue[currentIndex]?.id === song.id // 同一首歌
   ) {
     appStore.togglePlay()
-    return
+    return // 暂停播放
   }
-
-  if (appStore.getIsSwitchingSong()) return
-
+  // 不是同一首
+  if (playData.isPlaying) {
+    appStore.togglePlay() // 先暂停
+  }
+  // 设置队列信息
   appStore.setIsSwitchingSong(true)
   appStore.setPlayQueue(songsList.value)
   appStore.setCurrentIndex(index)
@@ -132,12 +135,16 @@ const playSong = async (song: Song) => {
       }))
     )
     await audio.playIndex(index)
-    // songChanged event from native updates isPlaying and currentIndex
+    appStore.setIsPlaying(true)
   } catch (error) {
     console.error('播放失败:', error)
     toast.error(t('common.playFailed'))
   } finally {
-    appStore.setIsSwitchingSong(false)
+    appStore.togglePlay()
+    setTimeout(() => {
+      appStore.setIsSwitchingSong(false)
+      appStore.togglePlay()
+    }, 200)
   }
 }
 
@@ -334,7 +341,9 @@ const onSearch = () => {
   font-size: 18px;
   font-weight: 600;
   color: var(--text-color);
-  @include text-ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .button-container {
@@ -375,6 +384,15 @@ const onSearch = () => {
 
 .loading-icon {
   animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .header-title,

@@ -1,34 +1,3 @@
-<template>
-  <div
-    class="song-item-wrapper"
-    @click="onClick"
-    @mousedown="onMouseDown"
-    @mouseup="onMouseUp"
-    @touchend="onTouchEnd"
-    @touchmove="onTouchMove"
-    @touchstart="onTouchStart"
-  >
-    <div v-show="selectable" class="checkbox-area">
-      <Icon
-        :icon="selected ? 'mdi:checkbox-marked' : 'mdi:checkbox-blank-outline'"
-        :width="22"
-        class="checkbox"
-        @click.stop="toggleSelect"
-      />
-    </div>
-    <SongItem
-      :class="{ 'select-mode-offset': selectable }"
-      :dropdownOpen="dropdownOpen"
-      :on-delete="handleDeleteSong"
-      :showOperations="props.showOperations"
-      :song="song"
-      @click="onSongClick"
-      @menu-select="onMenuSelect"
-      @update:dropdownOpen="(val) => (dropdownOpen = val)"
-    />
-  </div>
-</template>
-
 <script lang="ts" setup>
 import { computed, ref } from 'vue'
 import { Icon } from '@iconify/vue'
@@ -116,6 +85,37 @@ const toggleSelect = () => {
   emit('toggle-select', props.song.id)
 }
 </script>
+
+<template>
+  <div
+    class="song-item-wrapper"
+    @click="onClick"
+    @mousedown="onMouseDown"
+    @mouseup="onMouseUp"
+    @touchend="onTouchEnd"
+    @touchmove="onTouchMove"
+    @touchstart="onTouchStart"
+  >
+    <div v-show="selectable" class="checkbox-area">
+      <Icon
+        :icon="selected ? 'mdi:checkbox-marked' : 'mdi:checkbox-blank-outline'"
+        :width="22"
+        class="checkbox"
+        @click.stop="toggleSelect"
+      />
+    </div>
+    <SongItem
+      :class="{ 'select-mode-offset': selectable }"
+      :dropdownOpen="dropdownOpen"
+      :on-delete="handleDeleteSong"
+      :showOperations="props.showOperations"
+      :song="song"
+      @click="onSongClick"
+      @menu-select="onMenuSelect"
+      @update:dropdownOpen="(val) => (dropdownOpen = val)"
+    />
+  </div>
+</template>
 
 <style lang="scss" scoped>
 .song-item-wrapper {

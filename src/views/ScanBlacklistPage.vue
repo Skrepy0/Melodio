@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import { IonPage } from '@ionic/vue'
 import router from '@/router'
 import { computed, ref } from 'vue'
 import { Icon } from '@iconify/vue'
@@ -101,6 +102,7 @@ const onSearch = () => {
   }
 }
 </script>
+
 <template>
   <ion-page>
     <div class="blacklist-page">
@@ -223,7 +225,9 @@ const onSearch = () => {
   font-size: 18px;
   font-weight: 600;
   color: var(--text-color);
-  @include text-ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .button-container {
@@ -264,6 +268,15 @@ const onSearch = () => {
 
 .loading-icon {
   animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .header-title,

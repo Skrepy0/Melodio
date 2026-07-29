@@ -1,44 +1,3 @@
-<template>
-  <div class="playlist-item" @click="onCardClick">
-    <div class="playlist-cover">
-      <template v-if="playlist.id === 0">
-        <Icon :width="36" color="red" icon="si:heart-duotone" />
-      </template>
-      <template v-else>
-        <img v-if="coverSrc && coverSrc !== DEFAULT_COVER" :alt="playlist.name" :src="coverSrc" />
-        <Icon v-else :width="36" class="default-cover" icon="mdi:playlist-music" />
-      </template>
-    </div>
-    <div class="playlist-info">
-      <div class="playlist-name">
-        {{ playlist.id === 0 ? t('playList.like.title') : playlist.name }}
-      </div>
-      <div class="playlist-desc">
-        {{
-          (playlist.id === 0 ? t('playList.like.description') : playlist.description) ||
-          t('playlist.defaultDesc', { count: playlist.songCount })
-        }}
-      </div>
-    </div>
-    <div class="playlist-actions">
-      <span class="song-count">{{ t('playlist.songCount', { count: playlist.songCount }) }}</span>
-      <DropdownButton
-        v-if="props.showButton"
-        v-model:visible="dropdownVisible"
-        :button-icon="'mdi:dots-vertical'"
-        :dx="-40"
-        :dy="-60"
-        :offset-y="-4"
-        :options="menuOptions"
-        :size="32"
-        placement="bottom-end"
-        @select="onMenuItemSelect"
-        @click.stop
-      />
-    </div>
-  </div>
-</template>
-
 <script lang="ts" setup>
 import { computed, onMounted, ref, watch } from 'vue'
 import { Icon } from '@iconify/vue'
@@ -167,6 +126,47 @@ onMounted(() => {
   resolveCover()
 })
 </script>
+
+<template>
+  <div class="playlist-item" @click="onCardClick">
+    <div class="playlist-cover">
+      <template v-if="playlist.id === 0">
+        <Icon :width="36" color="red" icon="si:heart-duotone" />
+      </template>
+      <template v-else>
+        <img v-if="coverSrc && coverSrc !== DEFAULT_COVER" :alt="playlist.name" :src="coverSrc" />
+        <Icon v-else :width="36" class="default-cover" icon="mdi:playlist-music" />
+      </template>
+    </div>
+    <div class="playlist-info">
+      <div class="playlist-name">
+        {{ playlist.id === 0 ? t('playList.like.title') : playlist.name }}
+      </div>
+      <div class="playlist-desc">
+        {{
+          (playlist.id === 0 ? t('playList.like.description') : playlist.description) ||
+          t('playlist.defaultDesc', { count: playlist.songCount })
+        }}
+      </div>
+    </div>
+    <div class="playlist-actions">
+      <span class="song-count">{{ t('playlist.songCount', { count: playlist.songCount }) }}</span>
+      <DropdownButton
+        v-if="props.showButton"
+        v-model:visible="dropdownVisible"
+        :button-icon="'mdi:dots-vertical'"
+        :dx="-40"
+        :dy="-60"
+        :offset-y="-4"
+        :options="menuOptions"
+        :size="32"
+        placement="bottom-end"
+        @select="onMenuItemSelect"
+        @click.stop
+      />
+    </div>
+  </div>
+</template>
 
 <style lang="scss" scoped>
 .playlist-item {

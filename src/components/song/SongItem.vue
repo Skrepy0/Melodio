@@ -1,40 +1,3 @@
-<template>
-  <div class="song-item" @click="onCardClick">
-    <div class="song-cover">
-      <img
-        v-if="coverSrc && coverSrc !== DEFAULT_COVER && !isCoverLoading"
-        :alt="song.title"
-        :src="coverSrc"
-        @error="coverSrc = DEFAULT_COVER"
-      />
-      <Icon v-else :width="36" class="default-cover" icon="mdi:music" />
-    </div>
-
-    <div class="song-info">
-      <div class="song-name">{{ song.title }}</div>
-      <div class="song-artist">{{ song.artist }}</div>
-    </div>
-
-    <div class="song-actions">
-      <span class="song-duration">{{ formatDuration(song.duration) }}</span>
-      <DropdownButton
-        v-if="props.showOperations"
-        v-model:visible="dropdownVisible"
-        :button-icon="'mdi:dots-vertical'"
-        :dx="-40"
-        :dy="-60"
-        :offset-x="0"
-        :offset-y="4"
-        :options="menuOptions"
-        :size="32"
-        placement="bottom-end"
-        @select="onMenuItemSelect"
-        @click.stop
-      />
-    </div>
-  </div>
-</template>
-
 <script lang="ts" setup>
 import { Icon } from '@iconify/vue'
 import DropdownButton from '@/components/button/DropdownButton.vue'
@@ -214,6 +177,43 @@ const onMenuItemSelect = async (item: DropdownItem) => {
   }
 }
 </script>
+
+<template>
+  <div class="song-item" @click="onCardClick">
+    <div class="song-cover">
+      <img
+        v-if="coverSrc && coverSrc !== DEFAULT_COVER && !isCoverLoading"
+        :alt="song.title"
+        :src="coverSrc"
+        @error="coverSrc = DEFAULT_COVER"
+      />
+      <Icon v-else :width="36" class="default-cover" icon="mdi:music" />
+    </div>
+
+    <div class="song-info">
+      <div class="song-name">{{ song.title }}</div>
+      <div class="song-artist">{{ song.artist }}</div>
+    </div>
+
+    <div class="song-actions">
+      <span class="song-duration">{{ formatDuration(song.duration) }}</span>
+      <DropdownButton
+        v-if="props.showOperations"
+        v-model:visible="dropdownVisible"
+        :button-icon="'mdi:dots-vertical'"
+        :dx="-40"
+        :dy="-60"
+        :offset-x="0"
+        :offset-y="4"
+        :options="menuOptions"
+        :size="32"
+        placement="bottom-end"
+        @select="onMenuItemSelect"
+        @click.stop
+      />
+    </div>
+  </div>
+</template>
 
 <style lang="scss" scoped>
 .song-item {

@@ -1,67 +1,3 @@
-<template>
-  <ion-page v-if="appStore.isI18nReady">
-    <div class="header">
-      <div class="search-box-container">
-        <SearchBox
-          v-model="keyword"
-          :clearable="false"
-          :placeholder="$t('home.searchPlaceholder')"
-          autofocus
-          size="small"
-          @search="onSearch"
-        />
-      </div>
-      <div class="button-container">
-        <CircleButton :size="36" icon="stash:play-duotone" @click="playShownSongs" />
-        <DropdownButton
-          :dx="-100"
-          :options="operations"
-          :size="36"
-          button-icon="mingcute:more-2-line"
-          @select="onSelectOperation"
-        />
-      </div>
-    </div>
-    <div class="body">
-      <div class="select-container">
-        <HorizontalSelect
-          v-model="selectedCategory"
-          :options="categoryOptions"
-          icon-size="18"
-          @select="onCategorySelect"
-        />
-      </div>
-      <div v-if="selectedCategory === 'tracks' && songsList.length === 0" class="empty-state">
-        <Icon :width="48" color="var(--text-secondary)" icon="mdi:music-off" />
-        <p>{{ $t('songList.empty') }}</p>
-      </div>
-      <div
-        v-if="selectedCategory === 'tracks' && songsList.length !== 0 && showSongsList.length === 0"
-        class="empty-state"
-      >
-        <Icon :width="48" color="var(--text-secondary)" icon="mdi:music-off" />
-        <p>{{ $t('songList.notFound') }}</p>
-      </div>
-      <PlayList
-        v-if="selectedCategory === 'tracks'"
-        :songs="showSongsList"
-        @batch-delete="handleBatchDelete"
-        @song-click="playSong"
-        @delete-song="removeSongFromPlaylist"
-        @add-to-blacklist="addSongToBlacklist"
-      />
-      <PlaylistsList
-        v-else-if="selectedCategory === 'play-lists'"
-        :playlists="showPlaylists"
-        @batch-delete="handleBatchDeletePlaylists"
-        @playlist-click="onPlaylistClick"
-        @menu-select="onPlaylistMenuSelect"
-      />
-      <NowPlayingBar auto-play @expand="showFullPlayer" />
-    </div>
-  </ion-page>
-</template>
-
 <script lang="ts" setup>
 import { Icon } from '@iconify/vue'
 import { IonPage } from '@ionic/vue'
@@ -261,7 +197,7 @@ const playSong = async (song: Song) => {
     currentQueue.length > 0 &&
     currentQueue[currentIndex]?.id === song.id
   ) {
-    appStore.togglePlay()
+    await appStore.togglePlay()
     return
   }
 
@@ -307,8 +243,8 @@ const synchroShowPlaylists = () => {
 
 const onSelectOperation = async (item: DropdownItem) => {
   console.log('选中:', item.description, item.value)
-  if (item.value === 'settings') router.push('/settings')
-  else if (item.value === 'scan-songs') loadAllSongs()
+  if (item.value === 'settings') await router.push('/settings')
+  else if (item.value === 'scan-songs') await loadAllSongs()
   else if (item.value === 'new-songs-list') {
     const name = await showPrompt({
       title: t('home.newPlaylistPrompt.title'),
@@ -336,7 +272,7 @@ const onSelectOperation = async (item: DropdownItem) => {
       console.log('用户取消')
     }
   } else if (item.value === 'blacklist') {
-    router.push('/blacklist')
+    await router.push('/blacklist')
   }
 }
 
@@ -380,6 +316,71 @@ watch(selectedCategory, () => {
   appStore.setSelectedCategory(selectedCategory.value)
 })
 </script>
+
+<template>
+  <ion-page v-if="appStore.isI18nReady">
+    <div class="header">
+      <div class="search-box-container">
+        <SearchBox
+          v-model="keyword"
+          :clearable="false"
+          :placeholder="$t('home.searchPlaceholder')"
+          autofocus
+          size="small"
+          @search="onSearch"
+        />
+      </div>
+      <div class="button-container">
+        <CircleButton :size="36" icon="stash:play-duotone" @click="playShownSongs" />
+        <DropdownButton
+          :dx="-100"
+          :options="operations"
+          :size="36"
+          button-icon="mingcute:more-2-line"
+          @select="onSelectOperation"
+        />
+      </div>
+    </div>
+    <div class="body">
+      <div class="select-container">
+        <HorizontalSelect
+          v-model="selectedCategory"
+          :options="categoryOptions"
+          icon-size="18"
+          @select="onCategorySelect"
+        />
+      </div>
+      <div v-if="selectedCategory === 'tracks' && songsList.length === 0" class="empty-state">
+        <Icon :width="48" color="var(--text-secondary)" icon="mdi:music-off" />
+        <p>{{ $t('songList.empty') }}</p>
+      </div>
+      <div
+        v-if="selectedCategory === 'tracks' && songsList.length !== 0 && showSongsList.length === 0"
+        class="empty-state"
+      >
+        <Icon :width="48" color="var(--text-secondary)" icon="mdi:music-off" />
+        <p>{{ $t('songList.notFound') }}</p>
+      </div>
+      <PlayList
+        v-if="selectedCategory === 'tracks'"
+        :songs="showSongsList"
+        @batch-delete="handleBatchDelete"
+        @song-click="playSong"
+        @delete-song="removeSongFromPlaylist"
+        @add-to-blacklist="addSongToBlacklist"
+      />
+      <PlaylistsList
+        v-else-if="selectedCategory === 'play-lists'"
+        :playlists="showPlaylists"
+        @batch-delete="handleBatchDeletePlaylists"
+        @playlist-click="onPlaylistClick"
+        @menu-select="onPlaylistMenuSelect"
+      />
+      <NowPlayingBar auto-play @expand="showFullPlayer" />
+    </div>
+  </ion-page>
+</template>
+
 <style lang="scss" scoped>
 .header {
   height: 64px;

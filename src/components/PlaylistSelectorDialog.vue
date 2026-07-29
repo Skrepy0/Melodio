@@ -1,52 +1,3 @@
-<template>
-  <Teleport to="body">
-    <Transition name="fade">
-      <div v-if="visible" class="playlist-selector-overlay" @click.self="cancel">
-        <div class="playlist-selector-container">
-          <div class="playlist-selector-header">
-            <h3>{{ props.title }}</h3>
-            <button class="close-btn" @click="cancel">✕</button>
-          </div>
-          <div class="playlist-selector-list">
-            <div
-              v-for="playlist in playlists"
-              :key="playlist.id"
-              class="playlist-selector-item"
-              @click="selectPlaylist(playlist)"
-            >
-              <div class="playlist-cover">
-                <template v-if="playlist.id === 0">
-                  <Icon :width="40" color="red" icon="si:heart-duotone" />
-                </template>
-                <template v-else>
-                  <img
-                    v-if="getCover(playlist) && getCover(playlist) !== DEFAULT_COVER"
-                    :alt="playlist.name"
-                    :src="getCover(playlist)"
-                  />
-                  <Icon v-else :width="40" class="default-cover" icon="mdi:playlist-music" />
-                </template>
-              </div>
-              <div class="playlist-info">
-                <div class="playlist-name">
-                  {{ playlist.id === 0 ? props.likeListName : playlist.name }}
-                </div>
-                <div class="playlist-desc">
-                  {{
-                    playlist.id === 0
-                      ? props.likeListDescription
-                      : playlist.description || `${playlist.songCount}首歌曲`
-                  }}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </Transition>
-  </Teleport>
-</template>
-
 <script lang="ts" setup>
 import { ref, watch } from 'vue'
 import { Icon } from '@iconify/vue'
@@ -131,6 +82,55 @@ watch(
 defineExpose({ show })
 </script>
 
+<template>
+  <Teleport to="body">
+    <Transition name="fade">
+      <div v-if="visible" class="playlist-selector-overlay" @click.self="cancel">
+        <div class="playlist-selector-container">
+          <div class="playlist-selector-header">
+            <h3>{{ props.title }}</h3>
+            <button class="close-btn" @click="cancel">✕</button>
+          </div>
+          <div class="playlist-selector-list">
+            <div
+              v-for="playlist in playlists"
+              :key="playlist.id"
+              class="playlist-selector-item"
+              @click="selectPlaylist(playlist)"
+            >
+              <div class="playlist-cover">
+                <template v-if="playlist.id === 0">
+                  <Icon :width="40" color="red" icon="si:heart-duotone" />
+                </template>
+                <template v-else>
+                  <img
+                    v-if="getCover(playlist) && getCover(playlist) !== DEFAULT_COVER"
+                    :alt="playlist.name"
+                    :src="getCover(playlist)"
+                  />
+                  <Icon v-else :width="40" class="default-cover" icon="mdi:playlist-music" />
+                </template>
+              </div>
+              <div class="playlist-info">
+                <div class="playlist-name">
+                  {{ playlist.id === 0 ? props.likeListName : playlist.name }}
+                </div>
+                <div class="playlist-desc">
+                  {{
+                    playlist.id === 0
+                      ? props.likeListDescription
+                      : playlist.description || `${playlist.songCount}首歌曲`
+                  }}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Transition>
+  </Teleport>
+</template>
+
 <style lang="scss" scoped>
 .playlist-selector-overlay {
   position: fixed;
@@ -138,7 +138,7 @@ defineExpose({ show })
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: var(--overlay-color);
+  background-color: rgba(0, 0, 0, 0.5);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -252,13 +252,17 @@ defineExpose({ show })
     font-size: 15px;
     font-weight: 500;
     color: var(--text-color);
-    @include text-ellipsis;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
     margin-bottom: 4px;
   }
   .playlist-desc {
     font-size: 12px;
     color: var(--text-secondary);
-    @include text-ellipsis;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 }
 
