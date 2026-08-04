@@ -19,77 +19,11 @@ interface Props {
   dropdownOpen?: boolean
   showOperations?: boolean
   onDelete: (song: Song) => void
+  operations?: DropdownItem[]
+  onMenuItemSelect?: (item: DropdownItem) => void
 }
 
-const props = withDefaults(defineProps<Props>(), {
-  showOperations: true,
-})
-const emit = defineEmits<{
-  (e: 'click', song: Song): void
-  (e: 'menuSelect', action: string, song: Song): void
-  (e: 'update:dropdownOpen', value: boolean): void
-}>()
-
-const { dropdownVisible } = useDropdownControl(props, emit)
-
-const coverSrc = ref<string>('')
-const isCoverLoading = ref(false)
-let abortController: AbortController | null = null
-
-async function resolveCover() {
-  if (
-    (props.song.albumArtUri && props.song.albumArtUri.trim() !== '') ||
-    !appStore.getCanFetchCoverFromWeb()
-  ) {
-    coverSrc.value = props.song.albumArtUri
-    return
-  }
-
-  isCoverLoading.value = true
-  abortController = new AbortController()
-  try {
-    const url = await fetchCoverFromWeb(props.song.title, props.song.artist || '')
-    coverSrc.value = url || DEFAULT_COVER
-  } catch {
-    coverSrc.value = DEFAULT_COVER
-  } finally {
-    isCoverLoading.value = false
-  }
-}
-
-watch(
-  () => props.song,
-  () => resolveCover(),
-  { immediate: true }
-)
-
-onUnmounted(() => {
-  abortController?.abort()
-})
-
-const menuOptions = computed<DropdownItem[]>(() => [
-  { icon: 'mdi:play', description: t('song.menu.play'), value: 'play' },
-  { icon: 'mdi:playlist-plus', description: t('song.menu.addToPlaylist'), value: 'addToPlaylist' },
-  { icon: 'mdi:heart-outline', description: t('song.menu.like'), value: 'like' },
-  { icon: 'mi:next', description: t('song.menu.playNext'), value: 'next' },
-  { icon: 'mdi:queue', description: t('song.menu.addToQueue'), value: 'queue' },
-  { icon: 'mdi:delete', description: t('song.menu.delete'), value: 'delete' },
-  { icon: 'proicons:cancel', description: t('song.menu.cancel'), value: 'cancel' },
-])
-
-const formatDuration = (milliseconds: number): string => {
-  if (isNaN(milliseconds) || milliseconds < 0) return '00:00'
-  const totalSeconds = Math.floor(milliseconds / 1000)
-  const mins = Math.floor(totalSeconds / 60)
-  const secs = totalSeconds % 60
-  return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
-}
-
-const onCardClick = () => {
-  emit('click', props.song)
-}
-
-const onMenuItemSelect = async (item: DropdownItem) => {
+const defaultOnMenuItemSelect = async (item: DropdownItem) => {
   emit('menuSelect', item.value as string, props.song)
   if (item.value === 'queue') {
     appStore.addToQueue(props.song)
@@ -176,6 +110,91 @@ const onMenuItemSelect = async (item: DropdownItem) => {
     }
   }
 }
+
+const props = withDefaults(defineProps<Props>(), {
+  showOperations: true,
+})
+
+const emit = defineEmits<{
+  (e: 'click', song: Song): void
+  (e: 'menuSelect', action: string, song: Song): void
+  (e: 'update:dropdownOpen', value: boolean): void
+}>()
+
+const { dropdownVisible } = useDropdownControl(props, emit)
+
+const coverSrc = ref<string>('')
+const isCoverLoading = ref(false)
+let abortController: AbortController | null = null
+
+async function resolveCover() {
+  if (
+    (props.song.albumArtUri && props.song.albumArtUri.trim() !== '') ||
+    !appStore.getCanFetchCoverFromWeb()
+  ) {
+    coverSrc.value = props.song.albumArtUri
+    return
+  }
+
+  isCoverLoading.value = true
+  abortController = new AbortController()
+  try {
+    const url = await fetchCoverFromWeb(props.song.title, props.song.artist || '')
+    coverSrc.value = url || DEFAULT_COVER
+  } catch {
+    coverSrc.value = DEFAULT_COVER
+  } finally {
+    isCoverLoading.value = false
+  }
+}
+
+watch(
+  () => props.song,
+  () => resolveCover(),
+  { immediate: true }
+)
+
+onUnmounted(() => {
+  abortController?.abort()
+})
+
+const menuOptions = computed<DropdownItem[]>(() => {
+  if (props.operations) {
+    return props.operations
+  }
+  return [
+    { icon: 'mdi:play', description: t('song.menu.play'), value: 'play' },
+    {
+      icon: 'mdi:playlist-plus',
+      description: t('song.menu.addToPlaylist'),
+      value: 'addToPlaylist',
+    },
+    { icon: 'mdi:heart-outline', description: t('song.menu.like'), value: 'like' },
+    { icon: 'mi:next', description: t('song.menu.playNext'), value: 'next' },
+    { icon: 'mdi:queue', description: t('song.menu.addToQueue'), value: 'queue' },
+    { icon: 'mdi:delete', description: t('song.menu.delete'), value: 'delete' },
+    { icon: 'proicons:cancel', description: t('song.menu.cancel'), value: 'cancel' },
+  ]
+})
+
+const formatDuration = (milliseconds: number): string => {
+  if (isNaN(milliseconds) || milliseconds < 0) return '00:00'
+  const totalSeconds = Math.floor(milliseconds / 1000)
+  const mins = Math.floor(totalSeconds / 60)
+  const secs = totalSeconds % 60
+  return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
+}
+
+const onCardClick = () => {
+  emit('click', props.song)
+}
+
+const onMenuItemSelect = computed(() => {
+  if (props.onMenuItemSelect) {
+    return props.onMenuItemSelect
+  }
+  return defaultOnMenuItemSelect
+})
 </script>
 
 <template>

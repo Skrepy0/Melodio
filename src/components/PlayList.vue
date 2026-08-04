@@ -3,7 +3,7 @@ import { nextTick, ref } from 'vue'
 import { Icon } from '@iconify/vue'
 import SongItemSelectable from '@/components/song/SongItemSelectable.vue'
 import { useDropdownManager } from '@/composables/useDropdownManager'
-import type { Song } from '@/utils/interface.ts'
+import type { DropdownItem, Song } from '@/utils/interface.ts'
 import { useAppStore } from '@/stores/app'
 import toast from '@/utils/createToast'
 import { isInList } from '@/utils/functions'
@@ -25,6 +25,8 @@ interface Props {
     ban?: boolean
     close?: boolean
   }
+  operations?: DropdownItem[]
+  onMenuItemSelect?: (item: DropdownItem) => void
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -198,6 +200,8 @@ const handleSongClick = (song: Song) => {
         @long-press="enterSelectMode"
         @toggle-select="toggleSelect(song.id)"
         @update:dropdown-open="(open) => handleDropdownToggle(song.id, open)"
+        :operations="props.operations"
+        :onMenuItemSelect="props.onMenuItemSelect"
       />
     </div>
 

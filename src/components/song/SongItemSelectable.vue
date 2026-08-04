@@ -13,7 +13,7 @@ const emit = defineEmits<{
   (e: 'toggle-select', songId: string): void
   (e: 'click', song: Song): void
   (e: 'menuSelect', action: string, song: Song): void
-  (e: 'update:dropdownOpen', value: boolean): void // 新增
+  (e: 'update:dropdownOpen', value: boolean): void
 }>()
 const dropdownOpen = computed({
   get: () => props.dropdownOpen ?? false,
@@ -113,6 +113,8 @@ const toggleSelect = () => {
       @click="onSongClick"
       @menu-select="onMenuSelect"
       @update:dropdownOpen="(val) => (dropdownOpen = val)"
+      :operations="props.operations"
+      :onMenuItemSelect="props.onMenuItemSelect"
     />
   </div>
 </template>
