@@ -119,7 +119,7 @@ const playSong = async (song: Song) => {
   }
   // 设置队列信息
   appStore.setIsSwitchingSong(true)
-  appStore.setPlayQueue(songsList.value)
+  appStore.setPlayQueue([...songsList.value])
   appStore.setCurrentIndex(index)
   appStore.setMockCurrentTime(0)
   try {
