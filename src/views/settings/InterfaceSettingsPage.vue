@@ -4,6 +4,8 @@ import { IonPage } from '@ionic/vue'
 import { Icon } from '@iconify/vue'
 import { onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import PageTitle from '@/components/settings/PageTitle.vue'
+import FunctionSwitch from '@/components/settings/FunctionSwitch.vue'
 
 const appStore = useAppStore()
 const router = useRouter()
@@ -50,32 +52,16 @@ onMounted(() => {
 <template>
   <ion-page>
     <div class="settings-page">
-      <div class="settings-header">
-        <div class="header-back" @click="goBack">
-          <Icon :width="24" color="var(--primary-color)" icon="material-symbols:arrow-back" />
-        </div>
-        <div class="header-title">{{ $t('settings.interface.title') }}</div>
-      </div>
+      <PageTitle :title="$t('settings.interface.title')" :go-back="goBack" />
 
       <div class="settings-content">
-        <div class="setting-item">
-          <div class="setting-row">
-            <div class="item-left">
-              <Icon
-                :width="22"
-                class="item-icon"
-                icon="mdi:weather-night"
-                color="var(--primary-color)"
-              />
-              <span class="item-label">{{ $t('settings.interface.darkMode') }}</span>
-            </div>
-            <label class="switch">
-              <input v-model="isDarkMode" type="checkbox" @change="toggleDarkMode" />
-              <span class="slider round"></span>
-            </label>
-          </div>
-          <div class="setting-desc">{{ $t('settings.interface.darkModeDesc') }}</div>
-        </div>
+        <FunctionSwitch
+          :title="$t('settings.interface.darkMode')"
+          icon="mdi:weather-night"
+          :desc="$t('settings.interface.darkModeDesc')"
+          :checked="isDarkMode"
+          :change="toggleDarkMode"
+        />
 
         <div class="setting-item theme-color-item">
           <div class="setting-row">

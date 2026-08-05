@@ -13,6 +13,7 @@ import SearchBox from '@/components/SearchBox.vue'
 import DropdownButton from '@/components/button/DropdownButton.vue'
 import CircleButton from '@/components/button/CircleButton.vue'
 import { useSongSearch } from '@/utils/search'
+import PageTitle from '@/components/settings/PageTitle.vue'
 
 const { t } = useI18n()
 const appStore = useAppStore()

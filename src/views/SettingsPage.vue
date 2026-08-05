@@ -5,6 +5,8 @@ import { useRouter } from 'vue-router'
 import { Icon } from '@iconify/vue'
 import { useAppStore } from '@/stores/app'
 import { useI18n } from 'vue-i18n'
+import PageTitle from '@/components/settings/PageTitle.vue'
+import SettingsPageLink from '@/components/settings/SettingsPageLink.vue'
 
 const { t } = useI18n()
 const appStore = useAppStore()
@@ -60,6 +62,9 @@ const goToBlacklist = () => {
 const goToInterfaceSettings = () => {
   router.push('/settings/interface')
 }
+const goToOnlineSearchSettings = () => {
+  router.push('/settings/online_search')
+}
 const goToAccessibility = () => {
   router.push('/settings/accessibility')
 }
@@ -71,74 +76,39 @@ const goToOther = () => {
 <template>
   <ion-page>
     <div class="settings-page">
-      <div class="settings-header">
-        <div class="header-back" @click="goBack">
-          <Icon :width="24" color="var(--primary-color)" icon="material-symbols:arrow-back" />
-        </div>
-        <div class="header-title">{{ $t('settings.title') }}</div>
-      </div>
+      <PageTitle :title="$t('settings.title')" :go-back="goBack" />
 
       <div class="settings-content">
-        <div class="setting-item clickable" @click="goToInterfaceSettings">
-          <div class="setting-row">
-            <div class="item-left">
-              <Icon :width="22" class="item-icon" icon="mdi:theme" color="var(--primary-color)" />
-              <span class="item-label">{{ $t('settings.interface.title') }}</span>
-            </div>
-            <div class="item-right">
-              <Icon :width="20" icon="mdi:chevron-right" color="var(--primary-color)" />
-            </div>
-          </div>
-          <div class="setting-desc">{{ $t('settings.interface.desc') }}</div>
-        </div>
-        <div class="setting-item clickable" @click="goToAccessibility">
-          <div class="setting-row">
-            <div class="item-left">
-              <Icon
-                :width="22"
-                class="item-icon"
-                icon="material-symbols:accessibility"
-                color="var(--primary-color)"
-              />
-              <span class="item-label">{{ $t('settings.accessibility.title') }}</span>
-            </div>
-            <div class="item-right">
-              <Icon :width="20" icon="mdi:chevron-right" color="var(--primary-color)" />
-            </div>
-          </div>
-          <div class="setting-desc">{{ $t('settings.accessibility.desc') }}</div>
-        </div>
-
-        <div class="setting-item clickable" @click="goToBlacklist">
-          <div class="setting-row">
-            <div class="item-left">
-              <Icon :width="22" class="item-icon" icon="mdi:ban" color="var(--primary-color)" />
-              <span class="item-label">{{ $t('settings.blacklist') }}</span>
-            </div>
-            <div class="item-right">
-              <Icon :width="20" icon="mdi:chevron-right" color="var(--primary-color)" />
-            </div>
-          </div>
-          <div class="setting-desc">{{ $t('settings.blacklistDesc') }}</div>
-        </div>
-
-        <div class="setting-item clickable" @click="goToOther">
-          <div class="setting-row">
-            <div class="item-left">
-              <Icon
-                :width="22"
-                class="item-icon"
-                icon="ic:baseline-miscellaneous-services"
-                color="var(--primary-color)"
-              />
-              <span class="item-label">{{ $t('settings.other.title') }}</span>
-            </div>
-            <div class="item-right">
-              <Icon :width="20" icon="mdi:chevron-right" color="var(--primary-color)" />
-            </div>
-          </div>
-          <div class="setting-desc">{{ $t('settings.other.desc') }}</div>
-        </div>
+        <SettingsPageLink
+          :title="$t('settings.interface.title')"
+          :click="goToInterfaceSettings"
+          icon="mdi:theme"
+          :desc="$t('settings.interface.desc')"
+        />
+        <SettingsPageLink
+          :title="$t('settings.online_search.title')"
+          :click="goToOnlineSearchSettings"
+          icon="ic:baseline-search"
+          :desc="$t('settings.online_search.desc')"
+        />
+        <SettingsPageLink
+          :title="$t('settings.accessibility.title')"
+          :click="goToAccessibility"
+          icon="material-symbols:accessibility"
+          :desc="$t('settings.accessibility.desc')"
+        />
+        <SettingsPageLink
+          :title="$t('settings.blacklist')"
+          :click="goToBlacklist"
+          icon="mdi:ban"
+          :desc="$t('settings.blacklistDesc')"
+        />
+        <SettingsPageLink
+          :title="$t('settings.other.title')"
+          :click="goToOther"
+          icon="ic:baseline-miscellaneous-services"
+          :desc="$t('settings.other.desc')"
+        />
 
         <div class="setting-item clickable" @click="showLanguageSelector">
           <div class="setting-row">
@@ -153,29 +123,17 @@ const goToOther = () => {
             </div>
             <div class="item-right">
               <span class="item-value">{{ currentLanguageName }}</span>
-              <Icon :width="20" icon="mdi:chevron-right" color="var(--primary-color)" />
+              <Icon :width="20" icon="mdi:chevron-left" color="var(--primary-color)" />
             </div>
           </div>
           <div class="setting-desc">{{ $t('settings.languageDesc') }}</div>
         </div>
-
-        <div class="setting-item clickable" @click="goToAbout">
-          <div class="setting-row">
-            <div class="item-left">
-              <Icon
-                :width="22"
-                class="item-icon"
-                icon="mdi:information-outline"
-                color="var(--primary-color)"
-              />
-              <span class="item-label">{{ $t('settings.about') }}</span>
-            </div>
-            <div class="item-right">
-              <Icon :width="20" icon="mdi:chevron-right" color="var(--primary-color)" />
-            </div>
-          </div>
-          <div class="setting-desc">{{ $t('settings.aboutDesc') }}</div>
-        </div>
+        <SettingsPageLink
+          :title="$t('settings.about')"
+          :click="goToAbout"
+          icon="mdi:information-outline"
+          :desc="$t('settings.aboutDesc')"
+        />
       </div>
     </div>
   </ion-page>

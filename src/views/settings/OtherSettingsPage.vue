@@ -1,10 +1,11 @@
 <script lang="ts" setup>
 import { IonPage } from '@ionic/vue'
-import { Icon } from '@iconify/vue'
 import { useRouter } from 'vue-router'
 import { exportLocalStorage, importLocalStorage } from '@/utils/ioData'
 import toast from '@/utils/createToast'
 import { useI18n } from 'vue-i18n'
+import PageTitle from '@/components/settings/PageTitle.vue'
+import SettingsPageLink from '@/components/settings/SettingsPageLink.vue'
 
 const { t } = useI18n()
 const router = useRouter()
@@ -34,43 +35,22 @@ const importData = async () => {
 <template>
   <ion-page>
     <div class="settings-page">
-      <div class="settings-header">
-        <div class="header-back" @click="goBack">
-          <Icon :width="24" color="var(--primary-color)" icon="material-symbols:arrow-back" />
-        </div>
-        <div class="header-title">{{ $t('settings.other.title') }}</div>
-      </div>
-
+      <PageTitle :title="$t('settings.other.title')" :go-back="goBack" />
       <div class="settings-content">
-        <div class="setting-item clickable" @click="exportData">
-          <div class="setting-row">
-            <div class="item-left">
-              <Icon
-                :width="22"
-                class="item-icon"
-                icon="majesticons:data"
-                color="var(--primary-color)"
-              />
-              <span class="item-label">{{ $t('settings.other.exportData') }}</span>
-            </div>
-          </div>
-          <div class="setting-desc">{{ $t('settings.other.exportDataDesc') }}</div>
-        </div>
-
-        <div class="setting-item clickable" @click="importData">
-          <div class="setting-row">
-            <div class="item-left">
-              <Icon
-                :width="22"
-                class="item-icon"
-                icon="pajamas:import"
-                color="var(--primary-color)"
-              />
-              <span class="item-label">{{ $t('settings.other.importData') }}</span>
-            </div>
-          </div>
-          <div class="setting-desc">{{ $t('settings.other.importDataDesc') }}</div>
-        </div>
+        <SettingsPageLink
+          :title="$t('settings.other.exportData')"
+          :click="exportData"
+          icon="majesticons:data"
+          :desc="$t('settings.other.exportDataDesc')"
+          :isLink="false"
+        />
+        <SettingsPageLink
+          :title="$t('settings.other.importData')"
+          :click="importData"
+          icon="pajamas:import"
+          :desc="$t('settings.other.importDataDesc')"
+          :isLink="false"
+        />
       </div>
     </div>
   </ion-page>

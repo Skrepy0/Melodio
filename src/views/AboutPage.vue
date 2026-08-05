@@ -5,6 +5,7 @@ import { Icon } from '@iconify/vue'
 import { IonPage } from '@ionic/vue'
 import { Capacitor } from '@capacitor/core'
 import { Browser } from '@capacitor/browser'
+import PageTitle from '@/components/settings/PageTitle.vue'
 
 const router = useRouter()
 const version = ref(__APP_VERSION__)
@@ -27,12 +28,7 @@ const openUrl = async (url: string) => {
 <template>
   <ion-page>
     <div class="about-page">
-      <div class="about-header">
-        <div class="header-back" @click="goBack">
-          <Icon :width="24" color="var(--primary-color)" icon="material-symbols:arrow-back" />
-        </div>
-        <div class="header-title">{{ $t('about.title') }}</div>
-      </div>
+      <PageTitle :title="$t('about.title')" :go-back="goBack" />
 
       <div class="about-content">
         <div class="app-name">Melodio</div>

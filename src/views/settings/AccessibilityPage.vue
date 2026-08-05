@@ -1,9 +1,10 @@
 <script lang="ts" setup>
 import { useAppStore } from '@/stores/app'
 import { IonPage } from '@ionic/vue'
-import { Icon } from '@iconify/vue'
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import PageTitle from '@/components/settings/PageTitle.vue'
+import FunctionSwitch from '@/components/settings/FunctionSwitch.vue'
 
 const appStore = useAppStore()
 const router = useRouter()
@@ -48,133 +49,44 @@ const toggleCanFetchCoverFromWeb = (e: Event) => {
 <template>
   <ion-page>
     <div class="settings-page">
-      <div class="settings-header">
-        <div class="header-back" @click="goBack">
-          <Icon :width="24" color="var(--primary-color)" icon="material-symbols:arrow-back" />
-        </div>
-        <div class="header-title">{{ $t('settings.accessibility.title') }}</div>
-      </div>
+      <PageTitle :title="$t('settings.accessibility.title')" :go-back="goBack" />
 
       <div class="settings-content">
-        <div class="setting-item">
-          <div class="setting-row">
-            <div class="item-left">
-              <Icon
-                :width="22"
-                class="item-icon"
-                icon="material-symbols-light:language-pinyin"
-                color="var(--primary-color)"
-              />
-              <span class="item-label">{{ $t('settings.accessibility.pinyinSearch') }}</span>
-            </div>
-            <label class="switch">
-              <input :checked="pinyinSearch" type="checkbox" @change="togglePinyinSearch" />
-              <span class="slider round"></span>
-            </label>
-          </div>
-          <div class="setting-desc">{{ $t('settings.accessibility.pinyinSearchDesc') }}</div>
-        </div>
-        <div class="setting-item">
-          <div class="setting-row">
-            <div class="item-left">
-              <Icon
-                :width="22"
-                class="item-icon"
-                icon="ant-design:disconnect-outlined"
-                color="var(--primary-color)"
-              />
-              <span class="item-label">{{
-                $t('settings.accessibility.autoPauseOnDisconnect')
-              }}</span>
-            </div>
-            <label class="switch">
-              <input
-                :checked="autoPauseOnDisconnect"
-                type="checkbox"
-                @change="toggleAutoPauseOnDisconnect"
-              />
-              <span class="slider round"></span>
-            </label>
-          </div>
-          <div class="setting-desc">
-            {{ $t('settings.accessibility.autoPauseOnDisconnectDesc') }}
-          </div>
-        </div>
-
-        <div class="setting-item">
-          <div class="setting-row">
-            <div class="item-left">
-              <Icon
-                :width="22"
-                class="item-icon"
-                icon="lets-icons:check-fill"
-                color="var(--primary-color)"
-              />
-              <span class="item-label">{{
-                $t('settings.accessibility.autoCleanInvalidSongs')
-              }}</span>
-            </div>
-            <label class="switch">
-              <input
-                :checked="autoDelInvalidSongs"
-                type="checkbox"
-                @change="toggleAutoDelInvalidSongs"
-              />
-              <span class="slider round"></span>
-            </label>
-          </div>
-          <div class="setting-desc">
-            {{ $t('settings.accessibility.autoCleanInvalidSongsDesc') }}
-          </div>
-        </div>
-
-        <div class="setting-item">
-          <div class="setting-row">
-            <div class="item-left">
-              <Icon
-                :width="22"
-                class="item-icon"
-                icon="dashicons:cover-image"
-                color="var(--primary-color)"
-              />
-              <span class="item-label">{{
-                $t('settings.accessibility.canFetchCoverFromWeb')
-              }}</span>
-            </div>
-            <label class="switch">
-              <input
-                :checked="canFetchCoverFromWeb"
-                type="checkbox"
-                @change="toggleCanFetchCoverFromWeb"
-              />
-              <span class="slider round"></span>
-            </label>
-          </div>
-          <div class="setting-desc">
-            {{ $t('settings.accessibility.canFetchCoverFromWebDesc') }}
-          </div>
-        </div>
-
-        <div class="setting-item">
-          <div class="setting-row">
-            <div class="item-left">
-              <Icon
-                :width="22"
-                class="item-icon"
-                icon="lucide:focus"
-                color="var(--primary-color)"
-              />
-              <span class="item-label">{{ $t('settings.accessibility.audioFocusPause') }}</span>
-            </div>
-            <label class="switch">
-              <input :checked="audioFocusPause" type="checkbox" @change="toggleAudioFocusPause" />
-              <span class="slider round"></span>
-            </label>
-          </div>
-          <div class="setting-desc">
-            {{ $t('settings.accessibility.audioFocusPauseDesc') }}
-          </div>
-        </div>
+        <FunctionSwitch
+          :title="$t('settings.accessibility.pinyinSearch')"
+          icon="material-symbols-light:language-pinyin"
+          :desc="$t('settings.accessibility.pinyinSearchDesc')"
+          :checked="pinyinSearch"
+          :change="togglePinyinSearch"
+        />
+        <FunctionSwitch
+          :title="$t('settings.accessibility.autoPauseOnDisconnect')"
+          icon="ant-design:disconnect-outlined"
+          :desc="$t('settings.accessibility.autoPauseOnDisconnectDesc')"
+          :checked="autoPauseOnDisconnect"
+          :change="toggleAutoPauseOnDisconnect"
+        />
+        <FunctionSwitch
+          :title="$t('settings.accessibility.autoCleanInvalidSongs')"
+          icon="lets-icons:check-fill"
+          :desc="$t('settings.accessibility.autoCleanInvalidSongsDesc')"
+          :checked="autoDelInvalidSongs"
+          :change="toggleAutoDelInvalidSongs"
+        />
+        <FunctionSwitch
+          :title="$t('settings.accessibility.canFetchCoverFromWeb')"
+          icon="dashicons:cover-image"
+          :desc="$t('settings.accessibility.canFetchCoverFromWebDesc')"
+          :checked="canFetchCoverFromWeb"
+          :change="toggleCanFetchCoverFromWeb"
+        />
+        <FunctionSwitch
+          :title="$t('settings.accessibility.audioFocusPause')"
+          icon="lucide:focus"
+          :desc="$t('settings.accessibility.audioFocusPauseDesc')"
+          :checked="audioFocusPause"
+          :change="toggleAudioFocusPause"
+        />
       </div>
     </div>
   </ion-page>
