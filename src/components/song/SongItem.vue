@@ -206,7 +206,13 @@ const onMenuItemSelect = computed(() => {
         :src="coverSrc"
         @error="coverSrc = DEFAULT_COVER"
       />
-      <Icon v-else :width="36" class="default-cover" icon="mdi:music" />
+      <Icon
+        v-else
+        :width="36"
+        class="default-cover"
+        icon="mdi:music"
+        color="var(--primary-color)"
+      />
     </div>
 
     <div class="song-info">

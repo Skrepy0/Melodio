@@ -36,7 +36,7 @@ const importData = async () => {
     <div class="settings-page">
       <div class="settings-header">
         <div class="header-back" @click="goBack">
-          <Icon :width="24" color="var(--text-color)" icon="material-symbols:arrow-back" />
+          <Icon :width="24" color="var(--primary-color)" icon="material-symbols:arrow-back" />
         </div>
         <div class="header-title">{{ $t('settings.other.title') }}</div>
       </div>
@@ -45,7 +45,12 @@ const importData = async () => {
         <div class="setting-item clickable" @click="exportData">
           <div class="setting-row">
             <div class="item-left">
-              <Icon :width="22" class="item-icon" icon="majesticons:data" />
+              <Icon
+                :width="22"
+                class="item-icon"
+                icon="majesticons:data"
+                color="var(--primary-color)"
+              />
               <span class="item-label">{{ $t('settings.other.exportData') }}</span>
             </div>
           </div>
@@ -55,7 +60,12 @@ const importData = async () => {
         <div class="setting-item clickable" @click="importData">
           <div class="setting-row">
             <div class="item-left">
-              <Icon :width="22" class="item-icon" icon="pajamas:import" />
+              <Icon
+                :width="22"
+                class="item-icon"
+                icon="pajamas:import"
+                color="var(--primary-color)"
+              />
               <span class="item-label">{{ $t('settings.other.importData') }}</span>
             </div>
           </div>

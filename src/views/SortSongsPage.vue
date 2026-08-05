@@ -253,7 +253,7 @@ const backWithoutSave = () => {
     <div class="editor-header">
       <div class="header-left">
         <button class="back-btn" @click="backWithoutSave">
-          <Icon :width="24" color="var(--text-color)" icon="mdi:arrow-left" />
+          <Icon :width="24" color="var(--primary-color)" icon="mdi:arrow-left" />
         </button>
         <h2>{{ $t('editor.title') }}</h2>
       </div>
@@ -271,7 +271,7 @@ const backWithoutSave = () => {
         </select>
 
         <button class="sort-btn" @click="handleOrderToggle">
-          <Icon :icon="orderIcon" :width="20" />
+          <Icon :icon="orderIcon" :width="20" color="var(--primary-color)" />
           <span>{{ orderText }}</span>
         </button>
       </div>

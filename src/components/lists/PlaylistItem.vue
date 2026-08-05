@@ -135,7 +135,13 @@ onMounted(() => {
       </template>
       <template v-else>
         <img v-if="coverSrc && coverSrc !== DEFAULT_COVER" :alt="playlist.name" :src="coverSrc" />
-        <Icon v-else :width="36" class="default-cover" icon="mdi:playlist-music" />
+        <Icon
+          v-else
+          :width="36"
+          class="default-cover"
+          icon="mdi:playlist-music"
+          color="var(--primary-color)"
+        />
       </template>
     </div>
     <div class="playlist-info">

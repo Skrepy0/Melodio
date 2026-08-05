@@ -8,6 +8,7 @@ import { i18n } from '@/i18n'
 import { registerPlugin } from '@capacitor/core'
 import type { SystemBarPlugin } from '@/plugins/system-bar/definitions'
 import { requestMediaPermissions } from '@/utils/audioScanner'
+import { mixColors } from '@/utils/color'
 
 const SystemBar = registerPlugin<SystemBarPlugin>('SystemBar')
 
@@ -31,6 +32,27 @@ export const useAppStore = defineStore('app', () => {
   const audioFocusPause = ref(true)
   const blacklist = ref<Song[]>([])
   const firstPlayFlag = ref(false) // 记录是否是应用初始化后第一次播放
+  const themeColor = ref<string>('#007aff')
+  function initThemeColor() {
+    setThemeColor(localStorage.getItem('theme_color') ?? themeColor.value)
+  }
+  function setThemeColor(val: string) {
+    themeColor.value = val
+    localStorage.setItem('theme_color', val)
+    applyThemeColor()
+  }
+  function applyThemeColor() {
+    const color = themeColor.value
+    document.documentElement.style.setProperty('--primary-color', color)
+    document.documentElement.style.setProperty(
+      '--primary-color-dark',
+      mixColors(color, '#fff', 0.14)
+    )
+    document.documentElement.style.setProperty('--primary-color-rgb', color)
+  }
+  function getThemeColor() {
+    return themeColor.value
+  }
   function getFirstPlayFlag() {
     return firstPlayFlag.value
   }
@@ -454,6 +476,7 @@ export const useAppStore = defineStore('app', () => {
   async function init() {
     if (!initFlag.value) {
       initLanguage()
+      initThemeColor()
       loadInitialDarkMode()
       // Request media permissions on app startup so the user
       // doesn't have to grant them later when scanning for music
@@ -732,5 +755,7 @@ export const useAppStore = defineStore('app', () => {
     playbackRate,
     getFirstPlayFlag,
     markFirstPlayFlag,
+    getThemeColor,
+    setThemeColor,
   }
 })

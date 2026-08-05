@@ -50,7 +50,7 @@ const toggleCanFetchCoverFromWeb = (e: Event) => {
     <div class="settings-page">
       <div class="settings-header">
         <div class="header-back" @click="goBack">
-          <Icon :width="24" color="var(--text-color)" icon="material-symbols:arrow-back" />
+          <Icon :width="24" color="var(--primary-color)" icon="material-symbols:arrow-back" />
         </div>
         <div class="header-title">{{ $t('settings.accessibility.title') }}</div>
       </div>
@@ -59,7 +59,12 @@ const toggleCanFetchCoverFromWeb = (e: Event) => {
         <div class="setting-item">
           <div class="setting-row">
             <div class="item-left">
-              <Icon :width="22" class="item-icon" icon="material-symbols-light:language-pinyin" />
+              <Icon
+                :width="22"
+                class="item-icon"
+                icon="material-symbols-light:language-pinyin"
+                color="var(--primary-color)"
+              />
               <span class="item-label">{{ $t('settings.accessibility.pinyinSearch') }}</span>
             </div>
             <label class="switch">
@@ -72,7 +77,12 @@ const toggleCanFetchCoverFromWeb = (e: Event) => {
         <div class="setting-item">
           <div class="setting-row">
             <div class="item-left">
-              <Icon :width="22" class="item-icon" icon="ant-design:disconnect-outlined" />
+              <Icon
+                :width="22"
+                class="item-icon"
+                icon="ant-design:disconnect-outlined"
+                color="var(--primary-color)"
+              />
               <span class="item-label">{{
                 $t('settings.accessibility.autoPauseOnDisconnect')
               }}</span>
@@ -94,7 +104,12 @@ const toggleCanFetchCoverFromWeb = (e: Event) => {
         <div class="setting-item">
           <div class="setting-row">
             <div class="item-left">
-              <Icon :width="22" class="item-icon" icon="lets-icons:check-fill" />
+              <Icon
+                :width="22"
+                class="item-icon"
+                icon="lets-icons:check-fill"
+                color="var(--primary-color)"
+              />
               <span class="item-label">{{
                 $t('settings.accessibility.autoCleanInvalidSongs')
               }}</span>
@@ -116,7 +131,12 @@ const toggleCanFetchCoverFromWeb = (e: Event) => {
         <div class="setting-item">
           <div class="setting-row">
             <div class="item-left">
-              <Icon :width="22" class="item-icon" icon="dashicons:cover-image" />
+              <Icon
+                :width="22"
+                class="item-icon"
+                icon="dashicons:cover-image"
+                color="var(--primary-color)"
+              />
               <span class="item-label">{{
                 $t('settings.accessibility.canFetchCoverFromWeb')
               }}</span>
@@ -138,7 +158,12 @@ const toggleCanFetchCoverFromWeb = (e: Event) => {
         <div class="setting-item">
           <div class="setting-row">
             <div class="item-left">
-              <Icon :width="22" class="item-icon" icon="lucide:focus" />
+              <Icon
+                :width="22"
+                class="item-icon"
+                icon="lucide:focus"
+                color="var(--primary-color)"
+              />
               <span class="item-label">{{ $t('settings.accessibility.audioFocusPause') }}</span>
             </div>
             <label class="switch">

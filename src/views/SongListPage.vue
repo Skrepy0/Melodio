@@ -229,7 +229,7 @@ const onSearch = () => {
     <div class="song-list-page">
       <div class="song-list-header">
         <div class="header-back" @click="goBack">
-          <Icon :width="24" color="var(--text-color)" icon="material-symbols:arrow-back" />
+          <Icon :width="24" color="var(--primary-color)" icon="material-symbols:arrow-back" />
         </div>
 
         <Transition mode="out-in" name="fade">

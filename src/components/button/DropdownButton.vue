@@ -176,7 +176,13 @@ watch(showDropdown, (val) => {
               class="dropdown-item"
               @click="selectItem(item)"
             >
-              <Icon v-if="item.icon" :icon="item.icon" :width="itemIconSize" class="item-icon" />
+              <Icon
+                v-if="item.icon"
+                :icon="item.icon"
+                :width="itemIconSize"
+                class="item-icon"
+                color="var(--primary-color)"
+              />
               <span class="item-description">{{ item.description }}</span>
             </div>
           </div>

@@ -209,31 +209,31 @@ const handleSongClick = (song: Song) => {
       <div v-if="isSelectMode" class="bottom-actions">
         <div class="actions-container">
           <button v-if="props.visibility.selectAll" class="action-btn" @click="selectAll">
-            <Icon :width="20" icon="mdi:select-all" />
+            <Icon :width="20" icon="mdi:select-all" color="var(--primary-color)" />
             <span>{{ $t('playList.selectAll') }}</span>
           </button>
           <button v-if="props.visibility.clear" class="action-btn" @click="clearSelection">
-            <Icon :width="20" icon="mdi:select-off" />
+            <Icon :width="20" icon="mdi:select-off" color="var(--primary-color)" />
             <span>{{ $t('playList.clear') }}</span>
           </button>
           <button v-if="props.visibility.addToQueue" class="action-btn" @click="addToQueue">
-            <Icon :width="20" icon="ic:baseline-queue" />
+            <Icon :width="20" icon="ic:baseline-queue" color="var(--primary-color)" />
             <span>{{ $t('playList.addToQueue') }}</span>
           </button>
           <button v-if="props.visibility.addToPlaylist" class="action-btn" @click="addToSongList">
-            <Icon :width="20" icon="mdi:heart-outline" />
+            <Icon :width="20" icon="mdi:heart-outline" color="var(--primary-color)" />
             <span>{{ $t('playList.addToPlaylist') }}</span>
           </button>
           <button v-if="props.visibility.delete" class="action-btn danger" @click="batchDelete">
-            <Icon :width="20" icon="mdi:delete" />
+            <Icon :width="20" icon="mdi:delete" color="var(--primary-color)" />
             <span>{{ $t('playList.delete', { count: selectedIds.size }) }}</span>
           </button>
           <button v-if="props.visibility.ban" class="action-btn" @click="addToBlacklist">
-            <Icon :width="20" icon="tabler:ban" />
+            <Icon :width="20" icon="tabler:ban" color="var(--primary-color)" />
             <span>{{ $t('playList.addToBlacklist', { count: selectedIds.size }) }}</span>
           </button>
           <button v-if="props.visibility.close" class="action-btn" @click="exitSelectMode">
-            <Icon :width="20" icon="mdi:close" />
+            <Icon :width="20" icon="mdi:close" color="var(--primary-color)" />
             <span>{{ $t('playList.cancel') }}</span>
           </button>
         </div>

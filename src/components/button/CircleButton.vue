@@ -35,7 +35,7 @@ const iconSize = typeof props.size === 'number' ? props.size * 0.55 : '24px'
     class="circle-button"
     @click="handleClick"
   >
-    <Icon :icon="icon" :width="iconSize" />
+    <Icon :icon="icon" :width="iconSize" color="var(--primary-color)" />
   </button>
 </template>
 

@@ -108,7 +108,13 @@ defineExpose({ show })
                     :alt="playlist.name"
                     :src="getCover(playlist)"
                   />
-                  <Icon v-else :width="40" class="default-cover" icon="mdi:playlist-music" />
+                  <Icon
+                    v-else
+                    :width="40"
+                    class="default-cover"
+                    icon="mdi:playlist-music"
+                    color="var(--primary-color)"
+                  />
                 </template>
               </div>
               <div class="playlist-info">

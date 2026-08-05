@@ -102,6 +102,7 @@ const toggleSelect = () => {
         :width="22"
         class="checkbox"
         @click.stop="toggleSelect"
+        color="var(--primary-color)"
       />
     </div>
     <SongItem

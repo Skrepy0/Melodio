@@ -323,7 +323,7 @@ watch(selectedCategory, () => {
       <div class="search-box-container">
         <SearchBox
           v-model="keyword"
-          :clearable="false"
+          :clearable="true"
           :placeholder="$t('home.searchPlaceholder')"
           autofocus
           size="small"

@@ -211,7 +211,9 @@
       "title": "Theme Settings",
       "desc": "Set the application's interface theme.",
       "darkMode": "Dark Mode",
-      "darkModeDesc": "When enabled, the interface will switch to a dark theme."
+      "darkModeDesc": "When enabled, the interface will switch to a dark theme.",
+      "themeColor": "Theme Color",
+      "themeColorDesc": "Click a color swatch or use the color picker to change the theme color."
     },
     "accessibility": {
       "title": "Accessibility",

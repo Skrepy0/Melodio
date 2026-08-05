@@ -211,7 +211,9 @@
       "title": "主题设置",
       "desc": "设置应用的界面主题",
       "darkMode": "深色模式",
-      "darkModeDesc": "开启后界面将切换为深色主题"
+      "darkModeDesc": "开启后界面将切换为深色主题",
+      "themeColor": "主题色",
+      "themeColorDesc": "点击色块或拾色器更换主题色"
     },
     "accessibility": {
       "title": "辅助功能",

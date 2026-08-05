@@ -73,7 +73,7 @@ const goToOther = () => {
     <div class="settings-page">
       <div class="settings-header">
         <div class="header-back" @click="goBack">
-          <Icon :width="24" color="var(--text-color)" icon="material-symbols:arrow-back" />
+          <Icon :width="24" color="var(--primary-color)" icon="material-symbols:arrow-back" />
         </div>
         <div class="header-title">{{ $t('settings.title') }}</div>
       </div>
@@ -82,11 +82,11 @@ const goToOther = () => {
         <div class="setting-item clickable" @click="goToInterfaceSettings">
           <div class="setting-row">
             <div class="item-left">
-              <Icon :width="22" class="item-icon" icon="mdi:theme" />
+              <Icon :width="22" class="item-icon" icon="mdi:theme" color="var(--primary-color)" />
               <span class="item-label">{{ $t('settings.interface.title') }}</span>
             </div>
             <div class="item-right">
-              <Icon :width="20" icon="mdi:chevron-right" />
+              <Icon :width="20" icon="mdi:chevron-right" color="var(--primary-color)" />
             </div>
           </div>
           <div class="setting-desc">{{ $t('settings.interface.desc') }}</div>
@@ -94,11 +94,16 @@ const goToOther = () => {
         <div class="setting-item clickable" @click="goToAccessibility">
           <div class="setting-row">
             <div class="item-left">
-              <Icon :width="22" class="item-icon" icon="material-symbols:accessibility" />
+              <Icon
+                :width="22"
+                class="item-icon"
+                icon="material-symbols:accessibility"
+                color="var(--primary-color)"
+              />
               <span class="item-label">{{ $t('settings.accessibility.title') }}</span>
             </div>
             <div class="item-right">
-              <Icon :width="20" icon="mdi:chevron-right" />
+              <Icon :width="20" icon="mdi:chevron-right" color="var(--primary-color)" />
             </div>
           </div>
           <div class="setting-desc">{{ $t('settings.accessibility.desc') }}</div>
@@ -107,11 +112,11 @@ const goToOther = () => {
         <div class="setting-item clickable" @click="goToBlacklist">
           <div class="setting-row">
             <div class="item-left">
-              <Icon :width="22" class="item-icon" icon="mdi:ban" />
+              <Icon :width="22" class="item-icon" icon="mdi:ban" color="var(--primary-color)" />
               <span class="item-label">{{ $t('settings.blacklist') }}</span>
             </div>
             <div class="item-right">
-              <Icon :width="20" icon="mdi:chevron-right" />
+              <Icon :width="20" icon="mdi:chevron-right" color="var(--primary-color)" />
             </div>
           </div>
           <div class="setting-desc">{{ $t('settings.blacklistDesc') }}</div>
@@ -120,11 +125,16 @@ const goToOther = () => {
         <div class="setting-item clickable" @click="goToOther">
           <div class="setting-row">
             <div class="item-left">
-              <Icon :width="22" class="item-icon" icon="ic:baseline-miscellaneous-services" />
+              <Icon
+                :width="22"
+                class="item-icon"
+                icon="ic:baseline-miscellaneous-services"
+                color="var(--primary-color)"
+              />
               <span class="item-label">{{ $t('settings.other.title') }}</span>
             </div>
             <div class="item-right">
-              <Icon :width="20" icon="mdi:chevron-right" />
+              <Icon :width="20" icon="mdi:chevron-right" color="var(--primary-color)" />
             </div>
           </div>
           <div class="setting-desc">{{ $t('settings.other.desc') }}</div>
@@ -133,12 +143,17 @@ const goToOther = () => {
         <div class="setting-item clickable" @click="showLanguageSelector">
           <div class="setting-row">
             <div class="item-left">
-              <Icon :width="22" class="item-icon" icon="mdi:translate" />
+              <Icon
+                :width="22"
+                class="item-icon"
+                icon="mdi:translate"
+                color="var(--primary-color)"
+              />
               <span class="item-label">{{ $t('settings.language') }}</span>
             </div>
             <div class="item-right">
               <span class="item-value">{{ currentLanguageName }}</span>
-              <Icon :width="20" icon="mdi:chevron-right" />
+              <Icon :width="20" icon="mdi:chevron-right" color="var(--primary-color)" />
             </div>
           </div>
           <div class="setting-desc">{{ $t('settings.languageDesc') }}</div>
@@ -147,11 +162,16 @@ const goToOther = () => {
         <div class="setting-item clickable" @click="goToAbout">
           <div class="setting-row">
             <div class="item-left">
-              <Icon :width="22" class="item-icon" icon="mdi:information-outline" />
+              <Icon
+                :width="22"
+                class="item-icon"
+                icon="mdi:information-outline"
+                color="var(--primary-color)"
+              />
               <span class="item-label">{{ $t('settings.about') }}</span>
             </div>
             <div class="item-right">
-              <Icon :width="20" icon="mdi:chevron-right" />
+              <Icon :width="20" icon="mdi:chevron-right" color="var(--primary-color)" />
             </div>
           </div>
           <div class="setting-desc">{{ $t('settings.aboutDesc') }}</div>

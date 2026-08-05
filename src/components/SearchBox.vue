@@ -82,7 +82,7 @@ defineExpose({
   <div :class="[`size-${size}`, { disabled }]" class="search-container">
     <div class="search-box">
       <span class="search-icon" @click="handleSearch">
-        <Icon :width="iconSize" icon="mdi:magnify" />
+        <Icon :width="iconSize" icon="mdi:magnify" color="var(--primary-color)" />
       </span>
       <input
         ref="inputRef"
@@ -97,7 +97,7 @@ defineExpose({
       />
 
       <span v-if="clearable && modelValue.length > 0" class="clear-icon" @click="clearInput">
-        <Icon :width="iconSize" icon="mdi:close-circle" />
+        <Icon :width="iconSize" icon="mdi:close-circle" color="var(--primary-color)" />
       </span>
 
       <button v-if="showButton" :disabled="disabled" class="search-button" @click="handleSearch">
