@@ -215,6 +215,14 @@
       "themeColor": "主题色",
       "themeColorDesc": "点击色块或拾色器更换主题色"
     },
+    "online_search": {
+      "title": "在线获取歌曲",
+      "desc": "配置在线搜索歌曲, 下载歌曲等相关参数",
+      "music_client": {
+        "title": "音乐源配置",
+        "desc": "配置在线音乐源"
+      }
+    },
     "accessibility": {
       "title": "辅助功能",
       "desc": "应用提供的相关功能开关",

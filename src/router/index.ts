@@ -10,6 +10,8 @@ import ScanBlacklistPage from '@/views/ScanBlacklistPage.vue'
 import InterfaceSettingsPage from '@/views/settings/InterfaceSettingsPage.vue'
 import AccessibilityPage from '@/views/settings/AccessibilityPage.vue'
 import OtherSettingsPage from '@/views/settings/OtherSettingsPage.vue'
+import OnlineSearchSettingsPage from '@/views/settings/OnlineSearchSettingsPage.vue'
+import MusicClientSettingsPage from '@/views/settings/MusicClientSettingsPage.vue'
 
 const routes: Array<RouteRecordRaw> = [
   {
@@ -23,6 +25,16 @@ const routes: Array<RouteRecordRaw> = [
   },
   { path: '/settings', name: 'Settings', component: SettingsPage },
   { path: '/settings/interface', name: 'Interface Settings', component: InterfaceSettingsPage },
+  {
+    path: '/settings/online_search',
+    name: 'Online Search Settings',
+    component: OnlineSearchSettingsPage,
+  },
+  {
+    path: '/settings/online_search/music_client',
+    name: 'Music Client Settings',
+    component: MusicClientSettingsPage,
+  },
   { path: '/settings/accessibility', name: 'Accessibility', component: AccessibilityPage },
   { path: '/settings/other', name: 'Other', component: OtherSettingsPage },
   { path: '/player-view', name: 'PlayerView', component: PlayerView },

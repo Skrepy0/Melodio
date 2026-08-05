@@ -215,6 +215,14 @@
       "themeColor": "Theme Color",
       "themeColorDesc": "Click a color swatch or use the color picker to change the theme color."
     },
+    "online_search": {
+      "title": "Online Fetching",
+      "desc": "Configure online song search, download, and associated settings.",
+      "music_client": {
+        "title": "Music Sources",
+        "desc": "Configure online music source settings."
+      }
+    },
     "accessibility": {
       "title": "Accessibility",
       "desc": "Switches for related features provided by the app.",
