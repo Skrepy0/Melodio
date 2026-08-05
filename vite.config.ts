@@ -1,5 +1,5 @@
 /// <reference types="vitest" />
-
+import pkg from './package.json'
 import legacy from '@vitejs/plugin-legacy'
 import vue from '@vitejs/plugin-vue'
 import path from 'path'
@@ -23,5 +23,8 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'jsdom',
+  },
+  define: {
+    __APP_VERSION__: JSON.stringify(pkg.version),
   },
 })

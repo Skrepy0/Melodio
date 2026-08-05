@@ -7,7 +7,7 @@ import { Capacitor } from '@capacitor/core'
 import { Browser } from '@capacitor/browser'
 
 const router = useRouter()
-const version = ref('0.0.4')
+const version = ref(__APP_VERSION__)
 const repoUrl = 'https://github.com/Skrepy0/Melodio'
 const issuesUrl = 'https://github.com/Skrepy0/Melodio/issues'
 
@@ -29,7 +29,7 @@ const openUrl = async (url: string) => {
     <div class="about-page">
       <div class="about-header">
         <div class="header-back" @click="goBack">
-          <Icon :width="24" color="var(--text-color)" icon="material-symbols:arrow-back" />
+          <Icon :width="24" color="var(--primary-color)" icon="material-symbols:arrow-back" />
         </div>
         <div class="header-title">{{ $t('about.title') }}</div>
       </div>
