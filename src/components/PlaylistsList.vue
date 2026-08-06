@@ -92,19 +92,19 @@ const onMenuSelect = (action: string, playlist: Playlist) => {
       <div v-if="isSelectMode" class="bottom-actions">
         <div class="actions-container">
           <button class="action-btn" @click="selectAll">
-            <Icon :width="20" icon="mdi:select-all" color="var(--primary-color)" />
+            <Icon :width="20" color="var(--primary-color)" icon="mdi:select-all" />
             <span>全选</span>
           </button>
           <button class="action-btn" @click="clearSelection">
-            <Icon :width="20" icon="mdi:select-off" color="var(--primary-color)" />
+            <Icon :width="20" color="var(--primary-color)" icon="mdi:select-off" />
             <span>清空</span>
           </button>
           <button class="action-btn danger" @click="batchDelete">
-            <Icon :width="20" icon="mdi:delete" color="var(--primary-color)" />
+            <Icon :width="20" color="var(--primary-color)" icon="mdi:delete" />
             <span>删除({{ selectedIds.size }})</span>
           </button>
           <button class="action-btn" @click="exitSelectMode">
-            <Icon :width="20" icon="mdi:close" color="var(--primary-color)" />
+            <Icon :width="20" color="var(--primary-color)" icon="mdi:close" />
             <span>取消</span>
           </button>
         </div>

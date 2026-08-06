@@ -139,8 +139,8 @@ onMounted(() => {
           v-else
           :width="36"
           class="default-cover"
-          icon="mdi:playlist-music"
           color="var(--primary-color)"
+          icon="mdi:playlist-music"
         />
       </template>
     </div>

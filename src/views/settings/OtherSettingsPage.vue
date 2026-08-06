@@ -35,21 +35,21 @@ const importData = async () => {
 <template>
   <ion-page>
     <div class="settings-page">
-      <PageTitle :title="$t('settings.other.title')" :go-back="goBack" />
+      <PageTitle :go-back="goBack" :title="$t('settings.other.title')" />
       <div class="settings-content">
         <SettingsPageLink
-          :title="$t('settings.other.exportData')"
           :click="exportData"
-          icon="majesticons:data"
           :desc="$t('settings.other.exportDataDesc')"
           :isLink="false"
+          :title="$t('settings.other.exportData')"
+          icon="majesticons:data"
         />
         <SettingsPageLink
-          :title="$t('settings.other.importData')"
           :click="importData"
-          icon="pajamas:import"
           :desc="$t('settings.other.importDataDesc')"
           :isLink="false"
+          :title="$t('settings.other.importData')"
+          icon="pajamas:import"
         />
       </div>
     </div>

@@ -210,8 +210,8 @@ const onMenuItemSelect = computed(() => {
         v-else
         :width="36"
         class="default-cover"
-        icon="mdi:music"
         color="var(--primary-color)"
+        icon="mdi:music"
       />
     </div>
 

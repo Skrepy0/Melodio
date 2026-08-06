@@ -1,4 +1,4 @@
-<script setup lang="ts">
+<script lang="ts" setup>
 import { Icon } from '@iconify/vue'
 
 interface Props {
@@ -24,6 +24,6 @@ const props = withDefaults(defineProps<Props>(), {
   </div>
 </template>
 
-<style scoped lang="scss">
+<style lang="scss" scoped>
 @use '@/theme/settings.scss';
 </style>

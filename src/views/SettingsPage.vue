@@ -76,38 +76,38 @@ const goToOther = () => {
 <template>
   <ion-page>
     <div class="settings-page">
-      <PageTitle :title="$t('settings.title')" :go-back="goBack" />
+      <PageTitle :go-back="goBack" :title="$t('settings.title')" />
 
       <div class="settings-content">
         <SettingsPageLink
-          :title="$t('settings.interface.title')"
           :click="goToInterfaceSettings"
-          icon="mdi:theme"
           :desc="$t('settings.interface.desc')"
+          :title="$t('settings.interface.title')"
+          icon="mdi:theme"
         />
         <SettingsPageLink
-          :title="$t('settings.online_search.title')"
           :click="goToOnlineSearchSettings"
-          icon="ic:baseline-search"
           :desc="$t('settings.online_search.desc')"
+          :title="$t('settings.online_search.title')"
+          icon="ic:baseline-search"
         />
         <SettingsPageLink
-          :title="$t('settings.accessibility.title')"
           :click="goToAccessibility"
-          icon="material-symbols:accessibility"
           :desc="$t('settings.accessibility.desc')"
+          :title="$t('settings.accessibility.title')"
+          icon="material-symbols:accessibility"
         />
         <SettingsPageLink
-          :title="$t('settings.blacklist')"
           :click="goToBlacklist"
-          icon="mdi:ban"
           :desc="$t('settings.blacklistDesc')"
+          :title="$t('settings.blacklist')"
+          icon="mdi:ban"
         />
         <SettingsPageLink
-          :title="$t('settings.other.title')"
           :click="goToOther"
-          icon="ic:baseline-miscellaneous-services"
           :desc="$t('settings.other.desc')"
+          :title="$t('settings.other.title')"
+          icon="ic:baseline-miscellaneous-services"
         />
 
         <div class="setting-item clickable" @click="showLanguageSelector">
@@ -116,23 +116,23 @@ const goToOther = () => {
               <Icon
                 :width="22"
                 class="item-icon"
-                icon="mdi:translate"
                 color="var(--primary-color)"
+                icon="mdi:translate"
               />
               <span class="item-label">{{ $t('settings.language') }}</span>
             </div>
             <div class="item-right">
               <span class="item-value">{{ currentLanguageName }}</span>
-              <Icon :width="20" icon="mdi:chevron-left" color="var(--primary-color)" />
+              <Icon :width="20" color="var(--primary-color)" icon="mdi:chevron-left" />
             </div>
           </div>
           <div class="setting-desc">{{ $t('settings.languageDesc') }}</div>
         </div>
         <SettingsPageLink
-          :title="$t('settings.about')"
           :click="goToAbout"
-          icon="mdi:information-outline"
           :desc="$t('settings.aboutDesc')"
+          :title="$t('settings.about')"
+          icon="mdi:information-outline"
         />
       </div>
     </div>

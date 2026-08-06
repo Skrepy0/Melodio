@@ -52,15 +52,15 @@ onMounted(() => {
 <template>
   <ion-page>
     <div class="settings-page">
-      <PageTitle :title="$t('settings.interface.title')" :go-back="goBack" />
+      <PageTitle :go-back="goBack" :title="$t('settings.interface.title')" />
 
       <div class="settings-content">
         <FunctionSwitch
+          :change="toggleDarkMode"
+          :checked="isDarkMode"
+          :desc="$t('settings.interface.darkModeDesc')"
           :title="$t('settings.interface.darkMode')"
           icon="mdi:weather-night"
-          :desc="$t('settings.interface.darkModeDesc')"
-          :checked="isDarkMode"
-          :change="toggleDarkMode"
         />
 
         <div class="setting-item theme-color-item">
@@ -69,18 +69,18 @@ onMounted(() => {
               <Icon
                 :width="22"
                 class="item-icon"
-                icon="material-symbols:palette-outline"
                 color="var(--primary-color)"
+                icon="material-symbols:palette-outline"
               />
               <span class="item-label">{{ $t('settings.interface.themeColor') || '主题色' }}</span>
             </div>
             <div class="color-picker-wrapper">
-              <label class="color-picker-trigger" :style="{ backgroundColor: currentColor }">
+              <label :style="{ backgroundColor: currentColor }" class="color-picker-trigger">
                 <input
-                  type="color"
                   :value="currentColor"
-                  @input="handleColorPicker"
                   class="color-picker-input"
+                  type="color"
+                  @input="handleColorPicker"
                 />
               </label>
             </div>
@@ -92,16 +92,16 @@ onMounted(() => {
             <div
               v-for="color in presetColors"
               :key="color"
-              class="preset-color-item"
-              :style="{ backgroundColor: color }"
               :class="{ active: currentColor === color }"
+              :style="{ backgroundColor: color }"
+              class="preset-color-item"
               @click="selectPresetColor(color)"
             >
               <Icon
                 v-if="currentColor === color"
+                color="#fff"
                 icon="material-symbols:check-small"
                 width="18"
-                color="#fff"
               />
             </div>
           </div>

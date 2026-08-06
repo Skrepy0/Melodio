@@ -28,7 +28,7 @@ const openUrl = async (url: string) => {
 <template>
   <ion-page>
     <div class="about-page">
-      <PageTitle :title="$t('about.title')" :go-back="goBack" />
+      <PageTitle :go-back="goBack" :title="$t('about.title')" />
 
       <div class="about-content">
         <div class="app-name">Melodio</div>

@@ -98,8 +98,8 @@ const toggleSelect = () => {
         :icon="selected ? 'mdi:checkbox-marked' : 'mdi:checkbox-blank-outline'"
         :width="22"
         class="checkbox"
-        @click.stop="toggleSelect"
         color="var(--primary-color)"
+        @click.stop="toggleSelect"
       />
     </div>
     <PlaylistItem

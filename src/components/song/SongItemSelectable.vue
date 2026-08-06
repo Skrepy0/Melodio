@@ -101,21 +101,21 @@ const toggleSelect = () => {
         :icon="selected ? 'mdi:checkbox-marked' : 'mdi:checkbox-blank-outline'"
         :width="22"
         class="checkbox"
-        @click.stop="toggleSelect"
         color="var(--primary-color)"
+        @click.stop="toggleSelect"
       />
     </div>
     <SongItem
       :class="{ 'select-mode-offset': selectable }"
       :dropdownOpen="dropdownOpen"
       :on-delete="handleDeleteSong"
+      :onMenuItemSelect="props.onMenuItemSelect"
+      :operations="props.operations"
       :showOperations="props.showOperations"
       :song="song"
       @click="onSongClick"
       @menu-select="onMenuSelect"
       @update:dropdownOpen="(val) => (dropdownOpen = val)"
-      :operations="props.operations"
-      :onMenuItemSelect="props.onMenuItemSelect"
     />
   </div>
 </template>

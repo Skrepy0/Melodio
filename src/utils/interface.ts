@@ -1,3 +1,5 @@
+import { musicClientsConfig } from '@/config'
+
 export interface CircleButtonProps {
   icon: string // 图标名称（Iconify 格式，如 'mdi:heart'）
   size?: number | string // 按钮尺寸（宽高），默认 48px
@@ -111,3 +113,10 @@ export const emptySong = {
   albumArtUri: '',
 }
 export type PlayMode = 'sequential' | 'repeatOne'
+export interface ClientConfig {
+  name: string
+  icon: string
+}
+export type ClientKey = keyof typeof musicClientsConfig
+
+export type MusicClientStatus = Record<ClientKey, boolean>

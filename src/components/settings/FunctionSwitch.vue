@@ -1,4 +1,4 @@
-<script setup lang="ts">
+<script lang="ts" setup>
 import { Icon } from '@iconify/vue'
 
 interface Props {
@@ -7,7 +7,7 @@ interface Props {
   desc: string
   icon_width?: number
   checked: any[] | boolean | Set<any> | undefined
-  change: (e: Event) => void
+  change: any
 }
 const props = defineProps<Props>()
 </script>
@@ -17,9 +17,9 @@ const props = defineProps<Props>()
     <div class="setting-row">
       <div class="item-left">
         <Icon
+          :icon="props.icon"
           :width="props.icon_width ?? 22"
           class="item-icon"
-          :icon="props.icon"
           color="var(--primary-color)"
         />
         <span class="item-label">{{ props.title }}</span>
@@ -33,6 +33,6 @@ const props = defineProps<Props>()
   </div>
 </template>
 
-<style scoped lang="scss">
+<style lang="scss" scoped>
 @use '@/theme/settings.scss';
 </style>

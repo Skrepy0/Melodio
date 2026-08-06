@@ -1,4 +1,4 @@
-<script setup lang="ts">
+<script lang="ts" setup>
 import { Icon } from '@iconify/vue'
 
 interface Props {
@@ -20,17 +20,17 @@ const props = withDefaults(defineProps<Props>(), {
     <div class="setting-row">
       <div class="item-left">
         <Icon
+          :icon="props.icon"
           :width="props.icon_width"
           class="item-icon"
-          :icon="props.icon"
           color="var(--primary-color)"
         />
         <span class="item-label">{{ props.title }}</span>
       </div>
       <div class="item-right">
         <Icon
-          :width="20"
           :icon="props.isLink ? 'mdi:chevron-right' : 'material-symbols:chevron-left'"
+          :width="20"
           color="var(--primary-color)"
         />
       </div>
@@ -39,6 +39,6 @@ const props = withDefaults(defineProps<Props>(), {
   </div>
 </template>
 
-<style scoped lang="scss">
+<style lang="scss" scoped>
 @use '@/theme/settings.scss';
 </style>

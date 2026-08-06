@@ -101,7 +101,7 @@ onUnmounted(() => {
             :src="coverSrc"
             @error="coverSrc = DEFAULT_COVER"
           />
-          <Icon v-else :width="40" icon="mdi:music" color="var(--primary-color)" />
+          <Icon v-else :width="40" color="var(--primary-color)" icon="mdi:music" />
         </div>
         <div class="details">
           <div class="name">{{ currentSong.title }}</div>

@@ -49,43 +49,43 @@ const toggleCanFetchCoverFromWeb = (e: Event) => {
 <template>
   <ion-page>
     <div class="settings-page">
-      <PageTitle :title="$t('settings.accessibility.title')" :go-back="goBack" />
+      <PageTitle :go-back="goBack" :title="$t('settings.accessibility.title')" />
 
       <div class="settings-content">
         <FunctionSwitch
+          :change="togglePinyinSearch"
+          :checked="pinyinSearch"
+          :desc="$t('settings.accessibility.pinyinSearchDesc')"
           :title="$t('settings.accessibility.pinyinSearch')"
           icon="material-symbols-light:language-pinyin"
-          :desc="$t('settings.accessibility.pinyinSearchDesc')"
-          :checked="pinyinSearch"
-          :change="togglePinyinSearch"
         />
         <FunctionSwitch
+          :change="toggleAutoPauseOnDisconnect"
+          :checked="autoPauseOnDisconnect"
+          :desc="$t('settings.accessibility.autoPauseOnDisconnectDesc')"
           :title="$t('settings.accessibility.autoPauseOnDisconnect')"
           icon="ant-design:disconnect-outlined"
-          :desc="$t('settings.accessibility.autoPauseOnDisconnectDesc')"
-          :checked="autoPauseOnDisconnect"
-          :change="toggleAutoPauseOnDisconnect"
         />
         <FunctionSwitch
+          :change="toggleAutoDelInvalidSongs"
+          :checked="autoDelInvalidSongs"
+          :desc="$t('settings.accessibility.autoCleanInvalidSongsDesc')"
           :title="$t('settings.accessibility.autoCleanInvalidSongs')"
           icon="lets-icons:check-fill"
-          :desc="$t('settings.accessibility.autoCleanInvalidSongsDesc')"
-          :checked="autoDelInvalidSongs"
-          :change="toggleAutoDelInvalidSongs"
         />
         <FunctionSwitch
+          :change="toggleCanFetchCoverFromWeb"
+          :checked="canFetchCoverFromWeb"
+          :desc="$t('settings.accessibility.canFetchCoverFromWebDesc')"
           :title="$t('settings.accessibility.canFetchCoverFromWeb')"
           icon="dashicons:cover-image"
-          :desc="$t('settings.accessibility.canFetchCoverFromWebDesc')"
-          :checked="canFetchCoverFromWeb"
-          :change="toggleCanFetchCoverFromWeb"
         />
         <FunctionSwitch
+          :change="toggleAudioFocusPause"
+          :checked="audioFocusPause"
+          :desc="$t('settings.accessibility.audioFocusPauseDesc')"
           :title="$t('settings.accessibility.audioFocusPause')"
           icon="lucide:focus"
-          :desc="$t('settings.accessibility.audioFocusPauseDesc')"
-          :checked="audioFocusPause"
-          :change="toggleAudioFocusPause"
         />
       </div>
     </div>
