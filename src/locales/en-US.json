@@ -219,8 +219,10 @@
       "title": "Online Fetching",
       "desc": "Configure online song search, download, and associated settings.",
       "music_client": {
-        "title": "Music Sources",
-        "desc": "Configure online music source settings."
+        "title": "Music Source Configuration",
+        "desc": "Configure online music sources. Too many sources may slow down search performance.",
+        "client_limit": "Client Request Limit",
+        "client_limit_desc": "Limit the number of songs requested per client. Too high a value may significantly reduce search speed."
       }
     },
     "accessibility": {
@@ -298,6 +300,25 @@
       "result": {
         "success": "Blacklist cleared",
         "emptyList": "The blacklist is empty!"
+      }
+    }
+  },
+  "input_box": {
+    "placeholder": "Configuration value",
+    "error": {
+      "empty": "Input cannot be empty",
+      "integer": {
+        "invalid": "Invalid integer",
+        "min": "Value cannot be less than {min}",
+        "max": "Value cannot be greater than {max}"
+      },
+      "decimal": {
+        "invalid": "Invalid decimal number",
+        "min": "Value cannot be less than {min}",
+        "max": "Value cannot be greater than {max}"
+      },
+      "string": {
+        "max": "String length cannot exceed {max}"
       }
     }
   }

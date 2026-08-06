@@ -1,4 +1,4 @@
-import { Playlist, PlayMode, Song } from '@/utils/interface'
+import { ClientKey, MusicClientStatus, Playlist, PlayMode, Song } from '@/utils/interface'
 import { defineStore } from 'pinia'
 import { computed, ref, watch } from 'vue'
 import { audio } from '@/utils/createAudio'
@@ -9,6 +9,7 @@ import { registerPlugin } from '@capacitor/core'
 import type { SystemBarPlugin } from '@/plugins/system-bar/definitions'
 import { requestMediaPermissions } from '@/utils/audioScanner'
 import { mixColors } from '@/utils/color'
+import { musicClients } from '@/config'
 
 const SystemBar = registerPlugin<SystemBarPlugin>('SystemBar')
 
@@ -31,8 +32,58 @@ export const useAppStore = defineStore('app', () => {
   const canFetchCoverFromWeb = ref(true)
   const audioFocusPause = ref(true)
   const blacklist = ref<Song[]>([])
-  const firstPlayFlag = ref(false) // 记录是否是应用初始化后第一次播放
+  const firstPlayFlag = ref(false)
   const themeColor = ref<string>('#007aff')
+  const musicClientStatus = ref<MusicClientStatus>()
+  const musicClientLimitation = ref<number>(5)
+  function initMusicClientLimitation() {
+    const stored = localStorage.getItem('music_client_limitation')
+    musicClientLimitation.value = stored ? parseInt(stored) : 5
+  }
+  function getMusicClientLimitation() {
+    return musicClientLimitation.value
+  }
+  function setMusicClientLimitation(limitation: number) {
+    musicClientLimitation.value = limitation
+    localStorage.setItem('music_client_limitation', String(limitation))
+  }
+
+  function initMusicClientStatus() {
+    const defaultStatus = Object.fromEntries(
+      Object.keys(musicClients).map((key) => [key, false])
+    ) as MusicClientStatus
+
+    const stored = localStorage.getItem('music_client_status')
+    musicClientStatus.value = stored ? (JSON.parse(stored) as MusicClientStatus) : defaultStatus
+  }
+  function getMusicClientStatus() {
+    return musicClientStatus.value
+  }
+  function setMusicClientStatus(status: MusicClientStatus) {
+    musicClientStatus.value = status
+    saveMusicClientStatus()
+  }
+  function setClients(keys: ClientKey[], status: boolean) {
+    if (!Array.isArray(keys)) return
+    const statusObj = musicClientStatus.value
+    if (!statusObj) return
+
+    keys.forEach((key) => {
+      statusObj[key] = status
+    })
+    saveMusicClientStatus()
+  }
+  function saveMusicClientStatus() {
+    localStorage.setItem('music_client_status', JSON.stringify(musicClientStatus.value))
+  }
+  function getEnabledClients(): string[] {
+    const status = musicClientStatus.value
+    if (!status) return []
+
+    return (Object.keys(musicClients) as Array<keyof typeof musicClients>)
+      .filter((key) => status[key])
+      .map((key) => musicClients[key])
+  }
   function initThemeColor() {
     setThemeColor(localStorage.getItem('theme_color') ?? themeColor.value)
   }
@@ -63,7 +114,8 @@ export const useAppStore = defineStore('app', () => {
     const obj = localStorage.getItem('blacklist')
     if (obj) {
       const parsed = JSON.parse(obj)
-      if (Array.isArray(parsed.data)) blacklist.value = parsed.data
+      if (Array.isArray(parsed)) blacklist.value = parsed
+      else if (Array.isArray(parsed.data)) blacklist.value = parsed.data
     }
   }
   function getBlacklist() {
@@ -74,7 +126,7 @@ export const useAppStore = defineStore('app', () => {
     saveBlacklist()
   }
   function saveBlacklist() {
-    localStorage.setItem('blacklist', JSON.stringify({ data: blacklist.value }))
+    localStorage.setItem('blacklist', JSON.stringify(blacklist.value))
   }
   function addToBlacklist(val: Song) {
     blacklist.value.push(val)
@@ -284,7 +336,7 @@ export const useAppStore = defineStore('app', () => {
     return songLists.value
   }
   function saveSongLists() {
-    localStorage.setItem('songLists', JSON.stringify({ data: songLists.value }))
+    localStorage.setItem('songLists', JSON.stringify(songLists.value))
   }
   function setSongLists(list: Playlist[]) {
     songLists.value = list
@@ -298,7 +350,8 @@ export const useAppStore = defineStore('app', () => {
     const obj = localStorage.getItem('songLists')
     if (obj) {
       const parsed = JSON.parse(obj)
-      if (Array.isArray(parsed.data)) songLists.value = parsed.data
+      if (Array.isArray(parsed)) songLists.value = parsed
+      else if (Array.isArray(parsed.data)) songLists.value = parsed.data
     }
   }
 
@@ -315,7 +368,7 @@ export const useAppStore = defineStore('app', () => {
     )
   }
   function savePlayQueue() {
-    localStorage.setItem('playQueue', JSON.stringify({ data: playQueue.value }))
+    localStorage.setItem('playQueue', JSON.stringify(playQueue.value))
   }
   function saveLikeList() {
     localStorage.setItem(
@@ -331,10 +384,7 @@ export const useAppStore = defineStore('app', () => {
     )
   }
   function saveCurrentPlayListIndex() {
-    localStorage.setItem(
-      'currentPlayListIndex',
-      JSON.stringify({ data: currentPlayListIndex.value })
-    )
+    localStorage.setItem('currentPlayListIndex', JSON.stringify(currentPlayListIndex.value))
   }
 
   const currentSong = computed(() => playQueue.value[playData.value.currentIndex] || null)
@@ -478,6 +528,8 @@ export const useAppStore = defineStore('app', () => {
       initLanguage()
       initThemeColor()
       loadInitialDarkMode()
+      initMusicClientLimitation()
+      initMusicClientStatus()
       // Request media permissions on app startup so the user
       // doesn't have to grant them later when scanning for music
       requestMediaPermissions().catch(() => {})
@@ -518,7 +570,7 @@ export const useAppStore = defineStore('app', () => {
 
   function setAllSongs(songs: Song[]) {
     allSongs.value = songs
-    localStorage.setItem('allSongs', JSON.stringify({ data: songs }))
+    localStorage.setItem('allSongs', JSON.stringify(songs))
   }
   function getAllSongs() {
     return allSongs.value
@@ -615,17 +667,16 @@ export const useAppStore = defineStore('app', () => {
     const obj = localStorage.getItem('allSongs')
     if (obj) {
       const parsed = JSON.parse(obj)
-      if (Array.isArray(parsed.data)) allSongs.value = parsed.data
+      if (Array.isArray(parsed)) allSongs.value = parsed
+      else if (Array.isArray(parsed.data)) allSongs.value = parsed.data
     }
   }
   function initPlayQueue() {
     const obj = localStorage.getItem('playQueue')
     if (obj) {
-      try {
-        playQueue.value = JSON.parse(obj).data || []
-      } catch (e) {
-        console.error(e)
-      }
+      const parsed = JSON.parse(obj)
+      if (Array.isArray(parsed)) playQueue.value = parsed
+      else if (Array.isArray(parsed.data)) playQueue.value = parsed.data
     }
   }
   function initPlayData() {
@@ -672,7 +723,10 @@ export const useAppStore = defineStore('app', () => {
     const obj = localStorage.getItem('currentPlayListIndex')
     if (obj) {
       try {
-        currentPlayListIndex.value = JSON.parse(obj).data ?? 0
+        currentPlayListIndex.value = JSON.parse(obj) ?? 0
+        if (currentPlayListIndex.value === 0) {
+          currentPlayListIndex.value = JSON.parse(obj).data ?? 0
+        }
       } catch (e) {
         console.error(e)
       }
@@ -757,5 +811,12 @@ export const useAppStore = defineStore('app', () => {
     markFirstPlayFlag,
     getThemeColor,
     setThemeColor,
+    musicClients,
+    setClients,
+    getEnabledClients,
+    getMusicClientStatus,
+    setMusicClientStatus,
+    getMusicClientLimitation,
+    setMusicClientLimitation,
   }
 })

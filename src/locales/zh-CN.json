@@ -220,7 +220,9 @@
       "desc": "配置在线搜索歌曲, 下载歌曲等相关参数",
       "music_client": {
         "title": "音乐源配置",
-        "desc": "配置在线音乐源"
+        "desc": "配置在线音乐源, 过多的音乐源会导致搜索速度下降",
+        "client_limit": "客户端请求限制",
+        "client_limit_desc": "每个客户端请求的歌曲数量限制, 过大会使搜索速度显著下降"
       }
     },
     "accessibility": {
@@ -296,6 +298,25 @@
       "result": {
         "success": "已清空黑名单",
         "emptyList": "此黑名单为空！"
+      }
+    }
+  },
+  "input_box": {
+    "placeholder": "配置值",
+    "error": {
+      "empty": "输入不能为空",
+      "integer": {
+        "invalid": "无效的整数",
+        "min": "值不能小于 {min}",
+        "max": "值不能大于 {max}"
+      },
+      "decimal": {
+        "invalid": "无效的小数",
+        "min": "值不能小于 {min}",
+        "max": "值不能大于 {max}"
+      },
+      "string": {
+        "max": "输入的字符串长度不能大于 {max}"
       }
     }
   }
