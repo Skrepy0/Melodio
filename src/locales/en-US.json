@@ -6,6 +6,7 @@
       "playlists": "Playlists"
     },
     "operations": {
+      "search": "Online Search",
       "newPlaylist": "New Playlist",
       "scanLibrary": "Scan Library",
       "blacklist": "Blacklist",
@@ -320,6 +321,19 @@
       "string": {
         "max": "String length cannot exceed {max}"
       }
+    }
+  },
+  "search": {
+    "title": "Online Search",
+    "searchPlaceholder": "Search songs, artists, albums",
+    "initialHint": "Enter keywords to start searching~",
+    "noResults": "No content found",
+    "loading": "Searching, please wait...",
+    "operations": {
+      "selectAll": "Select All",
+      "clear": "Clear",
+      "download": "Download Selected",
+      "cancel": "Cancel"
     }
   }
 }

@@ -8,6 +8,7 @@ import android.media.AudioManager;
 import android.os.Bundle;
 
 import com.getcapacitor.BridgeActivity;
+import com.skrepy.melodio.plugins.MusicSignerPlugin;
 import com.skrepy.melodio.plugins.NativeAudioPlugin;
 import com.skrepy.melodio.plugins.SystemBarPlugin;
 
@@ -29,6 +30,7 @@ public class MainActivity extends BridgeActivity {
     protected void load() {
         this.registerPlugin(NativeAudioPlugin.class);
         this.registerPlugin(SystemBarPlugin.class);
+        this.registerPlugin(MusicSignerPlugin.class);
         super.load();
     }
 

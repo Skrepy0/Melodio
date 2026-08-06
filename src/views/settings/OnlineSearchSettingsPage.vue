@@ -2,7 +2,7 @@
 import { useAppStore } from '@/stores/app'
 import { IonPage } from '@ionic/vue'
 import { useRouter } from 'vue-router'
-import PageTitle from '@/components/settings/PageTitle.vue'
+import PageTitle from '@/components/PageTitle.vue'
 import SettingsPageLink from '@/components/settings/SettingsPageLink.vue'
 import InputBox from '@/components/settings/InputBox.vue'
 import { ref, watch } from 'vue'

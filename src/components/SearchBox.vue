@@ -9,7 +9,8 @@ interface Props {
   clearable?: boolean // 是否显示清除按钮
   disabled?: boolean // 是否禁用
   size?: 'small' | 'medium' | 'large' // 尺寸
-  debounce?: number // 防抖延迟（ms），用于实时搜索
+  realTimeSearch?: boolean // 是否启用实时搜索（输入时自动触发搜索）
+  debounce?: number // 防抖延迟（ms），仅当 realTimeSearch 为 true 时生效
   autofocus?: boolean // 自动聚焦
 }
 
@@ -20,6 +21,7 @@ const props = withDefaults(defineProps<Props>(), {
   clearable: true,
   disabled: false,
   size: 'medium',
+  realTimeSearch: true,
   debounce: 300,
   autofocus: false,
 })
@@ -61,14 +63,16 @@ const onInput = (event: Event) => {
   const value = (event.target as HTMLInputElement).value
   emit('input', value)
   emit('update:modelValue', value)
-  if (debounceTimer) clearTimeout(debounceTimer)
-  if (props.debounce > 0) {
-    debounceTimer = setTimeout(() => {
+
+  if (props.realTimeSearch) {
+    if (debounceTimer) clearTimeout(debounceTimer)
+    if (props.debounce > 0) {
+      debounceTimer = setTimeout(() => {
+        emit('search', value)
+      }, props.debounce)
+    } else {
       emit('search', value)
-    }, props.debounce)
-  } else {
-    // 如果不需要防抖，可以立即触发 search（注意会与回车/点击重复触发）
-    // 通常在实时搜索时 debounce > 0 使用，此处不主动调用 search 避免重复
+    }
   }
 }
 

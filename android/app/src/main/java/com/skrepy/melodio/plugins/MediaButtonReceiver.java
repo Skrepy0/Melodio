@@ -33,7 +33,7 @@ public class MediaButtonReceiver extends BroadcastReceiver {
         if (!isDown) return;
 
         AudioManager audioManager =
-            (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
+                (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
         if (audioManager != null) {
             audioManager.dispatchMediaKeyEvent(event);
         }

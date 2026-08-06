@@ -4,7 +4,7 @@ import { IonPage } from '@ionic/vue'
 import { Icon } from '@iconify/vue'
 import { onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import PageTitle from '@/components/settings/PageTitle.vue'
+import PageTitle from '@/components/PageTitle.vue'
 import FunctionSwitch from '@/components/settings/FunctionSwitch.vue'
 
 const appStore = useAppStore()

@@ -163,8 +163,8 @@ public class NativeAudioPlugin extends Plugin {
     private void initSession() {
         mediaSession = new MediaSessionCompat(getContext(), "MelodioAudio");
         mediaSession.setFlags(
-            MediaSessionCompat.FLAG_HANDLES_MEDIA_BUTTONS |
-            MediaSessionCompat.FLAG_HANDLES_TRANSPORT_CONTROLS
+                MediaSessionCompat.FLAG_HANDLES_MEDIA_BUTTONS |
+                        MediaSessionCompat.FLAG_HANDLES_TRANSPORT_CONTROLS
         );
         mediaSession.setActive(true);
 
@@ -381,7 +381,9 @@ public class NativeAudioPlugin extends Plugin {
         }
     }
 
-    /** Resolve the current pending call. Safe to call when none is pending. */
+    /**
+     * Resolve the current pending call. Safe to call when none is pending.
+     */
     private void resolvePendingCall() {
         if (pendingPlayCall != null) {
             pendingPlayCall.resolve();
@@ -389,7 +391,9 @@ public class NativeAudioPlugin extends Plugin {
         }
     }
 
-    /** Reject the current pending call with a reason. Safe to call when none is pending. */
+    /**
+     * Reject the current pending call with a reason. Safe to call when none is pending.
+     */
     private void rejectPendingCall(String reason) {
         if (pendingPlayCall != null) {
             Log.d(TAG, "Rejecting pending call: " + reason);
@@ -729,7 +733,7 @@ public class NativeAudioPlugin extends Plugin {
         float rate = (rateObj != null) ? rateObj.floatValue() : 1.0f;
         rate = Math.max(0.5f, Math.min(2.0f, rate));
         this.playbackSpeed = rate;
-        applyPlaybackRate(); 
+        applyPlaybackRate();
         call.resolve();
     }
 

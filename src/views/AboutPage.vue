@@ -5,7 +5,7 @@ import { Icon } from '@iconify/vue'
 import { IonPage } from '@ionic/vue'
 import { Capacitor } from '@capacitor/core'
 import { Browser } from '@capacitor/browser'
-import PageTitle from '@/components/settings/PageTitle.vue'
+import PageTitle from '@/components/PageTitle.vue'
 
 const router = useRouter()
 const version = ref(__APP_VERSION__)

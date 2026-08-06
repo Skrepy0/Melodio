@@ -12,6 +12,7 @@ import AccessibilityPage from '@/views/settings/AccessibilityPage.vue'
 import OtherSettingsPage from '@/views/settings/OtherSettingsPage.vue'
 import OnlineSearchSettingsPage from '@/views/settings/OnlineSearchSettingsPage.vue'
 import MusicClientSettingsPage from '@/views/settings/MusicClientSettingsPage.vue'
+import OnlineSearchPage from '@/views/OnlineSearchPage.vue'
 
 const routes: Array<RouteRecordRaw> = [
   {
@@ -23,6 +24,7 @@ const routes: Array<RouteRecordRaw> = [
     name: 'Home',
     component: HomePage,
   },
+  { path: '/search', name: 'Search', component: OnlineSearchPage },
   { path: '/settings', name: 'Settings', component: SettingsPage },
   { path: '/settings/interface', name: 'Interface Settings', component: InterfaceSettingsPage },
   {

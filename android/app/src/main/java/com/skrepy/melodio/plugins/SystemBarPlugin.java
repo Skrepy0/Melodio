@@ -76,7 +76,7 @@ public class SystemBarPlugin extends Plugin {
             boolean lightBars = !isDark;
 
             WindowInsetsControllerCompat insetsController =
-                WindowCompat.getInsetsController(window, window.getDecorView());
+                    WindowCompat.getInsetsController(window, window.getDecorView());
 
             if (insetsController != null) {
                 insetsController.setAppearanceLightStatusBars(lightBars);
@@ -84,7 +84,7 @@ public class SystemBarPlugin extends Plugin {
             }
 
             Log.d(TAG, "Applied " + mode + " theme: barColor=" +
-                  String.format("#%08X", bgColor) + ", lightBars=" + lightBars);
+                    String.format("#%08X", bgColor) + ", lightBars=" + lightBars);
         });
 
         JSObject result = new JSObject();

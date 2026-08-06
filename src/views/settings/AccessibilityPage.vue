@@ -3,7 +3,7 @@ import { useAppStore } from '@/stores/app'
 import { IonPage } from '@ionic/vue'
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import PageTitle from '@/components/settings/PageTitle.vue'
+import PageTitle from '@/components/PageTitle.vue'
 import FunctionSwitch from '@/components/settings/FunctionSwitch.vue'
 
 const appStore = useAppStore()

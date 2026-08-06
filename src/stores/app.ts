@@ -10,9 +10,10 @@ import type { SystemBarPlugin } from '@/plugins/system-bar/definitions'
 import { requestMediaPermissions } from '@/utils/audioScanner'
 import { mixColors } from '@/utils/color'
 import { musicClients } from '@/config'
+import { MusicSignerPlugin } from '@/plugins/music-signer/definitions'
 
 const SystemBar = registerPlugin<SystemBarPlugin>('SystemBar')
-
+export const MusicSigner = registerPlugin<MusicSignerPlugin>('MusicSigner')
 const SUPPORTED_LOCALES = ['zh-CN', 'en-US']
 function getSystemLanguage(): string {
   const browserLang = navigator.language

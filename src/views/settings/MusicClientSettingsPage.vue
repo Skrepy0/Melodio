@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { IonPage } from '@ionic/vue'
 import router from '@/router'
-import PageTitle from '@/components/settings/PageTitle.vue'
+import PageTitle from '@/components/PageTitle.vue'
 import MusicClientConfig from '@/components/settings/MusicClientConfig.vue'
 import { computed, ref } from 'vue'
 import { musicClientsConfig } from '@/config'

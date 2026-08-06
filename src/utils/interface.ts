@@ -113,10 +113,26 @@ export const emptySong = {
   albumArtUri: '',
 }
 export type PlayMode = 'sequential' | 'repeatOne'
-export interface ClientConfig {
-  name: string
-  icon: string
-}
+
 export type ClientKey = keyof typeof musicClientsConfig
 
 export type MusicClientStatus = Record<ClientKey, boolean>
+
+export interface OnlineSong {
+  source: string
+  name: string
+  singers: string
+  album: string
+  ext: string
+  file_size_bytes: number
+  duration: number
+  lyric: string | null
+  cover_url: string | null
+  download_url: string | null
+  download_url_status: {
+    ok: boolean
+    status_code: number
+    reason: string[]
+  }
+  identifier: string
+}

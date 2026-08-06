@@ -6,6 +6,7 @@
       "playlists": "播放列表"
     },
     "operations": {
+      "search": "在线搜索歌曲",
       "newPlaylist": "新建播放列表",
       "scanLibrary": "扫描曲库",
       "blacklist": "黑名单",
@@ -318,6 +319,19 @@
       "string": {
         "max": "输入的字符串长度不能大于 {max}"
       }
+    }
+  },
+  "search": {
+    "title": "在线搜索",
+    "searchPlaceholder": "搜索歌曲、歌手、专辑",
+    "initialHint": "输入关键词开始搜索~",
+    "noResults": "未找到相关内容",
+    "loading": "搜索中, 请耐心等待...",
+    "operations": {
+      "selectAll": "全选",
+      "clear": "清空",
+      "download": "下载选中",
+      "cancel": "取消"
     }
   }
 }

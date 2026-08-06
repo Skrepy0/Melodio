@@ -5,7 +5,7 @@ import { useRouter } from 'vue-router'
 import { Icon } from '@iconify/vue'
 import { useAppStore } from '@/stores/app'
 import { useI18n } from 'vue-i18n'
-import PageTitle from '@/components/settings/PageTitle.vue'
+import PageTitle from '@/components/PageTitle.vue'
 import SettingsPageLink from '@/components/settings/SettingsPageLink.vue'
 
 const { t } = useI18n()

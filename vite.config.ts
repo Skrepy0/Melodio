@@ -27,4 +27,13 @@ export default defineConfig({
   define: {
     __APP_VERSION__: JSON.stringify(pkg.version),
   },
+  server: {
+    proxy: {
+      '/api': {
+        target: 'https://melodio-backend-mu.vercel.app',
+        changeOrigin: true,
+        secure: false,
+      },
+    },
+  },
 })

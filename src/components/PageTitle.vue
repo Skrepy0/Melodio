@@ -25,5 +25,5 @@ const props = withDefaults(defineProps<Props>(), {
 </template>
 
 <style lang="scss" scoped>
-@use '@/theme/settings.scss';
+@use '@/theme/settings';
 </style>

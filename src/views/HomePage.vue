@@ -46,6 +46,7 @@ const playShownSongs = async () => {
 }
 
 const operations = computed<DropdownItem[]>(() => [
+  { icon: 'ic:round-search', description: t('home.operations.search'), value: 'search' },
   {
     icon: 'ic:baseline-plus',
     description: t('home.operations.newPlaylist'),
@@ -244,6 +245,7 @@ const synchroShowPlaylists = () => {
 const onSelectOperation = async (item: DropdownItem) => {
   console.log('选中:', item.description, item.value)
   if (item.value === 'settings') await router.push('/settings')
+  else if (item.value === 'search') await router.push('/search')
   else if (item.value === 'scan-songs') await loadAllSongs()
   else if (item.value === 'new-songs-list') {
     const name = await showPrompt({
