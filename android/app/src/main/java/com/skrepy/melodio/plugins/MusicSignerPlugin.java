@@ -1,5 +1,6 @@
 package com.skrepy.melodio.plugins;
 
+import android.annotation.SuppressLint;
 import android.content.ContentValues;
 import android.content.Intent;
 import android.database.Cursor;
@@ -30,6 +31,8 @@ import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
+import java.security.SecureRandom;
+import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -37,6 +40,9 @@ import java.util.concurrent.TimeUnit;
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
 
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -49,6 +55,42 @@ public class MusicSignerPlugin extends Plugin {
 
     private static final String TAG = "MusicSignerPlugin";
     private static final String backendUrl = "https://api-melodio.skrepy.dpdns.org";
+    private static final OkHttpClient unsafeDownloadClient = createUnsafeOkHttpClient();
+
+    private static OkHttpClient createUnsafeOkHttpClient() {
+        try {
+            @SuppressLint("CustomX509TrustManager") final TrustManager[] trustAllCerts = new TrustManager[]{
+                    new X509TrustManager() {
+                        @SuppressLint("TrustAllX509TrustManager")
+                        @Override
+                        public void checkClientTrusted(X509Certificate[] chain, String authType) {
+                        }
+
+                        @SuppressLint("TrustAllX509TrustManager")
+                        @Override
+                        public void checkServerTrusted(X509Certificate[] chain, String authType) {
+                        }
+
+                        @Override
+                        public X509Certificate[] getAcceptedIssuers() {
+                            return new X509Certificate[0];
+                        }
+                    }
+            };
+            final SSLContext sslContext = SSLContext.getInstance("SSL");
+            sslContext.init(null, trustAllCerts, new SecureRandom());
+
+            return new OkHttpClient.Builder()
+                    .sslSocketFactory(sslContext.getSocketFactory(), (X509TrustManager) trustAllCerts[0])
+                    .hostnameVerifier((hostname, session) -> true)
+                    .connectTimeout(30, TimeUnit.SECONDS)
+                    .readTimeout(180, TimeUnit.SECONDS)
+                    .writeTimeout(60, TimeUnit.SECONDS)
+                    .build();
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
 
     @PluginMethod
     public void search(PluginCall call) {
@@ -167,12 +209,6 @@ public class MusicSignerPlugin extends Plugin {
         performDownload(call, url, fileName);
     }
 
-    /**
-     * 下载文件并注册到系统媒体库，使扫描器能够发现。
-     * 根据Android版本使用不同的存储策略：
-     * - Android 10+：通过MediaStore API直接写入公共Music目录，无需权限且自动索引。
-     * - Android 9及以下：回退到应用私有外部目录，然后触发媒体扫描。
-     */
     private void performDownload(PluginCall call, String url, String fileName) {
         Request request = new Request.Builder()
                 .url(url)
@@ -180,21 +216,18 @@ public class MusicSignerPlugin extends Plugin {
                 .addHeader("Accept", "*/*")
                 .addHeader("Connection", "keep-alive")
                 .build();
-        OkHttpClient client = new OkHttpClient.Builder()
-                .connectTimeout(30, TimeUnit.SECONDS)
-                .readTimeout(30, TimeUnit.SECONDS)
-                .writeTimeout(30, TimeUnit.SECONDS)
-                .build();
+
         try {
-            Response response = client.newCall(request).execute();
+            Response response = unsafeDownloadClient.newCall(request).execute();
             if (!response.isSuccessful()) {
                 call.reject("Download failed: " + response.code());
                 return;
             }
 
             String mimeType = response.header("Content-Type");
-            if (mimeType == null || mimeType.isEmpty()) {
-                mimeType = "audio/*";
+
+            if (mimeType == null || !mimeType.startsWith("audio/")) {
+                mimeType = "audio/flac";
             }
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -208,9 +241,6 @@ public class MusicSignerPlugin extends Plugin {
         }
     }
 
-    /**
-     * Android 10+ 使用MediaStore插入，直接写入公共Music目录
-     */
     private void downloadViaMediaStore(PluginCall call, Response response, String fileName, String mimeType) throws IOException {
         ContentValues values = new ContentValues();
         values.put(MediaStore.Audio.Media.DISPLAY_NAME, fileName);
@@ -235,7 +265,6 @@ public class MusicSignerPlugin extends Plugin {
                 fileSize = sink.writeAll(response.body().source());
             }
 
-            // 写入完成，取消pending状态
             values.clear();
             values.put(MediaStore.Audio.Media.IS_PENDING, 0);
             getContext().getContentResolver().update(itemUri, values, null, null);
@@ -248,9 +277,6 @@ public class MusicSignerPlugin extends Plugin {
         }
     }
 
-    /**
-     * Android 9及以下写入私有目录，并触发媒体扫描
-     */
     private void downloadToPrivateDirAndScan(PluginCall call, Response response, String fileName) throws IOException {
         File downloadDir = new File(
                 getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "music");
@@ -265,11 +291,9 @@ public class MusicSignerPlugin extends Plugin {
             fileSize = sink.writeAll(response.body().source());
         }
 
-        // 触发媒体扫描（发送广播 + 主动扫描该文件）
         Intent scanIntent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
         scanIntent.setData(Uri.fromFile(outputFile));
         getContext().sendBroadcast(scanIntent);
-
         MediaScannerConnection.scanFile(getContext(),
                 new String[]{outputFile.getAbsolutePath()}, null, null);
 
