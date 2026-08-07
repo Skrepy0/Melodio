@@ -1,5 +1,6 @@
 import { Filesystem } from '@capacitor/filesystem'
-import { Song } from './interface'
+import { OnlineSong, Song } from './interface'
+import { Capacitor } from '@capacitor/core'
 
 export const getAccessibleUrl = (path: string): string => {
   if (!path) return ''
@@ -9,6 +10,14 @@ export const getAccessibleUrl = (path: string): string => {
     path.startsWith('http://localhost/_capacitor_file_/')
   ) {
     return path
+  }
+
+  if (path.startsWith('http://') || path.startsWith('https://')) {
+    return path
+  }
+
+  if (path.startsWith('content://')) {
+    return Capacitor.convertFileSrc(path)
   }
 
   if (path.startsWith('file://')) {
@@ -133,4 +142,24 @@ export async function fetchCoverFromWeb(title: string, artist: string): Promise<
     console.warn('iTunes 封面搜索失败:', e)
   }
   return null
+}
+
+export function getSongFromOnlineSong(song: OnlineSong): Song {
+  return {
+    id: song.identifier,
+    displayName: song.name,
+    uri: song.download_url || '',
+    size: song.file_size_bytes,
+    mimeType: song.ext,
+    dateAdded: 0, //todo
+    dateModified: 0, //todo
+    mediaType: 'audio',
+    duration: song.duration * 1000,
+    title: song.name,
+    artist: song.singers,
+    album: song.album,
+    track: 0,
+    year: 0,
+    albumArtUri: song.cover_url || '',
+  }
 }

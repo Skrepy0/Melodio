@@ -2,7 +2,7 @@
 import { IonPage } from '@ionic/vue'
 import { Icon } from '@iconify/vue'
 import { nextTick, ref, watch } from 'vue'
-import { DropdownItem, OnlineSong } from '@/utils/interface'
+import { DropdownItem, OnlineSong, Song } from '@/utils/interface'
 import { useDropdownManager } from '@/composables/useDropdownManager'
 import OnlineSongItemSelectable from '@/components/song/OnlineSongItemSelectable.vue'
 import SearchBox from '@/components/SearchBox.vue'
@@ -11,8 +11,11 @@ import router from '@/router'
 import toast from '@/utils/createToast'
 import { MusicSigner, useAppStore } from '@/stores/app'
 import { downloadMultipleSongs, downloadMusic } from '@/utils/musicDownloader'
-import { scanAllAudio } from '@/utils/audioScanner'
 import { useI18n } from 'vue-i18n'
+import NowPlayingBar from '@/components/NowPlayingBar.vue'
+import { getAccessibleUrl, getSongFromOnlineSong, isInList } from '@/utils/functions'
+import { audio } from '@/utils/createAudio'
+import { showPlaylistSelector } from '@/utils/createPlaylistSelector'
 
 const { t } = useI18n()
 const appStore = useAppStore()
@@ -31,12 +34,20 @@ const downloadingIds = ref<Set<string>>(new Set()) // 单曲下载中
 const isDownloadingBatch = ref(false) // 批量下载中
 
 const operations = ref<DropdownItem[]>([
-  // { icon: 'line-md:play-filled', description: 'Play', value: 'play' },
+  { icon: 'line-md:play-filled', description: 'Play', value: 'play' },
   {
     icon: 'material-symbols:download',
     description: t('search.song_operations.download'),
     value: 'download',
   },
+  {
+    icon: 'mdi:playlist-plus',
+    description: t('song.menu.addToPlaylist'),
+    value: 'addToPlaylist',
+  },
+  { icon: 'mdi:heart-outline', description: t('song.menu.like'), value: 'like' },
+  { icon: 'mi:next', description: t('song.menu.playNext'), value: 'next' },
+  { icon: 'mdi:queue', description: t('song.menu.addToQueue'), value: 'queue' },
   { icon: 'bx:detail', description: t('search.song_operations.detail'), value: 'detail' },
 ])
 
@@ -110,14 +121,106 @@ const onMenuItemSelect = async (item: DropdownItem) => {
     try {
       await downloadMusic(song)
       toast.success(`《${song.name}》下载成功！`)
-      await reloadAllSongs()
     } catch (error: any) {
       console.error(`下载失败: ${song.name}`, error)
       toast.error(`《${song.name}》下载失败: ${error.message || '未知错误'}`)
     } finally {
       downloadingIds.value.delete(song.identifier)
     }
+  } else if (item.value === 'play') {
+    await onItemClick(song)
+  } else if (item.value === 'detail') {
+    //todo
+  } else if (item.value === 'queue') {
+    addToQueue([song])
+  } else if (item.value === 'addToPlaylist') {
+    await addToSongList([song])
+  } else if (item.value === 'like') {
+    const targetSong: Song = getSongFromOnlineSong(song)
+    if (isInList(targetSong.id, appStore.getLikeList().data)) {
+      toast.warning(t('song.toast.alreadyLiked'))
+      return
+    }
+    appStore.mergeLikeListData([targetSong])
+    toast.success(t('song.toast.liked'))
   }
+}
+const addToQueue = (songs: OnlineSong[]) => {
+  const queue = appStore.getPlayQueue()
+  const newSongs: Song[] = []
+  songs.forEach((o_song) => {
+    const song = getSongFromOnlineSong(o_song)
+    if (selectedIds.value.has(song.id) && !isInList(song.id, queue)) {
+      newSongs.push(song)
+    }
+  })
+  if (newSongs.length > 0) {
+    appStore.addListToQueue(newSongs)
+    toast.success(t('playList.toast.addedToQueue', { count: newSongs.length }))
+  } else {
+    toast.warning(t('playList.toast.alreadyInQueue'))
+  }
+}
+const addSelectedToQueue = () => {
+  const selectedSongs = searchResults.value.filter(
+    (song) => selectedIds.value.has(song.identifier) && song.download_url?.trim()
+  )
+  addToQueue(selectedSongs)
+  exitSelectMode()
+}
+const addToSongList = async (songs: OnlineSong[]) => {
+  const selected = await showPlaylistSelector(
+    [appStore.getLikeList(), ...appStore.getSongLists()],
+    t('playlistSelector.title'),
+    t('playList.like.title'),
+    t('playList.like.description')
+  )
+  if (selected) {
+    if (selected.id === 0) {
+      const likeList = appStore.getLikeList().data
+      const newSongs: Song[] = []
+      songs.forEach((o_song) => {
+        const song = getSongFromOnlineSong(o_song)
+        if (selectedIds.value.has(song.id) && !isInList(song.id, likeList)) {
+          newSongs.push(song)
+        }
+      })
+      if (newSongs.length > 0) {
+        appStore.mergeLikeListData(newSongs)
+        toast.success(
+          t('playList.toast.addedToPlaylist', {
+            count: newSongs.length,
+            name: selected.id === 0 ? t('playList.like.title') : selected.name,
+          })
+        )
+      } else {
+        toast.warning(t('playList.toast.alreadyInLike'))
+      }
+    } else {
+      const list: Song[] = []
+      songs.forEach((o_song) => {
+        const song = getSongFromOnlineSong(o_song)
+        if (selectedIds.value.has(song.id) && !isInList(song.id, selected.data)) {
+          list.push(song)
+        }
+      })
+      if (list.length > 0) {
+        appStore.setSongListDataById(selected.id, [...selected.data, ...list])
+        toast.success(
+          t('playList.toast.addedToPlaylist', { count: list.length, name: selected.name })
+        )
+      } else {
+        toast.warning(t('playList.toast.alreadyInPlaylist'))
+      }
+    }
+  }
+}
+const addSelectedToSongList = async () => {
+  const selectedSongs = searchResults.value.filter(
+    (song) => selectedIds.value.has(song.identifier) && song.download_url?.trim()
+  )
+  await addToSongList(selectedSongs)
+  exitSelectMode()
 }
 
 const enterSelectMode = (songId?: string) => {
@@ -164,16 +267,50 @@ const clearSelection = () => {
   selectedIds.value = new Set()
   exitSelectMode()
 }
-const reloadAllSongs = async () => {
-  const result = await scanAllAudio()
-  if (result.success) {
-    const blacklistSet = new Set(appStore.getBlacklist().map((item) => item.id))
-    const songsList = result.songs.filter((song) => !blacklistSet.has(song.id))
-    appStore.setAllSongs(songsList)
-  } else {
-    console.error('reloadAllSongs failed', result)
+
+const onItemClick = async (song: OnlineSong) => {
+  const queue = [...appStore.getPlayQueue()]
+  const targetSong: Song = getSongFromOnlineSong(song)
+  let index = -1
+  for (let i = 0; i < queue.length; i++) {
+    if (queue[i].id === targetSong.id) {
+      index = i
+      break
+    }
+  }
+  if (index === -1) {
+    queue.push(targetSong)
+    appStore.setPlayQueue(queue)
+    index = queue.length - 1
+  }
+  const currentIndex = appStore.getPlayData().currentIndex
+  if (index === currentIndex && queue.length > 0 && queue[currentIndex]?.id === targetSong.id) {
+    await appStore.togglePlay()
+    return
+  }
+  if (appStore.getIsSwitchingSong()) return
+  appStore.setIsSwitchingSong(true)
+  appStore.setCurrentIndex(index)
+  appStore.setMockCurrentTime(0)
+  try {
+    await audio.setPlaylist(
+      queue.map((s) => ({
+        url: getAccessibleUrl(s.uri),
+        title: s.title,
+        artist: s.artist || 'Unknown',
+        album: s.album || '',
+        coverUrl: s.albumArtUri,
+      }))
+    )
+    await audio.playIndex(index)
+  } catch (e) {
+    console.error('播放失败', e)
+    toast.error(t('common.playFailed'))
+  } finally {
+    appStore.setIsSwitchingSong(false)
   }
 }
+
 const downloadSelectedMusics = async () => {
   if (isDownloadingBatch.value) return
 
@@ -200,7 +337,6 @@ const downloadSelectedMusics = async () => {
     }
 
     console.log('下载结果详情:', results)
-    await reloadAllSongs()
   } catch (error) {
     toast.error('下载过程中发生错误，请稍后重试')
     console.error(error)
@@ -264,7 +400,7 @@ watch(keyword, (newVal) => {
             :selectable="isSelectMode"
             :selected="selectedIds.has(song.identifier)"
             :song="song"
-            @click="() => {}"
+            @click="onItemClick(song)"
             @long-press="enterSelectMode"
             @toggle-select="toggleSelect(song.identifier)"
             @update:dropdown-open="(open) => handleDropdownToggle(song.identifier, open)"
@@ -295,6 +431,14 @@ watch(keyword, (newVal) => {
               <Icon :width="20" color="var(--primary-color)" icon="material-symbols:download" />
               <span>{{ isDownloadingBatch ? '下载中...' : $t('search.operations.download') }}</span>
             </button>
+            <button class="action-btn" @click="addSelectedToQueue">
+              <Icon :width="20" color="var(--primary-color)" icon="ic:baseline-queue" />
+              <span>{{ $t('playList.addToQueue') }}</span>
+            </button>
+            <button class="action-btn" @click="addSelectedToSongList">
+              <Icon :width="20" color="var(--primary-color)" icon="mdi:heart-outline" />
+              <span>{{ $t('playList.addToPlaylist') }}</span>
+            </button>
             <button class="action-btn" @click="exitSelectMode">
               <Icon :width="20" color="var(--primary-color)" icon="mdi:close" />
               <span>{{ $t('search.operations.cancel') }}</span>
@@ -302,6 +446,7 @@ watch(keyword, (newVal) => {
           </div>
         </div>
       </Transition>
+      <NowPlayingBar auto-play @expand="() => router.push('/player-view')" />
     </div>
   </ion-page>
 </template>

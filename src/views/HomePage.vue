@@ -231,10 +231,6 @@ const playSong = async (song: Song) => {
   }
 }
 
-const showFullPlayer = () => {
-  router.push('/player-view')
-}
-
 const playlists = ref<Playlist[]>([appStore.getLikeList(), ...appStore.getSongLists()])
 const showPlaylists = ref<Playlist[]>(playlists.value)
 
@@ -378,7 +374,7 @@ watch(selectedCategory, () => {
         @playlist-click="onPlaylistClick"
         @menu-select="onPlaylistMenuSelect"
       />
-      <NowPlayingBar auto-play @expand="showFullPlayer" />
+      <NowPlayingBar auto-play @expand="() => router.push('/player-view')" />
     </div>
   </ion-page>
 </template>

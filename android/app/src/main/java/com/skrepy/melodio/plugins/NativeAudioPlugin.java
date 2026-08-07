@@ -36,6 +36,7 @@ import com.getcapacitor.annotation.CapacitorPlugin;
 import org.json.JSONObject;
 
 import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
@@ -83,6 +84,41 @@ public class NativeAudioPlugin extends Plugin {
         initPlayer();
         initSession();
         createChannel();
+    }
+
+    private String resolveFinalUrl(String urlString) throws IOException {
+        HttpURLConnection connection = null;
+        try {
+            URL url = new URL(urlString);
+            connection = (HttpURLConnection) url.openConnection();
+            connection.setInstanceFollowRedirects(false);   // 手动处理，方便调试
+            connection.setConnectTimeout(10000);
+            connection.setReadTimeout(10000);
+            connection.setRequestMethod("HEAD");            // 只获取头部，减少流量
+            connection.connect();
+
+            int status = connection.getResponseCode();
+            if (status == HttpURLConnection.HTTP_MOVED_TEMP ||
+                    status == HttpURLConnection.HTTP_MOVED_PERM ||
+                    status == HttpURLConnection.HTTP_SEE_OTHER ||
+                    status == 307 || status == 308) {
+                String newUrl = connection.getHeaderField("Location");
+                if (newUrl != null) {
+                    // 递归跟随（最多 5 次，防止死循环）
+                    if (connection.getURL().toString().equals(newUrl)) {
+                        return newUrl;  // 防止原地跳转
+                    }
+                    connection.disconnect();
+                    return resolveFinalUrl(newUrl);
+                }
+            }
+            // 其他状态码，直接返回原始 URL（可能是最终地址）
+            return urlString;
+        } finally {
+            if (connection != null) {
+                connection.disconnect();
+            }
+        }
     }
 
     private void initPlayer() {
@@ -296,7 +332,6 @@ public class NativeAudioPlugin extends Plugin {
 
     private void loadAndPlay(int index, boolean autoPlay) {
         if (index < 0 || index >= playlist.size()) {
-            Log.e(TAG, "loadAndPlay: invalid index " + index);
             rejectPendingCall("invalid index");
             return;
         }
@@ -311,74 +346,91 @@ public class NativeAudioPlugin extends Plugin {
         prepared = false;
         isPlaying = false;
 
-        try {
-            mediaPlayer.reset();
-            Log.v(TAG, "MediaPlayer reset done");
-
-            String dataSource = song.url;
-            if (dataSource.startsWith("file://") && !dataSource.startsWith("file:///")) {
-                dataSource = "file://" + dataSource.substring(7);
-                Log.d(TAG, "Fixed file:// URL to: " + dataSource);
+        new Thread(() -> {
+            String resolvedUrl = song.url;
+            try {
+                if (song.url.startsWith("http://") || song.url.startsWith("https://")) {
+                    Log.d(TAG, "Resolving final URL for: " + song.url);
+                    resolvedUrl = resolveFinalUrl(song.url);
+                    Log.d(TAG, "Resolved final URL: " + resolvedUrl);
+                }
+            } catch (IOException e) {
+                Log.e(TAG, "Failed to resolve URL, fallback to original: " + e.getMessage());
+                resolvedUrl = song.url;
             }
 
-            Log.d(TAG, "Setting data source to: " + dataSource);
-            if (dataSource.startsWith("file://")) {
-                mediaPlayer.setDataSource(getContext(), Uri.parse(dataSource));
-            } else {
-                mediaPlayer.setDataSource(dataSource);
-            }
-            Log.v(TAG, "DataSource set, preparing async...");
+            final String finalUrl = resolvedUrl;
 
-            mediaPlayer.setOnPreparedListener(mp -> {
-                Log.d(TAG, "onPrepared called, generation=" + gen + " current=" + loadGeneration);
+            new Handler(Looper.getMainLooper()).post(() -> {
                 if (gen != loadGeneration) {
-                    Log.w(TAG, "Skipping onPrepared — superseded (gen=" + gen + " current=" + loadGeneration + ")");
+                    Log.w(TAG, "Skipping loadAndPlay — superseded (gen=" + gen + " current=" + loadGeneration + ")");
                     loading = false;
                     return;
                 }
 
-                // Only now confirm the index — prepare succeeded
-                currentIndex = index;
-                prepared = true;
+                try {
+                    mediaPlayer.reset();
+                    Log.v(TAG, "MediaPlayer reset done");
 
-                durationSec = mp.getDuration() / 1000;
-                Log.d(TAG, "Media prepared, duration=" + durationSec + "s");
+                    String dataSource = finalUrl;
+                    if (dataSource.startsWith("file://") && !dataSource.startsWith("file:///")) {
+                        dataSource = "file://" + dataSource.substring(7);
+                        Log.d(TAG, "Fixed file:// URL to: " + dataSource);
+                    }
 
-                title = song.title;
-                artist = song.artist;
-                album = song.album;
-                cover = song.cover;
+                    Log.d(TAG, "Setting data source to: " + dataSource);
+                    if (dataSource.startsWith("file://")) {
+                        mediaPlayer.setDataSource(getContext(), Uri.parse(dataSource));
+                    } else {
+                        mediaPlayer.setDataSource(dataSource);
+                    }
+                    Log.v(TAG, "DataSource set, preparing async...");
 
-                updateMetadata(song);
+                    mediaPlayer.setOnPreparedListener(mp -> {
+                        Log.d(TAG, "onPrepared called, generation=" + gen + " current=" + loadGeneration);
+                        if (gen != loadGeneration) {
+                            Log.w(TAG, "Skipping onPrepared — superseded");
+                            loading = false;
+                            return;
+                        }
 
-                if (autoPlay) {
-                    mp.start();
-                    applyPlaybackRate();
-                    isPlaying = true;
-                    Log.d(TAG, "Playback started");
-                    updateState(true);
-                    startProgress();
-                } else {
-                    isPlaying = false;
-                    updateState(false);
-                    Log.d(TAG, "Prepared but not started (paused)");
+                        currentIndex = index;
+                        prepared = true;
+                        durationSec = mp.getDuration() / 1000;
+                        title = song.title;
+                        artist = song.artist;
+                        album = song.album;
+                        cover = song.cover;
+
+                        updateMetadata(song);
+
+                        if (autoPlay) {
+                            mp.start();
+                            applyPlaybackRate();
+                            isPlaying = true;
+                            updateState(true);
+                            startProgress();
+                        } else {
+                            isPlaying = false;
+                            updateState(false);
+                        }
+
+                        notifySongChanged();
+                        resolvePendingCall();
+                        loading = false;
+                    });
+
+                    mediaPlayer.prepareAsync();
+
+                } catch (Exception e) {
+                    Log.e(TAG, "Exception in loadAndPlay after resolve: " + finalUrl, e);
+                    rejectPendingCall("load failed: " + e.getMessage());
+                    loading = false;
+                    notifyError(-1, -1);
+                    nextInternal();
                 }
-
-                notifySongChanged();
-                resolvePendingCall();
-                loading = false;
             });
-
-            mediaPlayer.prepareAsync();
-            Log.d(TAG, "prepareAsync initiated");
-
-        } catch (Exception e) {
-            Log.e(TAG, "Exception in loadAndPlay for url=" + song.url, e);
-            rejectPendingCall("load failed: " + e.getMessage());
-            loading = false;
-            notifyError(-1, -1);
-            nextInternal();
-        }
+        }).start();
     }
 
     /**
@@ -421,7 +473,6 @@ public class NativeAudioPlugin extends Plugin {
         if (!audioFocusGranted) {
             requestAudioFocus();
             if (!audioFocusGranted) {
-                // 可提示用户或静默处理
                 return;
             }
         }
