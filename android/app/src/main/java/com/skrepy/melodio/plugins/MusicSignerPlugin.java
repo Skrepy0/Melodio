@@ -93,25 +93,25 @@ public class MusicSignerPlugin extends Plugin {
     }
 
     @PluginMethod
-    public void search(PluginCall call) {
+    public void search(PluginCall pluginCall) {
         String secretKey = BuildConfig.API_SECRET;
 
-        String keyword = call.getString("keyword");
+        String keyword = pluginCall.getString("keyword");
         if (keyword == null || keyword.isEmpty()) {
-            call.reject("Missing keyword");
+            pluginCall.reject("Missing keyword");
             return;
         }
 
-        int limit = call.getInt("limit", 5);
+        int limit = pluginCall.getInt("limit", 5);
 
         List<String> clients = new ArrayList<>();
-        JSONArray clientsArray = call.getArray("clients");
+        JSONArray clientsArray = pluginCall.getArray("clients");
         if (clientsArray != null) {
             for (int i = 0; i < clientsArray.length(); i++) {
                 try {
                     clients.add(clientsArray.getString(i));
                 } catch (JSONException e) {
-                    call.reject("Invalid clients array");
+                    pluginCall.reject("Invalid clients array");
                     return;
                 }
             }
@@ -119,9 +119,9 @@ public class MusicSignerPlugin extends Plugin {
 
         long timestamp = System.currentTimeMillis() / 1000;
         String nonce = "cap_" + System.currentTimeMillis() + "_" + (int) (Math.random() * 10000);
-        String path = "/api/v1/music/search";
+        String path = "/api/v1/music/search_stream";
         String method = "GET";
-        int totalTimeOut = call.getInt("totalTimeOut", 30);
+        int totalTimeOut = pluginCall.getInt("totalTimeOut", 30);
         List<ParamPair> params = new ArrayList<>();
         params.add(new ParamPair("keyword", keyword));
         params.add(new ParamPair("limit", String.valueOf(limit)));
@@ -141,8 +141,7 @@ public class MusicSignerPlugin extends Plugin {
         String signStr = method + "&" + path + "&" + queryStr + "&" + timestamp + "&" + nonce;
         String signature = hmacSha256(secretKey, signStr);
 
-        String baseUrl = backendUrl;
-        String url = baseUrl + path + "?" + queryStr;
+        String url = backendUrl + path + "?" + queryStr;
 
         Request request = new Request.Builder()
                 .url(url)
@@ -150,35 +149,87 @@ public class MusicSignerPlugin extends Plugin {
                 .addHeader("X-Nonce", nonce)
                 .addHeader("X-Signature", signature)
                 .build();
-        int eachSongTimeOut = call.getInt("eachSongTimeOut", 25);
-        int timeout = clientsArray.length() * limit * eachSongTimeOut;
+
         OkHttpClient client = new OkHttpClient.Builder()
-                .connectTimeout(timeout, TimeUnit.SECONDS)
-                .readTimeout(timeout, TimeUnit.SECONDS)
+                .connectTimeout(30, TimeUnit.SECONDS)
+                .readTimeout(120, TimeUnit.SECONDS)
                 .writeTimeout(30, TimeUnit.SECONDS)
                 .build();
-        try {
-            Response response = client.newCall(request).execute();
-            String body = response.body() != null ? response.body().string() : null;
-            if (response.isSuccessful() && body != null) {
-                JSONObject json = new JSONObject(body);
-                int total = json.optInt("total", 0);
-                JSONArray itemsArray = json.optJSONArray("items");
-                if (itemsArray == null) {
-                    itemsArray = new JSONArray();
-                }
 
-                JSObject result = new JSObject();
-                result.put("total", total);
-                result.put("items", itemsArray);
-                call.resolve(result);
-            } else {
-                call.reject("Request failed with code: " + response.code());
+        client.newCall(request).enqueue(new okhttp3.Callback() {
+            @Override
+            public void onFailure(okhttp3.Call okCall, IOException e) {
+                Log.e(TAG, "SSE request failed", e);
+                pluginCall.reject("Network error: " + e.getMessage());
             }
-        } catch (Exception e) {
-            Log.e(TAG, "Network error", e);
-            call.reject("Network error: " + e.getMessage());
-        }
+
+            @Override
+            public void onResponse(okhttp3.Call okCall, okhttp3.Response response) throws IOException {
+                boolean resolved = false;
+
+                try {
+                    if (!response.isSuccessful()) {
+                        pluginCall.reject("Request failed with code: " + response.code());
+                        pluginCall.reject("meg:" + response.message());
+                        resolved = true;
+                        return;
+                    }
+
+                    try (okhttp3.ResponseBody body = response.body()) {
+                        if (body == null) {
+                            pluginCall.reject("Empty response");
+                            resolved = true;
+                            return;
+                        }
+
+                        java.io.BufferedReader reader = new java.io.BufferedReader(
+                                new java.io.InputStreamReader(body.byteStream(), StandardCharsets.UTF_8));
+                        String line;
+                        while ((line = reader.readLine()) != null) {
+                            if (line.startsWith("data: ")) {
+                                String jsonData = line.substring(6).trim();
+                                if (jsonData.isEmpty()) continue;
+                                try {
+                                    JSONObject eventJson = new JSONObject(jsonData);
+                                    String status = eventJson.optString("status");
+                                    if ("partial".equals(status)) {
+                                        JSObject partialResult = new JSObject();
+                                        partialResult.put("source", eventJson.getString("source"));
+                                        partialResult.put("items", eventJson.getJSONArray("items"));
+                                        notifyListeners("searchPartial", partialResult);
+                                    } else if ("done".equals(status)) {
+                                        JSObject doneResult = new JSObject();
+                                        doneResult.put("status", "done");
+                                        pluginCall.resolve(doneResult);
+                                        resolved = true;
+                                        break;
+                                    }
+                                } catch (JSONException e) {
+                                    Log.w(TAG, "Failed to parse SSE event: " + jsonData, e);
+                                }
+                            }
+                        }
+
+                        if (!resolved) {
+                            JSObject doneResult = new JSObject();
+                            doneResult.put("status", "done");
+                            pluginCall.resolve(doneResult);
+                            resolved = true;
+                        }
+                    } catch (Exception e) {
+                        Log.e(TAG, "Error reading SSE stream", e);
+                        if (!resolved) {
+                            pluginCall.reject("Stream error: " + e.getMessage());
+                            resolved = true;
+                        }
+                    }
+                } catch (Exception e) {
+                    if (!resolved) {
+                        pluginCall.reject("Unexpected error: " + e.getMessage());
+                    }
+                }
+            }
+        });
     }
 
     private String hmacSha256(String key, String data) {

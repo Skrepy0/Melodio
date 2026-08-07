@@ -9,10 +9,6 @@ export const musicClientsConfig = {
     name: 'BodianMusicClient',
     icon: '',
   },
-  FiveSing: {
-    name: 'FiveSingMusicClient',
-    icon: 'mingcute:microphone-line',
-  },
   Kugou: {
     name: 'KugouMusicClient',
     icon: '',
@@ -25,28 +21,64 @@ export const musicClientsConfig = {
     name: 'MiguMusicClient',
     icon: 'arcticons:migu',
   },
-  MOOV: {
-    name: 'MOOVMusicClient',
-    icon: 'token:moov',
-  },
   Netease: {
     name: 'NeteaseMusicClient',
     icon: 'tabler:brand-netease-music',
-  },
-  Qianqian: {
-    name: 'QianqianMusicClient',
-    icon: '',
   },
   QQ: {
     name: 'QQMusicClient',
     icon: '',
   },
-  Soda: {
-    name: 'SodaMusicClient',
+  Apple: {
+    name: 'AppleMusicClient',
+    icon: 'ic:baseline-apple',
+  },
+  Joox: {
+    name: 'JooxMusicClient',
     icon: '',
   },
-  StreetVoice: {
-    name: 'StreetVoiceMusicClient',
+  Qobuz: {
+    name: 'QobuzMusicClient',
+    icon: 'arcticons:qobuz',
+  },
+  Suno: {
+    name: 'SunoMusicClient',
+    icon: 'simple-icons:suno',
+  },
+  MyFreeMP3: {
+    name: 'MyFreeMP3MusicClient',
+    icon: '',
+  },
+  TuneHub: {
+    name: 'TuneHubMusicClient',
+    icon: '',
+  },
+  XiaoBai: {
+    name: 'XiaoBaiMusicClient',
+    icon: '',
+  },
+  Fangpi: {
+    name: 'FangpiMusicClient',
+    icon: '',
+  },
+  Gequbao: {
+    name: 'GequbaoMusicClient',
+    icon: '',
+  },
+  Gequhai: {
+    name: 'GequhaiMusicClient',
+    icon: '',
+  },
+  Mitu: {
+    name: 'MituMusicClient',
+    icon: '',
+  },
+  TwoT58: {
+    name: 'TwoT58MusicClient',
+    icon: '',
+  },
+  Zhuolin: {
+    name: 'ZhuolinMusicClient',
     icon: '',
   },
 }

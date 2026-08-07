@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { IonPage } from '@ionic/vue'
 import { Icon } from '@iconify/vue'
-import { nextTick, ref, watch } from 'vue'
+import { nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { DropdownItem, OnlineSong, Song } from '@/utils/interface'
 import { useDropdownManager } from '@/composables/useDropdownManager'
 import OnlineSongItemSelectable from '@/components/song/OnlineSongItemSelectable.vue'
@@ -33,6 +33,33 @@ const { openDropdownId, handleDropdownToggle } = useDropdownManager()
 const downloadingIds = ref<Set<string>>(new Set()) // 单曲下载中
 const isDownloadingBatch = ref(false) // 批量下载中
 
+let partialListener: { remove: () => void } | null = null
+let doneListener: { remove: () => void } | null = null
+let searchCall: Promise<any> | null = null
+
+// 根据 identifier 去重
+const addUniqueSongs = (newSongs: OnlineSong[]) => {
+  const existingIds = new Set(searchResults.value.map((s) => s.identifier))
+  const toAdd = newSongs.filter((s) => !existingIds.has(s.identifier))
+  if (toAdd.length) {
+    searchResults.value = [...searchResults.value, ...toAdd]
+  }
+}
+
+const cleanupSearch = () => {
+  if (partialListener) {
+    partialListener.remove()
+    partialListener = null
+  }
+  if (doneListener) {
+    doneListener.remove()
+    doneListener = null
+  }
+  if (searchCall) {
+    searchCall = null
+  }
+}
+
 const operations = ref<DropdownItem[]>([
   { icon: 'line-md:play-filled', description: 'Play', value: 'play' },
   {
@@ -56,6 +83,9 @@ const goBack = () => router.back()
 const onSearch = async (query: string) => {
   if (isLoading.value) return
 
+  // 取消正在进行的搜索
+  cleanupSearch()
+
   if (!query.trim()) {
     searchResults.value = []
     hasSearched.value = false
@@ -67,30 +97,39 @@ const onSearch = async (query: string) => {
   isLoading.value = true
   searchError.value = null
   hasSearched.value = true
+  searchResults.value = [] // 清空旧结果
 
   try {
-    const response = await MusicSigner.search({
+    // 1. 注册监听器
+    partialListener = await MusicSigner.addListener('searchPartial', (data: any) => {
+      // data 包含 source 和 items
+      const newSongs = data.items || []
+      addUniqueSongs(newSongs)
+    })
+
+    doneListener = await MusicSigner.addListener('searchDone', () => {
+      // 可选：收到 done 事件时标记完成，但 promise resolve 也会触发
+    })
+
+    // 2. 发起搜索（promise 在流结束时 resolve）
+    await MusicSigner.search({
       keyword: keyword.value,
       clients: appStore.getEnabledClients(),
       limit: appStore.getMusicClientLimitation(),
       eachSongTimeOut: appStore.getEachSongAveTimeOut(),
       totalTimeOut: appStore.getFetchTimeOut(),
     })
-    if (!response) {
-      searchError.value = '搜索失败，请稍后重试'
-      searchResults.value = []
-    } else {
-      searchResults.value = response.items
-      if (response.total === 0) {
-        //todo
-      }
+
+    if (searchResults.value.length === 0) {
+      //todo 没有搜索到任何结果
     }
-  } catch (e) {
-    searchError.value = `网络异常，请检查网络连接\n${e}`
+  } catch (e: any) {
+    searchError.value = `网络异常，请检查网络连接\n${e?.message || e}`
     console.error(e)
     searchResults.value = []
   } finally {
     isLoading.value = false
+    cleanupSearch()
   }
 }
 
@@ -350,6 +389,10 @@ watch(keyword, (newVal) => {
     //todo
   }
 })
+
+onBeforeUnmount(() => {
+  cleanupSearch()
+})
 </script>
 
 <template>
@@ -374,22 +417,30 @@ watch(keyword, (newVal) => {
       </div>
 
       <div class="song-list">
-        <div v-if="isLoading" class="status-placeholder">
-          <Icon color="var(--primary-color)" height="36" icon="eos-icons:loading" width="36" />
-          <span class="status-text">{{ $t('search.loading') }}</span>
-        </div>
-
-        <div v-else-if="searchError" class="status-placeholder error">
+        <!-- 错误状态（优先显示） -->
+        <div v-if="searchError" class="status-placeholder error">
           <Icon color="#ff6b6b" height="36" icon="mdi:alert-circle-outline" width="36" />
           <span class="status-text">{{ searchError }}</span>
         </div>
 
-        <div v-else-if="hasSearched && searchResults.length === 0" class="status-placeholder">
+        <!-- 无结果（搜索完成且结果为空） -->
+        <div
+          v-else-if="hasSearched && searchResults.length === 0 && !isLoading"
+          class="status-placeholder"
+        >
           <Icon color="var(--text-secondary)" height="36" icon="mdi:music-off" width="36" />
           <span class="status-text">{{ $t('search.noResults') }}</span>
         </div>
 
+        <!-- 初始提示（未搜索） -->
+        <div v-else-if="!hasSearched && searchResults.length === 0" class="status-placeholder">
+          <Icon color="var(--text-secondary)" height="36" icon="mdi:music-search" width="36" />
+          <span class="status-text">{{ $t('search.initialHint') }}</span>
+        </div>
+
+        <!-- 有结果 或 正在加载（列表 + 底部加载指示） -->
         <template v-else>
+          <!-- 歌曲列表 -->
           <OnlineSongItemSelectable
             v-for="song in searchResults"
             :key="song.identifier"
@@ -405,9 +456,11 @@ watch(keyword, (newVal) => {
             @toggle-select="toggleSelect(song.identifier)"
             @update:dropdown-open="(open) => handleDropdownToggle(song.identifier, open)"
           />
-          <div v-if="!hasSearched && searchResults.length === 0" class="status-placeholder">
-            <Icon color="var(--text-secondary)" height="36" icon="mdi:music-search" width="36" />
-            <span class="status-text">{{ $t('search.initialHint') }}</span>
+
+          <!-- 加载指示器（置于列表底部） -->
+          <div v-if="isLoading" class="loading-indicator">
+            <Icon color="var(--primary-color)" height="24" icon="eos-icons:loading" width="24" />
+            <span class="loading-text">{{ $t('search.loading') }}</span>
           </div>
         </template>
       </div>
@@ -600,5 +653,16 @@ watch(keyword, (newVal) => {
 .slide-up-leave-to {
   transform: translateY(100%);
   opacity: 0;
+}
+.loading-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px 0;
+  color: var(--text-secondary);
+  .loading-text {
+    font-size: 14px;
+  }
 }
 </style>
