@@ -1,12 +1,33 @@
-import { OnlineSong } from '@/utils/interface'
-import { MusicSigner } from '@/stores/app'
+import { OnlineSong, Song } from '@/utils/interface'
+import { MusicSigner, useAppStore } from '@/stores/app'
 
 export async function downloadMusic(song: OnlineSong): Promise<{ path: string; size: number }> {
   try {
     const url: string = song.download_url as string
     const fileName: string = song.name + '.' + song.ext
 
-    return await MusicSigner.download({ url, fileName })
+    const result = await MusicSigner.download({ url, fileName })
+    const info = await MusicSigner.getAudioInfo({ path: result.path })
+    const new_song: Song = {
+      id: info.id,
+      displayName: info.displayName,
+      uri: info.uri,
+      size: info.size,
+      mimeType: info.mimeType,
+      dateAdded: info.dateAdded,
+      dateModified: info.dateModified,
+      mediaType: 'audio',
+      duration: info.duration,
+      title: info.title,
+      artist: info.artist,
+      album: info.album,
+      track: info.track,
+      year: info.year,
+      albumArtUri: info.albumArtUri || song.cover_url || '',
+    }
+    const appStore = useAppStore()
+    appStore.setAllSongs([new_song, ...appStore.getAllSongs()])
+    return result
   } catch (error: any) {
     console.error('下载失败:', error)
     throw new Error(error.message || '下载失败')

@@ -12,7 +12,9 @@ import toast from '@/utils/createToast'
 import { MusicSigner, useAppStore } from '@/stores/app'
 import { downloadMultipleSongs, downloadMusic } from '@/utils/musicDownloader'
 import { scanAllAudio } from '@/utils/audioScanner'
+import { useI18n } from 'vue-i18n'
 
+const { t } = useI18n()
 const appStore = useAppStore()
 
 const keyword = ref('')
@@ -30,8 +32,12 @@ const isDownloadingBatch = ref(false) // 批量下载中
 
 const operations = ref<DropdownItem[]>([
   // { icon: 'line-md:play-filled', description: 'Play', value: 'play' },
-  { icon: 'material-symbols:download', description: 'Download', value: 'download' },
-  { icon: 'bx:detail', description: 'Detail Info', value: 'detail' },
+  {
+    icon: 'material-symbols:download',
+    description: t('search.song_operations.download'),
+    value: 'download',
+  },
+  { icon: 'bx:detail', description: t('search.song_operations.detail'), value: 'detail' },
 ])
 
 const goBack = () => router.back()
@@ -56,9 +62,8 @@ const onSearch = async (query: string) => {
       keyword: keyword.value,
       clients: appStore.getEnabledClients(),
       limit: appStore.getMusicClientLimitation(),
-      connectTimeout: 999,
-      readTimeout: 999,
-      writeTimeout: 999,
+      eachSongTimeOut: appStore.getEachSongAveTimeOut(),
+      totalTimeOut: appStore.getFetchTimeOut(),
     })
     if (!response) {
       searchError.value = '搜索失败，请稍后重试'

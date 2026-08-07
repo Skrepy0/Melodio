@@ -37,6 +37,30 @@ export const useAppStore = defineStore('app', () => {
   const themeColor = ref<string>('#007aff')
   const musicClientStatus = ref<MusicClientStatus>()
   const musicClientLimitation = ref<number>(5)
+  const fetchTimeOut = ref<number>(30)
+  const eachSongAveTimeOut = ref<number>(10)
+  function initEachSongAveTimeOut() {
+    const stored = localStorage.getItem('eachSongAveTimeOut')
+    eachSongAveTimeOut.value = stored ? parseInt(stored) : 10
+  }
+  function getEachSongAveTimeOut() {
+    return eachSongAveTimeOut.value
+  }
+  function setEachSongAveTimeOut(value: number) {
+    eachSongAveTimeOut.value = value
+    localStorage.setItem('eachSongAveTimeOut', value.toString())
+  }
+  function initFetchTimeOut() {
+    const stored = localStorage.getItem('fetchTimeOut')
+    fetchTimeOut.value = stored ? parseInt(stored) : 30
+  }
+  function getFetchTimeOut() {
+    return fetchTimeOut.value
+  }
+  function setFetchTimeOut(value: number) {
+    fetchTimeOut.value = value
+    localStorage.setItem('fetchTimeOut', value.toString())
+  }
   function initMusicClientLimitation() {
     const stored = localStorage.getItem('music_client_limitation')
     musicClientLimitation.value = stored ? parseInt(stored) : 5
@@ -53,7 +77,7 @@ export const useAppStore = defineStore('app', () => {
     const defaultStatus = Object.fromEntries(
       Object.keys(musicClients).map((key) => [key, false])
     ) as MusicClientStatus
-
+    defaultStatus.Migu = true
     const stored = localStorage.getItem('music_client_status')
     musicClientStatus.value = stored ? (JSON.parse(stored) as MusicClientStatus) : defaultStatus
   }
@@ -529,6 +553,8 @@ export const useAppStore = defineStore('app', () => {
       initLanguage()
       initThemeColor()
       loadInitialDarkMode()
+      initFetchTimeOut()
+      initEachSongAveTimeOut()
       initMusicClientLimitation()
       initMusicClientStatus()
       // Request media permissions on app startup so the user
@@ -819,5 +845,9 @@ export const useAppStore = defineStore('app', () => {
     setMusicClientStatus,
     getMusicClientLimitation,
     setMusicClientLimitation,
+    getFetchTimeOut,
+    setFetchTimeOut,
+    getEachSongAveTimeOut,
+    setEachSongAveTimeOut,
   }
 })

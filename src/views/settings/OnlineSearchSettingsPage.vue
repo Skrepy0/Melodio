@@ -10,6 +10,8 @@ import { ref, watch } from 'vue'
 const appStore = useAppStore()
 const router = useRouter()
 const musicClientLimitation = ref<number>(appStore.getMusicClientLimitation())
+const fetchTimeOut = ref<number>(appStore.getFetchTimeOut())
+const eachSongAveTimeOut = ref<number>(appStore.getEachSongAveTimeOut())
 const goBack = () => {
   router.back()
 }
@@ -19,6 +21,12 @@ const goToMusicClientSettings = () => {
 
 watch(musicClientLimitation, () => {
   appStore.setMusicClientLimitation(musicClientLimitation.value)
+})
+watch(fetchTimeOut, () => {
+  appStore.setFetchTimeOut(fetchTimeOut.value)
+})
+watch(eachSongAveTimeOut, () => {
+  appStore.setEachSongAveTimeOut(eachSongAveTimeOut.value)
 })
 </script>
 
@@ -43,6 +51,28 @@ watch(musicClientLimitation, () => {
           :placeholder="$t('input_box.placeholder')"
           :title="$t('settings.online_search.music_client.client_limit')"
           icon="hugeicons:limitation"
+          type="integer"
+        />
+        <InputBox
+          v-model="fetchTimeOut"
+          :default-value="30"
+          :desc="$t('settings.online_search.fetch_timeout_desc')"
+          :max="600"
+          :min="1"
+          :placeholder="$t('input_box.placeholder')"
+          :title="$t('settings.online_search.fetch_timeout')"
+          icon="eos-icons:timeout"
+          type="integer"
+        />
+        <InputBox
+          v-model="eachSongAveTimeOut"
+          :default-value="10"
+          :desc="$t('settings.online_search.each_song_ave_timeout_desc')"
+          :max="60"
+          :min="1"
+          :placeholder="$t('input_box.placeholder')"
+          :title="$t('settings.online_search.each_song_ave_timeout')"
+          icon="mingcute:time-line"
           type="integer"
         />
       </div>

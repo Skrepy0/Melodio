@@ -224,7 +224,11 @@
         "desc": "配置在线音乐源, 过多的音乐源会导致搜索速度下降",
         "client_limit": "客户端请求限制",
         "client_limit_desc": "每个客户端请求的歌曲数量限制, 过大会使搜索速度显著下降"
-      }
+      },
+      "fetch_timeout": "搜索时间限制",
+      "fetch_timeout_desc": "后端搜索歌曲的最长时长, 超过此时间没搜索完成的源将停止搜索, 返回已经搜索到的内容;值过低会导致搜索到的内容较少",
+      "each_song_ave_timeout": "单首歌的搜索时长",
+      "each_song_ave_timeout_desc": "分配给每个歌曲的平均搜索时间限制, 单位为秒"
     },
     "accessibility": {
       "title": "辅助功能",
@@ -327,6 +331,10 @@
     "initialHint": "输入关键词开始搜索~",
     "noResults": "未找到相关内容",
     "loading": "搜索中, 请耐心等待...",
+    "song_operations": {
+      "download": "下载",
+      "detail": "详情"
+    },
     "operations": {
       "selectAll": "全选",
       "clear": "清空",

@@ -2,11 +2,16 @@ package com.skrepy.melodio.plugins;
 
 import android.content.ContentValues;
 import android.content.Intent;
+import android.database.Cursor;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.media.MediaMetadataRetriever;
 import android.media.MediaScannerConnection;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Environment;
 import android.provider.MediaStore;
+import android.util.Base64;
 import android.util.Log;
 
 import com.getcapacitor.JSObject;
@@ -20,6 +25,7 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -42,12 +48,7 @@ import okio.Okio;
 public class MusicSignerPlugin extends Plugin {
 
     private static final String TAG = "MusicSignerPlugin";
-
-    private static final OkHttpClient client = new OkHttpClient.Builder()
-            .connectTimeout(120, TimeUnit.SECONDS)
-            .readTimeout(30, TimeUnit.SECONDS)
-            .writeTimeout(30, TimeUnit.SECONDS)
-            .build();
+    private static final String backendUrl = "https://api-melodio.skrepy.dpdns.org";
 
     @PluginMethod
     public void search(PluginCall call) {
@@ -78,10 +79,11 @@ public class MusicSignerPlugin extends Plugin {
         String nonce = "cap_" + System.currentTimeMillis() + "_" + (int) (Math.random() * 10000);
         String path = "/api/v1/music/search";
         String method = "GET";
-
+        int totalTimeOut = call.getInt("totalTimeOut", 30);
         List<ParamPair> params = new ArrayList<>();
         params.add(new ParamPair("keyword", keyword));
         params.add(new ParamPair("limit", String.valueOf(limit)));
+        params.add(new ParamPair("timeout", String.valueOf(totalTimeOut)));
         for (String client : clients) {
             params.add(new ParamPair("music_client", client));
         }
@@ -97,7 +99,7 @@ public class MusicSignerPlugin extends Plugin {
         String signStr = method + "&" + path + "&" + queryStr + "&" + timestamp + "&" + nonce;
         String signature = hmacSha256(secretKey, signStr);
 
-        String baseUrl = "https://api-melodio.skrepy.dpdns.org";
+        String baseUrl = backendUrl;
         String url = baseUrl + path + "?" + queryStr;
 
         Request request = new Request.Builder()
@@ -106,7 +108,13 @@ public class MusicSignerPlugin extends Plugin {
                 .addHeader("X-Nonce", nonce)
                 .addHeader("X-Signature", signature)
                 .build();
-
+        int eachSongTimeOut = call.getInt("eachSongTimeOut", 25);
+        int timeout = clientsArray.length() * limit * eachSongTimeOut;
+        OkHttpClient client = new OkHttpClient.Builder()
+                .connectTimeout(timeout, TimeUnit.SECONDS)
+                .readTimeout(timeout, TimeUnit.SECONDS)
+                .writeTimeout(30, TimeUnit.SECONDS)
+                .build();
         try {
             Response response = client.newCall(request).execute();
             String body = response.body() != null ? response.body().string() : null;
@@ -172,7 +180,11 @@ public class MusicSignerPlugin extends Plugin {
                 .addHeader("Accept", "*/*")
                 .addHeader("Connection", "keep-alive")
                 .build();
-
+        OkHttpClient client = new OkHttpClient.Builder()
+                .connectTimeout(30, TimeUnit.SECONDS)
+                .readTimeout(30, TimeUnit.SECONDS)
+                .writeTimeout(30, TimeUnit.SECONDS)
+                .build();
         try {
             Response response = client.newCall(request).execute();
             if (!response.isSuccessful()) {
@@ -265,6 +277,107 @@ public class MusicSignerPlugin extends Plugin {
         result.put("path", outputFile.getAbsolutePath());
         result.put("size", fileSize);
         call.resolve(result);
+    }
+
+    @PluginMethod
+    public void getAudioInfo(PluginCall call) {
+        String path = call.getString("path");
+        if (path == null || path.isEmpty()) {
+            call.reject("Missing path");
+            return;
+        }
+
+        MediaMetadataRetriever mmr = new MediaMetadataRetriever();
+        try {
+            if (path.startsWith("content://")) {
+                mmr.setDataSource(getContext(), Uri.parse(path));
+            } else {
+                mmr.setDataSource(path);
+            }
+
+            String durationStr = mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION);
+            String bitrateStr = mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_BITRATE);
+            String sampleRateStr = mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_SAMPLERATE);
+            String mimeType = mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_MIMETYPE);
+
+            String title = mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE);
+            String artist = mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST);
+            String album = mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM);
+            String albumArtist = mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUMARTIST);
+            String yearStr = mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_YEAR);
+            String trackStr = mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_CD_TRACK_NUMBER);
+
+            long duration = durationStr != null ? Long.parseLong(durationStr) : 0;
+            int year = yearStr != null ? Integer.parseInt(yearStr) : 0;
+            int track = 0;
+            if (trackStr != null) {
+                String[] parts = trackStr.split("/");
+                try {
+                    track = Integer.parseInt(parts[0].trim());
+                } catch (NumberFormatException e) {
+                }
+            }
+
+            // 封面
+            byte[] picture = mmr.getEmbeddedPicture();
+            String coverBase64 = null;
+            if (picture != null) {
+                Bitmap bitmap = BitmapFactory.decodeByteArray(picture, 0, picture.length);
+                if (bitmap != null) {
+                    ByteArrayOutputStream stream = new ByteArrayOutputStream();
+                    bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream);
+                    byte[] byteArray = stream.toByteArray();
+                    coverBase64 = "data:image/png;base64," + Base64.encodeToString(byteArray, Base64.NO_WRAP);
+                    bitmap.recycle();
+                }
+            }
+
+            // 如果标题为空，用文件名
+            if (title == null || title.isEmpty()) {
+                String displayName = new File(path).getName();
+                int dot = displayName.lastIndexOf('.');
+                if (dot > 0) displayName = displayName.substring(0, dot);
+                title = displayName;
+            }
+
+            // 文件大小
+            long fileSize = new File(path).length();
+            if (fileSize <= 0 && path.startsWith("content://")) {
+                try (Cursor cursor = getContext().getContentResolver().query(Uri.parse(path),
+                        new String[]{MediaStore.MediaColumns.SIZE}, null, null, null)) {
+                    if (cursor != null && cursor.moveToFirst()) {
+                        fileSize = cursor.getLong(cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.SIZE));
+                    }
+                } catch (Exception ignore) {
+                }
+            }
+
+            JSObject result = new JSObject();
+            result.put("id", path);
+            result.put("displayName", new File(path).getName());
+            result.put("uri", path);
+            result.put("size", fileSize);
+            result.put("mimeType", mimeType != null ? mimeType : "audio/flac");
+            result.put("dateAdded", System.currentTimeMillis());
+            result.put("dateModified", new File(path).lastModified());
+            result.put("mediaType", "audio");
+            result.put("duration", duration);
+            result.put("title", title != null ? title : "");
+            result.put("artist", artist != null ? artist : (albumArtist != null ? albumArtist : ""));
+            result.put("album", album != null ? album : "");
+            result.put("track", track);
+            result.put("year", year);
+            result.put("albumArtUri", coverBase64);
+
+            call.resolve(result);
+        } catch (Exception e) {
+            call.reject("Failed to read audio info: " + e.getMessage());
+        } finally {
+            try {
+                mmr.release();
+            } catch (Exception ignored) {
+            }
+        }
     }
 
     private static class ParamPair {

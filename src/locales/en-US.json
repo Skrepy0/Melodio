@@ -224,7 +224,11 @@
         "desc": "Configure online music sources. Too many sources may slow down search performance.",
         "client_limit": "Client Request Limit",
         "client_limit_desc": "Limit the number of songs requested per client. Too high a value may significantly reduce search speed."
-      }
+      },
+      "fetch_timeout": "Search Timeout",
+      "fetch_timeout_desc": "Maximum duration for backend to search songs. Sources that haven't completed search within this time will be stopped, returning only the already found content. Values too low may result in fewer search results.",
+      "each_song_ave_timeout": "Per-Song Search Timeout",
+      "each_song_ave_timeout_desc": "Average time limit (in seconds) allocated to search each song."
     },
     "accessibility": {
       "title": "Accessibility",
@@ -329,6 +333,10 @@
     "initialHint": "Enter keywords to start searching~",
     "noResults": "No content found",
     "loading": "Searching, please wait...",
+    "song_operations": {
+      "download": "Download",
+      "detail": "Detail Info"
+    },
     "operations": {
       "selectAll": "Select All",
       "clear": "Clear",
