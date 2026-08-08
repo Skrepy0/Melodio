@@ -342,6 +342,19 @@
       "clear": "Clear",
       "download": "Download Selected",
       "cancel": "Cancel"
+    },
+    "error": {
+      "network": {
+        "no_network": "Network error, please check your network connection",
+        "timeout": "Request timeout, please try again later"
+      },
+      "backend": {
+        "music_client": "Unsupported music client: {music_client}. This music source is not supported by the server. Please disable it in settings to resolve this issue.",
+        "sign": "Signature verification error",
+        "server": "Server error"
+      },
+      "client": "Client request error, please try again later",
+      "unknown": "Unknown error"
     }
   }
 }

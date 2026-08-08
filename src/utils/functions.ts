@@ -232,3 +232,25 @@ export function getSongFromOnlineSong(song: OnlineSong): Song {
     albumArtUri: song.cover_url || '',
   }
 }
+
+export function parseSearchError(e: any): { code: number; body: any } {
+  const errorMessage = e?.message || String(e || '')
+  const result: { code: number; body: any } = { code: -1, body: errorMessage }
+
+  const codeMatch = errorMessage.match(/Request failed with code: (\d+)/)
+  if (codeMatch) {
+    result.code = parseInt(codeMatch[1], 10)
+
+    const bodyMatch = errorMessage.match(/Body: (.+)/)
+    if (bodyMatch) {
+      const rawBody = bodyMatch[1].trim()
+      try {
+        result.body = JSON.parse(rawBody)
+      } catch {
+        result.body = rawBody
+      }
+    }
+  }
+
+  return result
+}

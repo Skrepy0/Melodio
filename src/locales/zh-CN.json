@@ -340,6 +340,19 @@
       "clear": "清空",
       "download": "下载选中",
       "cancel": "取消"
+    },
+    "error": {
+      "network": {
+        "no_network": "网络异常，请检查网络连接",
+        "timeout": "请求超时，请稍后再试"
+      },
+      "backend": {
+        "music_client": "不支持的音乐客户端:{music_client}, 服务器暂不支持此音乐源, 请在设置中关闭它以解决此问题",
+        "sign": "签名验证错误",
+        "server": "服务器错误"
+      },
+      "client": "客户端请求异常, 请稍后重试",
+      "unknown": "未知错误"
     }
   }
 }

@@ -148,7 +148,7 @@ public class MusicSignerPlugin extends Plugin {
                 .addHeader("X-Signature", signature)
                 .build();
         int eachSongTimeOut = Objects.requireNonNull(pluginCall.getInt("eachSongTimeOut", 10));
-        int timeOut = Math.min(eachSongTimeOut * clients.size(), 999);
+        int timeOut = Math.min(eachSongTimeOut * clients.size() * limit, 300);
         OkHttpClient client = new OkHttpClient.Builder()
                 .connectTimeout(timeOut, TimeUnit.SECONDS)
                 .readTimeout(timeOut, TimeUnit.SECONDS)

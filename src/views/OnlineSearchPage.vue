@@ -13,7 +13,12 @@ import { MusicSigner, useAppStore } from '@/stores/app'
 import { downloadMultipleSongs, downloadMusic } from '@/utils/musicDownloader'
 import { useI18n } from 'vue-i18n'
 import NowPlayingBar from '@/components/NowPlayingBar.vue'
-import { getAccessibleUrl, getSongFromOnlineSong, isInList } from '@/utils/functions'
+import {
+  getAccessibleUrl,
+  getSongFromOnlineSong,
+  isInList,
+  parseSearchError,
+} from '@/utils/functions'
 import { audio } from '@/utils/createAudio'
 import { showPlaylistSelector } from '@/utils/createPlaylistSelector'
 
@@ -121,10 +126,35 @@ const onSearch = async (query: string) => {
     })
 
     if (searchResults.value.length === 0) {
-      //todo 没有搜索到任何结果
+      //ignore没有搜索到任何结果
     }
   } catch (e: any) {
-    searchError.value = `网络异常，请检查网络连接\n${e?.message || e}`
+    const parsedError = parseSearchError(e)
+    const errorMsg = e?.message || String(e)
+
+    if (parsedError.code === -1) {
+      searchError.value = t('search.error.network.no_network')
+    } else if (
+      parsedError.body &&
+      typeof parsedError.body === 'object' &&
+      parsedError.body.code === 1001
+    ) {
+      const clientName = parsedError.body.msg?.split(': ')?.[1] || ''
+      searchError.value = t('search.error.backend.music_client', { music_client: clientName })
+    } else if (
+      errorMsg.includes('Invalid signature') ||
+      parsedError.body?.detail === 'Invalid signature'
+    ) {
+      searchError.value = t('search.error.backend.sign')
+    } else if (parsedError.code >= 500 && parsedError.code < 600) {
+      searchError.value = t('search.error.backend.server')
+    } else if (parsedError.code >= 400 && parsedError.code < 500) {
+      const isTimeout =
+        errorMsg.includes('timeout') || errorMsg.includes('Timeout') || e?.code === 'ECONNABORTED'
+      searchError.value = isTimeout ? t('search.error.network.timeout') : t('search.error.client')
+    } else {
+      searchError.value = t('search.error.unknown')
+    }
     console.error(e)
     searchResults.value = []
   } finally {
@@ -133,7 +163,7 @@ const onSearch = async (query: string) => {
   }
 }
 
-const onMenuItemSelect = async (item: DropdownItem) => {
+const onMenuItemClicked = async (item: DropdownItem) => {
   const song = searchResults.value.find((s) => s.identifier === openDropdownId.value)
   if (!song) {
     toast.error('歌曲信息不存在')
@@ -446,7 +476,7 @@ onBeforeUnmount(() => {
             :key="song.identifier"
             :dropdown-open="openDropdownId === song.identifier"
             :on-delete="() => {}"
-            :onMenuItemSelect="onMenuItemSelect"
+            :onMenuItemSelect="onMenuItemClicked"
             :operations="operations"
             :selectable="isSelectMode"
             :selected="selectedIds.has(song.identifier)"
