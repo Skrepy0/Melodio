@@ -1,5 +1,12 @@
 import { musicClientsConfig } from '@/config'
 
+export interface MusicClientConfiguration {
+  name: string
+  icon: string
+  displayName: {
+    [key: string]: string
+  }
+}
 export interface CircleButtonProps {
   icon: string // 图标名称（Iconify 格式，如 'mdi:heart'）
   size?: number | string // 按钮尺寸（宽高），默认 48px

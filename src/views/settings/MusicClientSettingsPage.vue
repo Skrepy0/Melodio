@@ -5,7 +5,7 @@ import PageTitle from '@/components/PageTitle.vue'
 import MusicClientConfig from '@/components/settings/MusicClientConfig.vue'
 import { computed, ref } from 'vue'
 import { musicClientsConfig } from '@/config'
-import { ClientKey, MusicClientStatus } from '@/utils/interface'
+import { ClientKey, MusicClientConfiguration, MusicClientStatus } from '@/utils/interface'
 import { useAppStore } from '@/stores/app'
 
 const appStore = useAppStore()
@@ -24,6 +24,10 @@ const toggleClient = (key: ClientKey, checked: boolean) => {
 }
 
 const goBack = () => router.back()
+const getDisplayName = (config: MusicClientConfiguration): string => {
+  const langKey = appStore.getLanguage()
+  return config.displayName[langKey] || config.displayName['en-US'] || config.name
+}
 </script>
 
 <template>
@@ -37,7 +41,7 @@ const goBack = () => router.back()
           :change="(event) => toggleClient(key, (event.target as HTMLInputElement).checked)"
           :checked="musicClientStatus[key]"
           :icon="config.icon === '' ? 'mingcute:music-line' : config.icon"
-          :title="config.name"
+          :title="getDisplayName(config)"
         />
       </div>
     </div>
