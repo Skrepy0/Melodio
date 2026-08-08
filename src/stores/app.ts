@@ -7,10 +7,10 @@ import toast from '@/utils/createToast'
 import { i18n } from '@/i18n'
 import { registerPlugin } from '@capacitor/core'
 import type { SystemBarPlugin } from '@/plugins/system-bar/definitions'
-import { requestMediaPermissions } from '@/utils/audioScanner'
 import { mixColors } from '@/utils/color'
 import { musicClients } from '@/config'
 import { MusicSignerPlugin } from '@/plugins/music-signer/definitions'
+import { requestMediaPermissions } from '@/utils/permission'
 
 const SystemBar = registerPlugin<SystemBarPlugin>('SystemBar')
 export const MusicSigner = registerPlugin<MusicSignerPlugin>('MusicSigner')
@@ -564,7 +564,7 @@ export const useAppStore = defineStore('app', () => {
       initPlaybackRate()
       initAutoPauseOnDisconnect()
       initAutoDelInvalidSongs()
-      initAudioFocusPause()
+      initAudioFocusPause().then((r) => console.log('initAudioFocusPause', r))
       initCanFetchCoverFromWeb()
       initAllSongs()
       initPlayQueue()
