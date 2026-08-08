@@ -10,6 +10,9 @@ import android.os.Environment;
 import android.provider.MediaStore;
 import android.util.Log;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.RequiresApi;
+
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
@@ -28,8 +31,10 @@ import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
 import javax.crypto.Mac;
@@ -95,8 +100,7 @@ public class MusicSignerPlugin extends Plugin {
             pluginCall.reject("Missing keyword");
             return;
         }
-
-        int limit = pluginCall.getInt("limit", 5);
+        int limit = Objects.requireNonNull(pluginCall.getInt("limit", 5));
 
         List<String> clients = new ArrayList<>();
         JSONArray clientsArray = pluginCall.getArray("clients");
@@ -115,7 +119,8 @@ public class MusicSignerPlugin extends Plugin {
         String nonce = "cap_" + System.currentTimeMillis() + "_" + (int) (Math.random() * 10000);
         String path = "/api/v1/music/search_stream";
         String method = "GET";
-        int totalTimeOut = pluginCall.getInt("totalTimeOut", 30);
+        int totalTimeOut = Objects.requireNonNull(pluginCall.getInt("totalTimeOut", 30));
+        Collections.sort(clients);
         List<ParamPair> params = new ArrayList<>();
         params.add(new ParamPair("keyword", keyword));
         params.add(new ParamPair("limit", String.valueOf(limit)));
@@ -134,7 +139,6 @@ public class MusicSignerPlugin extends Plugin {
 
         String signStr = method + "&" + path + "&" + queryStr + "&" + timestamp + "&" + nonce;
         String signature = hmacSha256(secretKey, signStr);
-
         String url = backendUrl + path + "?" + queryStr;
 
         Request request = new Request.Builder()
@@ -143,36 +147,47 @@ public class MusicSignerPlugin extends Plugin {
                 .addHeader("X-Nonce", nonce)
                 .addHeader("X-Signature", signature)
                 .build();
-
+        int eachSongTimeOut = Objects.requireNonNull(pluginCall.getInt("eachSongTimeOut", 10));
+        int timeOut = Math.min(eachSongTimeOut * clients.size(), 999);
         OkHttpClient client = new OkHttpClient.Builder()
-                .connectTimeout(30, TimeUnit.SECONDS)
-                .readTimeout(120, TimeUnit.SECONDS)
+                .connectTimeout(timeOut, TimeUnit.SECONDS)
+                .readTimeout(timeOut, TimeUnit.SECONDS)
                 .writeTimeout(30, TimeUnit.SECONDS)
                 .build();
 
         client.newCall(request).enqueue(new okhttp3.Callback() {
             @Override
-            public void onFailure(okhttp3.Call okCall, IOException e) {
+            public void onFailure(@NonNull okhttp3.Call okCall, @NonNull IOException e) {
                 Log.e(TAG, "SSE request failed", e);
                 pluginCall.reject("Network error: " + e.getMessage());
             }
 
             @Override
-            public void onResponse(okhttp3.Call okCall, okhttp3.Response response) throws IOException {
+            public void onResponse(@NonNull okhttp3.Call okCall, @NonNull okhttp3.Response response) {
                 boolean resolved = false;
 
                 try {
+                    // 打印响应信息（调试用）
+                    Log.d(TAG, "Response code: " + response.code());
+
                     if (!response.isSuccessful()) {
-                        pluginCall.reject("Request failed with code: " + response.code());
-                        pluginCall.reject("meg:" + response.message());
-                        resolved = true;
+                        // 读取错误响应体
+                        String errorBody = "";
+                        try (okhttp3.ResponseBody body = response.body()) {
+                            if (body != null) {
+                                errorBody = body.string();
+                            }
+                        } catch (Exception e) {
+                            errorBody = "Unable to read error body: " + e.getMessage();
+                        }
+                        Log.e(TAG, "Request failed with code: " + response.code() + ", body: " + errorBody);
+                        pluginCall.reject("Request failed with code: " + response.code() + "\nBody: " + errorBody);
                         return;
                     }
 
                     try (okhttp3.ResponseBody body = response.body()) {
                         if (body == null) {
                             pluginCall.reject("Empty response");
-                            resolved = true;
                             return;
                         }
 
@@ -286,6 +301,7 @@ public class MusicSignerPlugin extends Plugin {
         }
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.Q)
     private void downloadViaMediaStore(PluginCall call, Response response, String fileName, String mimeType) throws IOException {
         ContentValues values = new ContentValues();
         values.put(MediaStore.Audio.Media.DISPLAY_NAME, fileName);
@@ -305,9 +321,11 @@ public class MusicSignerPlugin extends Plugin {
                 call.reject("Failed to open output stream");
                 return;
             }
-            long fileSize;
+            long fileSize = 0;
             try (BufferedSink sink = Okio.buffer(Okio.sink(out))) {
-                fileSize = sink.writeAll(response.body().source());
+                if (response.body() != null) {
+                    fileSize = sink.writeAll(response.body().source());
+                }
             }
 
             values.clear();
@@ -331,9 +349,11 @@ public class MusicSignerPlugin extends Plugin {
         }
 
         File outputFile = new File(downloadDir, fileName);
-        long fileSize;
+        long fileSize = 0;
         try (BufferedSink sink = Okio.buffer(Okio.sink(outputFile))) {
-            fileSize = sink.writeAll(response.body().source());
+            if (response.body() != null) {
+                fileSize = sink.writeAll(response.body().source());
+            }
         }
 
         Intent scanIntent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);

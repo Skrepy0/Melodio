@@ -420,7 +420,7 @@ onBeforeUnmount(() => {
         <!-- 错误状态（优先显示） -->
         <div v-if="searchError" class="status-placeholder error">
           <Icon color="#ff6b6b" height="36" icon="mdi:alert-circle-outline" width="36" />
-          <span class="status-text">{{ searchError }}</span>
+          <span class="status-text" style="white-space: pre-wrap;">{{ searchError }}</span>
         </div>
 
         <!-- 无结果（搜索完成且结果为空） -->
