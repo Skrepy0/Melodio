@@ -1,4 +1,4 @@
-import { OnlineSong, Song } from '@/utils/interface'
+import { OnlineSong } from '@/utils/interface'
 import { PluginListenerHandle } from '@capacitor/core'
 
 export interface PartialResult {
@@ -18,7 +18,6 @@ export interface MusicSignerPlugin {
     totalTimeOut?: number
   }): Promise<{ items: OnlineSong[]; total: number }>
   download(options: { url: string; fileName: string }): Promise<{ path: string; size: number }>
-  getAudioInfo(options: { path: string }): Promise<Song>
   /**
    * 添加事件监听器。
    * @param eventName - 事件名称，支持 'searchPartial' 和 'searchDone'

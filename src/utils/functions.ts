@@ -100,47 +100,116 @@ export const DEFAULT_COVER =
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#888"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>'
   )
 
+async function isImageLoadable(url: string, timeoutMs = 4000): Promise<boolean> {
+  return new Promise((resolve) => {
+    const img = new Image()
+    const timer = setTimeout(() => {
+      img.src = ''
+      resolve(false)
+    }, timeoutMs)
+
+    img.onload = () => {
+      clearTimeout(timer)
+      resolve(true)
+    }
+    img.onerror = () => {
+      clearTimeout(timer)
+      resolve(false)
+    }
+    img.src = url
+  })
+}
+
+async function isLocalFileReadable(path: string): Promise<boolean> {
+  try {
+    const normalized = path.replace(/^file:\/\//, '')
+    const stat = await Filesystem.stat({ path: normalized })
+    return stat.type === 'file'
+  } catch {
+    return false
+  }
+}
+
 export async function resolveCoverUrl(song: Song): Promise<string> {
   if (song.albumArtUri && song.albumArtUri !== '') {
+    let uri = song.albumArtUri
+
     if (
-      song.albumArtUri.startsWith('https://localhost/_capacitor_file_/') ||
-      song.albumArtUri.startsWith('http://localhost/_capacitor_file_/')
+      uri.startsWith('https://localhost/_capacitor_file_/') ||
+      uri.startsWith('http://localhost/_capacitor_file_/')
     ) {
-      const prefix = song.albumArtUri.includes('https://')
+      const prefix = uri.includes('https://')
         ? 'https://localhost/_capacitor_file_'
         : 'http://localhost/_capacitor_file_'
-      let filePath = song.albumArtUri.slice(prefix.length)
-      if (!filePath.startsWith('/')) filePath = '/' + filePath
-      return 'file://' + filePath
+      const filePath = uri.slice(prefix.length)
+      uri = 'file://' + (filePath.startsWith('/') ? filePath : '/' + filePath)
+    } else if (uri.startsWith('/')) {
+      uri = 'file://' + uri
     }
-    if (song.albumArtUri.startsWith('file://') || song.albumArtUri.startsWith('/')) {
-      return song.albumArtUri.startsWith('/') ? 'file://' + song.albumArtUri : song.albumArtUri
+
+    if (uri.startsWith('http://') || uri.startsWith('https://')) {
+      if (await isImageLoadable(uri)) return uri
+    } else {
+      if (await isLocalFileReadable(uri)) return uri
     }
-    return song.albumArtUri
   }
 
-  const webCover = await fetchCoverFromWeb(song.title, song.artist || '')
-  if (webCover) {
-    return webCover
+  const onlineCover = await fetchCoverFromWeb(song.title, song.artist || '')
+  if (onlineCover && (await isImageLoadable(onlineCover))) {
+    return onlineCover
   }
 
   return DEFAULT_COVER
 }
 export const isInList = (id: string, queue: Song[]) => queue.some((song) => song.id === id)
 export async function fetchCoverFromWeb(title: string, artist: string): Promise<string | null> {
-  const query = encodeURIComponent(`${title} ${artist}`)
-  const url = `https://itunes.apple.com/search?term=${query}&media=music&limit=1`
+  try {
+    const itunesUrl = `https://itunes.apple.com/search?term=${encodeURIComponent(
+      `${title} ${artist}`
+    )}&media=music&limit=1`
+    const r = await fetch(itunesUrl)
+    const d = await r.json()
+    if (d.resultCount > 0) {
+      const art = d.results[0].artworkUrl100?.replace('100x100bb', '600x600bb')
+      if (art) return art
+    }
+  } catch {
+    /* ignore */
+  }
 
   try {
-    const response = await fetch(url)
-    const data = await response.json()
-    if (data.resultCount > 0) {
-      const artworkUrl = data.results[0].artworkUrl100?.replace('100x100bb', '600x600bb')
-      return artworkUrl || null
+    const query = encodeURIComponent(`track:"${title}" artist:"${artist}"`)
+    const deezerUrl = `https://api.deezer.com/search?q=${query}&limit=1`
+    const r = await fetch(deezerUrl)
+    const d = await r.json()
+    if (d.data?.length > 0) {
+      const cover = d.data[0].album?.cover_big || d.data[0].album?.cover_xl
+      if (cover) return cover
     }
-  } catch (e) {
-    console.warn('iTunes 封面搜索失败:', e)
+  } catch {
+    /* ignore */
   }
+
+  try {
+    const mbQuery = encodeURIComponent(`recording:"${title}" AND artist:"${artist}"`)
+    const mbUrl = `https://musicbrainz.org/ws/2/recording/?query=${mbQuery}&fmt=json&limit=1`
+    const r = await fetch(mbUrl, {
+      headers: { 'User-Agent': 'YourApp/1.0 ( your@email.com )' }, // MusicBrainz 要求 User-Agent
+    })
+    const d = await r.json()
+    const recordings = d.recordings
+    if (recordings?.length > 0) {
+      const mbid = recordings[0].releases?.[0]?.['release-group']?.id
+      if (mbid) {
+        const coverUrl = `https://coverartarchive.org/release-group/${mbid}/front-250`
+        const imgCheck = await fetch(coverUrl, { method: 'HEAD' })
+        if (imgCheck.ok) return coverUrl
+      }
+    }
+  } catch {
+    /* ignore */
+  }
+
   return null
 }
 

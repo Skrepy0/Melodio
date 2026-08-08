@@ -1,5 +1,6 @@
-import { OnlineSong, Song } from '@/utils/interface'
+import { OnlineSong } from '@/utils/interface'
 import { MusicSigner, useAppStore } from '@/stores/app'
+import { getSongInfoByPath } from '@/utils/audioScanner'
 
 export async function downloadMusic(song: OnlineSong): Promise<{ path: string; size: number }> {
   try {
@@ -7,26 +8,14 @@ export async function downloadMusic(song: OnlineSong): Promise<{ path: string; s
     const fileName: string = song.name + '.' + song.ext
 
     const result = await MusicSigner.download({ url, fileName })
-    const info = await MusicSigner.getAudioInfo({ path: result.path })
-    const new_song: Song = {
-      id: info.id,
-      displayName: info.displayName,
-      uri: info.uri,
-      size: info.size,
-      mimeType: info.mimeType,
-      dateAdded: info.dateAdded,
-      dateModified: info.dateModified,
-      mediaType: 'audio',
-      duration: info.duration,
-      title: info.title,
-      artist: info.artist,
-      album: info.album,
-      track: info.track,
-      year: info.year,
-      albumArtUri: info.albumArtUri || song.cover_url || '',
+    const new_song = await getSongInfoByPath(result.path, song)
+    if (new_song) {
+      const appStore = useAppStore()
+      appStore.setAllSongs([new_song, ...appStore.getAllSongs()])
+    } else {
+      console.error('获取歌曲信息失败，无法添加到本地列表')
     }
-    const appStore = useAppStore()
-    appStore.setAllSongs([new_song, ...appStore.getAllSongs()])
+
     return result
   } catch (error: any) {
     console.error('下载失败:', error)

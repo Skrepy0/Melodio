@@ -1,5 +1,5 @@
 import { CapacitorMediaStore } from '@odion-cloud/capacitor-mediastore'
-import type { Song } from '@/utils/interface'
+import type { OnlineSong, Song } from '@/utils/interface'
 import { getCoverBase64 } from './functions'
 
 export interface ScanResult {
@@ -129,5 +129,45 @@ export const scanAllAudio = async (retryOnPermission = true): Promise<ScanResult
       songs: [],
       error: err.message || '扫描过程中发生未知错误',
     }
+  }
+}
+/**
+ * 通过已知路径获取歌曲完整信息
+ * @param path - 文件路径
+ * @param originalSong - 原始歌曲信息
+ * @returns Song 对象，失败则返回 null
+ */
+export async function getSongInfoByPath(
+  path: string,
+  originalSong: OnlineSong
+): Promise<Song | null> {
+  if (!path) return null
+
+  try {
+    const result = await CapacitorMediaStore.getMediaMetadata({ filePath: path })
+
+    const media = (result as any)?.media
+    if (!media) return null
+
+    return {
+      id: media.id,
+      displayName: media.displayName ?? originalSong.name,
+      uri: media.uri ?? path,
+      size: media.size ?? originalSong.file_size_bytes,
+      mimeType: media.mimeType ?? originalSong.ext,
+      dateAdded: media.dateAdded ?? Date.now(),
+      dateModified: media.dateModified ?? Date.now(),
+      mediaType: 'audio',
+      duration: media.duration ?? originalSong.duration * 1000,
+      title: media.title || media.displayName || originalSong.name || '未知歌曲',
+      artist: media.artist || originalSong.singers || '未知艺术家',
+      album: media.album || originalSong.album || '',
+      track: media.track ?? 0,
+      year: media.year ?? 0,
+      albumArtUri: media.albumArtUri || originalSong.cover_url,
+    }
+  } catch (error) {
+    console.error('获取歌曲信息失败:', error)
+    return null
   }
 }
