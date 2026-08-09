@@ -1,8 +1,15 @@
-import { ClientKey, MusicClientStatus, Playlist, PlayMode, Song } from '@/utils/interface'
+import {
+  ClientKey,
+  MusicClientStatus,
+  OnlineSong,
+  Playlist,
+  PlayMode,
+  Song,
+} from '@/utils/interface'
 import { defineStore } from 'pinia'
 import { computed, ref, watch } from 'vue'
 import { audio } from '@/utils/createAudio'
-import { getAccessibleUrl, resolveCoverUrl } from '@/utils/functions'
+import { getAccessibleUrl, parseSearchError, resolveCoverUrl } from '@/utils/functions'
 import toast from '@/utils/createToast'
 import { i18n } from '@/i18n'
 import { registerPlugin } from '@capacitor/core'
@@ -22,7 +29,6 @@ function getSystemLanguage(): string {
   if (prefix === 'zh') return 'zh-CN'
   return 'en-US'
 }
-
 export const useAppStore = defineStore('app', () => {
   const darkMode = ref(localStorage.getItem('darkMode') === 'true')
   const pinyinSearch = ref(localStorage.getItem('pinyinSearch') === 'true')
@@ -39,6 +45,118 @@ export const useAppStore = defineStore('app', () => {
   const musicClientLimitation = ref<number>(5)
   const fetchTimeOut = ref<number>(30)
   const eachSongAveTimeOut = ref<number>(10)
+  // 搜索
+  const searchKeyword = ref<string>('')
+  const searchResults = ref<OnlineSong[]>([])
+  const isLoading = ref(false)
+  const searchError = ref<string | null>(null)
+  const hasSearched = ref(false)
+
+  let partialListener: any = null
+  let doneListener: any = null
+  let searchPromise: Promise<any> | null = null
+
+  const addUniqueSongs = (newSongs: OnlineSong[]) => {
+    const existingIds = new Set(searchResults.value.map((s) => s.identifier))
+    const toAdd = newSongs.filter((s) => !existingIds.has(s.identifier))
+    if (toAdd.length) {
+      searchResults.value = [...searchResults.value, ...toAdd]
+    }
+  }
+
+  const cleanupSearch = () => {
+    if (partialListener) {
+      partialListener.remove()
+      partialListener = null
+    }
+    if (doneListener) {
+      doneListener.remove()
+      doneListener = null
+    }
+    searchPromise = null
+  }
+
+  const search = async (
+    keyword: string,
+    clients: string[],
+    limit: number,
+    eachSongTimeOut: number,
+    totalTimeOut: number,
+    t: any
+  ) => {
+    // 如果已有搜索进行中，先取消
+    cleanupSearch()
+
+    // 重置状态
+    searchResults.value = []
+    searchError.value = null
+    isLoading.value = true
+    hasSearched.value = true
+
+    try {
+      partialListener = await MusicSigner.addListener('searchPartial', (data: any) => {
+        const newSongs = data.items || []
+        addUniqueSongs(newSongs)
+      })
+      doneListener = await MusicSigner.addListener('searchDone', () => {
+        // 完成搜索
+      })
+
+      searchPromise = MusicSigner.search({
+        keyword,
+        clients,
+        limit,
+        eachSongTimeOut,
+        totalTimeOut,
+      })
+      await searchPromise
+    } catch (e: any) {
+      const parsedError = parseSearchError(e)
+      const errorMsg = e?.message || String(e)
+
+      if (parsedError.code === -1) {
+        if (errorMsg.includes('Missing keyword')) {
+          searchError.value = t('search.error.no_keyword')
+        } else {
+          searchError.value = t('search.error.network.no_network') + `\n${e.toString()}`
+        }
+      } else if (
+        parsedError.body &&
+        typeof parsedError.body === 'object' &&
+        parsedError.body.code === 1001
+      ) {
+        const clientName = parsedError.body.msg?.split(': ')?.[1] || ''
+        searchError.value = t('search.error.backend.music_client', { music_client: clientName })
+      } else if (
+        errorMsg.includes('Invalid signature') ||
+        parsedError.body?.detail === 'Invalid signature'
+      ) {
+        searchError.value = t('search.error.backend.sign') + `\n${e.toString()}`
+      } else if (parsedError.code >= 500 && parsedError.code < 600) {
+        searchError.value = t('search.error.backend.server') + `\n${e.toString()}`
+      } else if (parsedError.code >= 400 && parsedError.code < 500) {
+        const isTimeout =
+          errorMsg.includes('timeout') || errorMsg.includes('Timeout') || e?.code === 'ECONNABORTED'
+        searchError.value = isTimeout
+          ? t('search.error.network.timeout')
+          : t('search.error.client') + `\n${e.toString()}`
+      } else {
+        searchError.value = t('search.error.unknown') + `\n${e.toString()}`
+      }
+      console.error(e)
+      searchResults.value = []
+    } finally {
+      isLoading.value = false
+      cleanupSearch()
+    }
+  }
+  const resetSearch = () => {
+    searchError.value = null
+    isLoading.value = false
+    hasSearched.value = false
+    cleanupSearch()
+  }
+
   function initEachSongAveTimeOut() {
     const stored = localStorage.getItem('eachSongAveTimeOut')
     eachSongAveTimeOut.value = stored ? parseInt(stored) : 10
@@ -849,5 +967,13 @@ export const useAppStore = defineStore('app', () => {
     setFetchTimeOut,
     getEachSongAveTimeOut,
     setEachSongAveTimeOut,
+
+    searchKeyword,
+    searchResults,
+    isLoading,
+    searchError,
+    hasSearched,
+    search,
+    resetSearch,
   }
 })

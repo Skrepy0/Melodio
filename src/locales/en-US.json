@@ -344,6 +344,7 @@
       "cancel": "Cancel"
     },
     "error": {
+      "no_keyword": "Please enter a keyword before searching",
       "network": {
         "no_network": "Network error, please check your network connection",
         "timeout": "Request timeout, please try again later"

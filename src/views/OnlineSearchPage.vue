@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { IonPage } from '@ionic/vue'
 import { Icon } from '@iconify/vue'
-import { nextTick, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { DropdownItem, OnlineSong, Song } from '@/utils/interface'
 import { useDropdownManager } from '@/composables/useDropdownManager'
 import OnlineSongItemSelectable from '@/components/song/OnlineSongItemSelectable.vue'
@@ -9,27 +9,22 @@ import SearchBox from '@/components/SearchBox.vue'
 import PageTitle from '@/components/PageTitle.vue'
 import router from '@/router'
 import toast from '@/utils/createToast'
-import { MusicSigner, useAppStore } from '@/stores/app'
+import { useAppStore } from '@/stores/app'
 import { downloadMultipleSongs, downloadMusic } from '@/utils/musicDownloader'
 import { useI18n } from 'vue-i18n'
 import NowPlayingBar from '@/components/NowPlayingBar.vue'
-import {
-  getAccessibleUrl,
-  getSongFromOnlineSong,
-  isInList,
-  parseSearchError,
-} from '@/utils/functions'
+import { getAccessibleUrl, getSongFromOnlineSong, isInList } from '@/utils/functions'
 import { audio } from '@/utils/createAudio'
 import { showPlaylistSelector } from '@/utils/createPlaylistSelector'
 
 const { t } = useI18n()
 const appStore = useAppStore()
 
-const keyword = ref('')
-const searchResults = ref<OnlineSong[]>([])
-const isLoading = ref(false)
-const searchError = ref<string | null>(null)
-const hasSearched = ref(false)
+const keyword = ref(appStore.searchKeyword)
+const searchResults = computed(() => appStore.searchResults)
+const isLoading = computed(() => appStore.isLoading)
+const searchError = computed(() => appStore.searchError)
+const hasSearched = computed(() => appStore.hasSearched)
 
 const isSelectMode = ref(false)
 const selectedIds = ref<Set<string>>(new Set())
@@ -37,33 +32,6 @@ const { openDropdownId, handleDropdownToggle } = useDropdownManager()
 
 const downloadingIds = ref<Set<string>>(new Set()) // 单曲下载中
 const isDownloadingBatch = ref(false) // 批量下载中
-
-let partialListener: { remove: () => void } | null = null
-let doneListener: { remove: () => void } | null = null
-let searchCall: Promise<any> | null = null
-
-// 根据 identifier 去重
-const addUniqueSongs = (newSongs: OnlineSong[]) => {
-  const existingIds = new Set(searchResults.value.map((s) => s.identifier))
-  const toAdd = newSongs.filter((s) => !existingIds.has(s.identifier))
-  if (toAdd.length) {
-    searchResults.value = [...searchResults.value, ...toAdd]
-  }
-}
-
-const cleanupSearch = () => {
-  if (partialListener) {
-    partialListener.remove()
-    partialListener = null
-  }
-  if (doneListener) {
-    doneListener.remove()
-    doneListener = null
-  }
-  if (searchCall) {
-    searchCall = null
-  }
-}
 
 const operations = ref<DropdownItem[]>([
   { icon: 'line-md:play-filled', description: 'Play', value: 'play' },
@@ -85,82 +53,16 @@ const operations = ref<DropdownItem[]>([
 
 const goBack = () => router.back()
 
-const onSearch = async (query: string) => {
+const onSearch = async () => {
   if (isLoading.value) return
-
-  // 取消正在进行的搜索
-  cleanupSearch()
-
-  if (!query.trim()) {
-    searchResults.value = []
-    hasSearched.value = false
-    searchError.value = null
-    isLoading.value = false
-    return
-  }
-
-  isLoading.value = true
-  searchError.value = null
-  hasSearched.value = true
-  searchResults.value = [] // 清空旧结果
-
-  try {
-    // 1. 注册监听器
-    partialListener = await MusicSigner.addListener('searchPartial', (data: any) => {
-      // data 包含 source 和 items
-      const newSongs = data.items || []
-      addUniqueSongs(newSongs)
-    })
-
-    doneListener = await MusicSigner.addListener('searchDone', () => {
-      // 可选：收到 done 事件时标记完成，但 promise resolve 也会触发
-    })
-
-    // 2. 发起搜索（promise 在流结束时 resolve）
-    await MusicSigner.search({
-      keyword: keyword.value,
-      clients: appStore.getEnabledClients(),
-      limit: appStore.getMusicClientLimitation(),
-      eachSongTimeOut: appStore.getEachSongAveTimeOut(),
-      totalTimeOut: appStore.getFetchTimeOut(),
-    })
-
-    if (searchResults.value.length === 0) {
-      //ignore没有搜索到任何结果
-    }
-  } catch (e: any) {
-    const parsedError = parseSearchError(e)
-    const errorMsg = e?.message || String(e)
-
-    if (parsedError.code === -1) {
-      searchError.value = t('search.error.network.no_network')
-    } else if (
-      parsedError.body &&
-      typeof parsedError.body === 'object' &&
-      parsedError.body.code === 1001
-    ) {
-      const clientName = parsedError.body.msg?.split(': ')?.[1] || ''
-      searchError.value = t('search.error.backend.music_client', { music_client: clientName })
-    } else if (
-      errorMsg.includes('Invalid signature') ||
-      parsedError.body?.detail === 'Invalid signature'
-    ) {
-      searchError.value = t('search.error.backend.sign')
-    } else if (parsedError.code >= 500 && parsedError.code < 600) {
-      searchError.value = t('search.error.backend.server')
-    } else if (parsedError.code >= 400 && parsedError.code < 500) {
-      const isTimeout =
-        errorMsg.includes('timeout') || errorMsg.includes('Timeout') || e?.code === 'ECONNABORTED'
-      searchError.value = isTimeout ? t('search.error.network.timeout') : t('search.error.client')
-    } else {
-      searchError.value = t('search.error.unknown')
-    }
-    console.error(e)
-    searchResults.value = []
-  } finally {
-    isLoading.value = false
-    cleanupSearch()
-  }
+  await appStore.search(
+    keyword.value,
+    appStore.getEnabledClients(),
+    appStore.getMusicClientLimitation(),
+    appStore.getEachSongAveTimeOut(),
+    appStore.getFetchTimeOut(),
+    t
+  )
 }
 
 const onMenuItemClicked = async (item: DropdownItem) => {
@@ -415,13 +317,14 @@ const downloadSelectedMusics = async () => {
 }
 
 watch(keyword, (newVal) => {
-  if (!newVal.trim() && hasSearched.value) {
-    //todo
+  appStore.searchKeyword = newVal
+  if (isLoading.value) {
+    appStore.resetSearch()
   }
 })
 
 onBeforeUnmount(() => {
-  cleanupSearch()
+  // ignore
 })
 </script>
 
