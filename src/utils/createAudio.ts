@@ -88,6 +88,14 @@ export class NativeAudioPlayer {
     // State (_paused, _currentTime) is set by native events (songChanged, playStateChange)
   }
 
+  async setCanFetchCoverFromWeb(canFetchCoverFromWeb: boolean) {
+    await NativeAudio.setCanFetchCoverFromWeb({ canFetchCoverFromWeb })
+  }
+
+  async setUserAgent(userAgent: string) {
+    await NativeAudio.setUserAgent({ userAgent })
+  }
+
   async play() {
     const appStore = useAppStore()
     if (!appStore.getFirstPlayFlag()) {

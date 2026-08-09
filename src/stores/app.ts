@@ -9,13 +9,13 @@ import {
 import { defineStore } from 'pinia'
 import { computed, ref, watch } from 'vue'
 import { audio } from '@/utils/createAudio'
-import { getAccessibleUrl, parseSearchError, resolveCoverUrl } from '@/utils/functions'
+import { getAccessibleUrl, parseSearchError } from '@/utils/functions'
 import toast from '@/utils/createToast'
 import { i18n } from '@/i18n'
 import { registerPlugin } from '@capacitor/core'
 import type { SystemBarPlugin } from '@/plugins/system-bar/definitions'
 import { mixColors } from '@/utils/color'
-import { musicClients } from '@/config'
+import { musicClients, USER_AGENT } from '@/config'
 import { MusicSignerPlugin } from '@/plugins/music-signer/definitions'
 import { requestMediaPermissions } from '@/utils/permission'
 
@@ -345,11 +345,12 @@ export const useAppStore = defineStore('app', () => {
   function getAudioFocusPause() {
     return audioFocusPause.value
   }
-  function initCanFetchCoverFromWeb() {
+  async function initCanFetchCoverFromWeb() {
     const storage = localStorage.getItem('canFetchCoverFromWeb') || ''
     if (['true', 'false'].includes(storage)) {
       canFetchCoverFromWeb.value = storage === 'true'
     }
+    await audio.setCanFetchCoverFromWeb(canFetchCoverFromWeb.value)
   }
 
   function setCanFetchCoverFromWeb(val: boolean) {
@@ -534,30 +535,68 @@ export const useAppStore = defineStore('app', () => {
 
   const currentSong = computed(() => playQueue.value[playData.value.currentIndex] || null)
 
+  // 播放队列更新
+  let updateVersion = 0
+
   watch(
     playQueue,
     async (newQueue) => {
-      const list = await Promise.all(
-        newQueue.map(async (s) => ({
-          url: getAccessibleUrl(s.uri),
+      const currentVersion = ++updateVersion
+
+      if (!newQueue.length) {
+        await audio.setPlaylist([])
+        playData.value.currentIndex = 0
+        savePlayData()
+        return
+      }
+
+      try {
+        // 直接同步构建播放列表，不进行任何异步获取
+        const playlistItems = newQueue.map((s) => ({
+          url: getAccessibleUrl(s.uri), // 同步函数
           title: s.title,
           artist: s.artist || 'Unknown',
           album: s.album || '',
-          coverUrl: canFetchCoverFromWeb.value ? await resolveCoverUrl(s) : s.albumArtUri,
+          coverUrl: s.albumArtUri || '', // 直接使用原封面
         }))
-      )
-      await audio.setPlaylist(list)
-      try {
-        console.log(newQueue[playData.value.currentIndex])
-      } catch (IndexError) {
-        playData.value.currentIndex = 0
-        savePlayData()
+
+        // 检查版本号
+        if (currentVersion !== updateVersion) return
+
+        await audio.setPlaylist(playlistItems)
+
+        // 修正索引
+        if (playData.value.currentIndex >= playlistItems.length) {
+          playData.value.currentIndex = 0
+          savePlayData()
+        }
+      } catch (error) {
+        // 降级（极少发生，因为现在没有异步操作）
+        console.error('构建播放列表失败', error)
+        if (currentVersion !== updateVersion) return
+        const fallbackList = newQueue.map((s) => ({
+          url: s.uri,
+          title: s.title,
+          artist: s.artist || 'Unknown',
+          album: s.album || '',
+          coverUrl: s.albumArtUri || '',
+        }))
+        await audio.setPlaylist(fallbackList)
+        if (playData.value.currentIndex >= fallbackList.length) {
+          playData.value.currentIndex = 0
+          savePlayData()
+        }
       }
     },
     { deep: true, immediate: true }
   )
+
   watch(playMode, (newMode) => {
     audio.setRepeatMode(newMode === 'repeatOne').then((r) => console.log('repeatOne', r))
+  })
+
+  watch(canFetchCoverFromWeb, async (newVal) => {
+    await audio.setCanFetchCoverFromWeb(newVal)
   })
 
   function setupNativeAudioListeners() {
@@ -685,7 +724,6 @@ export const useAppStore = defineStore('app', () => {
       initAutoPauseOnDisconnect()
       initAutoDelInvalidSongs()
       initAudioFocusPause().then((r) => console.log('initAudioFocusPause', r))
-      initCanFetchCoverFromWeb()
       initAllSongs()
       initPlayQueue()
       initPlayData()
@@ -696,6 +734,8 @@ export const useAppStore = defineStore('app', () => {
       setupAudioBecomingNoisyListener()
       // playQueue watcher (immediate: true) already syncs playlist to native
       setupNativeAudioListeners()
+      await initCanFetchCoverFromWeb()
+      await audio.setUserAgent(USER_AGENT)
       await audio.setRepeatMode(playMode.value === 'repeatOne')
       initFlag.value = true
     }

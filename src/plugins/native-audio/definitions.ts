@@ -17,8 +17,9 @@ export interface NativeAudioPlugin {
   getCurrentPosition(): Promise<{ position: number }>
 
   setPlaylist(options: { songs: SongItem[] }): Promise<void>
+  setCanFetchCoverFromWeb(options: { canFetchCoverFromWeb: boolean }): Promise<void>
   playIndex(options: { index: number; autoPlay: boolean }): Promise<void>
-
+  setUserAgent(options: { userAgent: string }): Promise<void>
   setMetadata(metadata: SongItem & { duration?: number }): Promise<void>
   updatePlaybackState(options: { isPlaying: boolean }): Promise<void>
   setRepeatMode(options: { repeatOne: boolean }): Promise<void>

@@ -71,6 +71,8 @@ public class NativeAudioPlugin extends Plugin {
     private int durationSec = 0;
     private boolean repeatOne = false;
     private float playbackSpeed = 1.0f;
+    private boolean fetchCoverFromWeb = false;
+    private String userAgent = "";
 
     //焦点管理
     private boolean audioFocusEnabled = true;
@@ -307,6 +309,16 @@ public class NativeAudioPlugin extends Plugin {
             Bitmap finalBitmap = bitmap;
             new Handler(Looper.getMainLooper()).post(() -> callback.onResult(finalBitmap));
         }).start();
+    }
+
+    @PluginMethod
+    public void setCanFetchCoverFromWeb(PluginCall call) {
+        fetchCoverFromWeb = Boolean.TRUE.equals(call.getBoolean("canFetchCoverFromWeb"));
+    }
+
+    @PluginMethod
+    public void setUserAgent(PluginCall call) {
+        this.userAgent = call.getString("userAgent");
     }
 
     @PluginMethod
@@ -570,20 +582,87 @@ public class NativeAudioPlugin extends Plugin {
     }
 
     private void updateMetadata(SongItem song) {
-        MediaMetadataCompat.Builder b = new MediaMetadataCompat.Builder().putString(MediaMetadataCompat.METADATA_KEY_TITLE, song.title).putString(MediaMetadataCompat.METADATA_KEY_ARTIST, song.artist).putString(MediaMetadataCompat.METADATA_KEY_ALBUM, song.album).putLong(MediaMetadataCompat.METADATA_KEY_DURATION, durationSec * 1000L);
+        // 构建基础元数据
+        MediaMetadataCompat.Builder b = new MediaMetadataCompat.Builder()
+                .putString(MediaMetadataCompat.METADATA_KEY_TITLE, song.title)
+                .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, song.artist)
+                .putString(MediaMetadataCompat.METADATA_KEY_ALBUM, song.album)
+                .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, durationSec * 1000L);
 
+        if (fetchCoverFromWeb) {
+            // 启用在线搜索时：先加载本地封面，失败再走在线
+            loadLocalCoverWithFallback(song, b);
+        } else {
+            // 未启用：仅加载本地（原逻辑）
+            loadLocalCover(song, b);
+        }
+    }
+
+    private void loadLocalCover(SongItem song, MediaMetadataCompat.Builder builder) {
         if (song.cover != null && !song.cover.isEmpty()) {
             loadBitmap(song.cover, bitmap -> {
                 if (bitmap != null) {
-                    b.putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, bitmap);
+                    builder.putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, bitmap);
                 }
-                mediaSession.setMetadata(b.build());
+                mediaSession.setMetadata(builder.build());
                 showNotification();
             });
         } else {
-            mediaSession.setMetadata(b.build());
+            mediaSession.setMetadata(builder.build());
             showNotification();
         }
+    }
+
+    private void loadLocalCoverWithFallback(SongItem song, MediaMetadataCompat.Builder builder) {
+        // 第一步：尝试加载本地封面
+        if (song.cover != null && !song.cover.isEmpty()) {
+            loadBitmap(song.cover, bitmap -> {
+                if (bitmap != null) {
+                    // 本地封面加载成功，直接设置
+                    builder.putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, bitmap);
+                    mediaSession.setMetadata(builder.build());
+                    showNotification();
+                } else {
+                    // 本地封面加载失败（bitmap 为 null），进入在线搜索
+                    fetchOnlineCover(song, builder);
+                }
+            });
+        } else {
+            // 没有本地封面，直接走在线搜索
+            fetchOnlineCover(song, builder);
+        }
+    }
+
+    private void fetchOnlineCover(SongItem song, MediaMetadataCompat.Builder builder) {
+        Song coverSong = new Song(song.cover, song.title, song.artist);
+        CoverResolver coverResolver = new CoverResolver(this.userAgent);
+        coverResolver.resolveCoverUrl(coverSong, new CoverResolver.CoverCallback() {
+            @Override
+            public void onSuccess(String coverUrl) {
+                if (coverUrl != null && !coverUrl.isEmpty()) {
+                    loadBitmap(coverUrl, bitmap -> {
+                        if (bitmap != null) {
+                            builder.putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, bitmap);
+                        }
+                        // 无论是否成功加载到 bitmap，都设置元数据
+                        mediaSession.setMetadata(builder.build());
+                        showNotification();
+                    });
+                } else {
+                    // 在线返回空 URL，直接设置无封面元数据
+                    mediaSession.setMetadata(builder.build());
+                    showNotification();
+                }
+            }
+
+            @Override
+            public void onError(Exception e) {
+                Log.w(TAG, "Online cover fetch error", e);
+                // 出错时设置无封面元数据
+                mediaSession.setMetadata(builder.build());
+                showNotification();
+            }
+        });
     }
 
     private void showNotification() {

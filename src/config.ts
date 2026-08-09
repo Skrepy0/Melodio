@@ -1,5 +1,6 @@
 import { ClientKey } from '@/utils/interface'
 
+export const USER_AGENT = `Melodio/${__APP_VERSION__} (https://github.com/Skrepy0/Melodio)`
 export const musicClientsConfig = {
   Bilibili: {
     name: 'BilibiliMusicClient',

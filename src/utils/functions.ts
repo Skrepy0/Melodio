@@ -1,6 +1,7 @@
 import { Filesystem } from '@capacitor/filesystem'
 import { OnlineSong, Song } from './interface'
 import { Capacitor } from '@capacitor/core'
+import { USER_AGENT } from '@/config'
 
 export const getAccessibleUrl = (path: string): string => {
   if (!path) return ''
@@ -100,67 +101,6 @@ export const DEFAULT_COVER =
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#888"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>'
   )
 
-async function isImageLoadable(url: string, timeoutMs = 4000): Promise<boolean> {
-  return new Promise((resolve) => {
-    const img = new Image()
-    const timer = setTimeout(() => {
-      img.src = ''
-      resolve(false)
-    }, timeoutMs)
-
-    img.onload = () => {
-      clearTimeout(timer)
-      resolve(true)
-    }
-    img.onerror = () => {
-      clearTimeout(timer)
-      resolve(false)
-    }
-    img.src = url
-  })
-}
-
-async function isLocalFileReadable(path: string): Promise<boolean> {
-  try {
-    const normalized = path.replace(/^file:\/\//, '')
-    const stat = await Filesystem.stat({ path: normalized })
-    return stat.type === 'file'
-  } catch {
-    return false
-  }
-}
-
-export async function resolveCoverUrl(song: Song): Promise<string> {
-  if (song.albumArtUri && song.albumArtUri !== '') {
-    let uri = song.albumArtUri
-
-    if (
-      uri.startsWith('https://localhost/_capacitor_file_/') ||
-      uri.startsWith('http://localhost/_capacitor_file_/')
-    ) {
-      const prefix = uri.includes('https://')
-        ? 'https://localhost/_capacitor_file_'
-        : 'http://localhost/_capacitor_file_'
-      const filePath = uri.slice(prefix.length)
-      uri = 'file://' + (filePath.startsWith('/') ? filePath : '/' + filePath)
-    } else if (uri.startsWith('/')) {
-      uri = 'file://' + uri
-    }
-
-    if (uri.startsWith('http://') || uri.startsWith('https://')) {
-      if (await isImageLoadable(uri)) return uri
-    } else {
-      if (await isLocalFileReadable(uri)) return uri
-    }
-  }
-
-  const onlineCover = await fetchCoverFromWeb(song.title, song.artist || '')
-  if (onlineCover && (await isImageLoadable(onlineCover))) {
-    return onlineCover
-  }
-
-  return DEFAULT_COVER
-}
 export const isInList = (id: string, queue: Song[]) => queue.some((song) => song.id === id)
 export async function fetchCoverFromWeb(title: string, artist: string): Promise<string | null> {
   try {
@@ -194,7 +134,7 @@ export async function fetchCoverFromWeb(title: string, artist: string): Promise<
     const mbQuery = encodeURIComponent(`recording:"${title}" AND artist:"${artist}"`)
     const mbUrl = `https://musicbrainz.org/ws/2/recording/?query=${mbQuery}&fmt=json&limit=1`
     const r = await fetch(mbUrl, {
-      headers: { 'User-Agent': 'YourApp/1.0 ( your@email.com )' }, // MusicBrainz 要求 User-Agent
+      headers: { 'User-Agent': USER_AGENT },
     })
     const d = await r.json()
     const recordings = d.recordings
