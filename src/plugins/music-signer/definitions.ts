@@ -17,6 +17,7 @@ export interface MusicSignerPlugin {
     eachSongTimeOut: number
     totalTimeOut?: number
   }): Promise<{ items: OnlineSong[]; total: number }>
+  cancelSearch(): Promise<void>
   download(options: { url: string; fileName: string }): Promise<{ path: string; size: number }>
   /**
    * 添加事件监听器。

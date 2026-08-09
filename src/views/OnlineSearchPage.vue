@@ -9,7 +9,7 @@ import SearchBox from '@/components/SearchBox.vue'
 import PageTitle from '@/components/PageTitle.vue'
 import router from '@/router'
 import toast from '@/utils/createToast'
-import { useAppStore } from '@/stores/app'
+import { MusicSigner, useAppStore } from '@/stores/app'
 import { downloadMultipleSongs, downloadMusic } from '@/utils/musicDownloader'
 import { useI18n } from 'vue-i18n'
 import NowPlayingBar from '@/components/NowPlayingBar.vue'
@@ -116,6 +116,7 @@ const onMenuItemClicked = async (item: DropdownItem) => {
     toast.success(t('song.toast.liked'))
   }
 }
+
 const addToQueue = (songs: OnlineSong[]) => {
   const queue = appStore.getPlayQueue()
   const newSongs: Song[] = []
@@ -132,6 +133,7 @@ const addToQueue = (songs: OnlineSong[]) => {
     toast.warning(t('playList.toast.alreadyInQueue'))
   }
 }
+
 const addSelectedToQueue = () => {
   const selectedSongs = searchResults.value.filter(
     (song) => selectedIds.value.has(song.identifier) && song.download_url?.trim()
@@ -139,6 +141,7 @@ const addSelectedToQueue = () => {
   addToQueue(selectedSongs)
   exitSelectMode()
 }
+
 const addToSongList = async (songs: OnlineSong[]) => {
   const selected = await showPlaylistSelector(
     [appStore.getLikeList(), ...appStore.getSongLists()],
@@ -186,6 +189,7 @@ const addToSongList = async (songs: OnlineSong[]) => {
     }
   }
 }
+
 const addSelectedToSongList = async () => {
   const selectedSongs = searchResults.value.filter(
     (song) => selectedIds.value.has(song.identifier) && song.download_url?.trim()
@@ -319,6 +323,7 @@ const downloadSelectedMusics = async () => {
 watch(keyword, (newVal) => {
   appStore.searchKeyword = newVal
   if (isLoading.value) {
+    MusicSigner.cancelSearch()
     appStore.resetSearch()
   }
 })

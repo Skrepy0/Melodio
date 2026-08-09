@@ -55,6 +55,7 @@ public class MusicSignerPlugin extends Plugin {
     private static final String TAG = "MusicSignerPlugin";
     private static final String backendUrl = "https://api-melodio.skrepy.dpdns.org";
     private static final OkHttpClient unsafeDownloadClient = createUnsafeOkHttpClient();
+    private volatile okhttp3.Call currentCall = null;
 
     private static OkHttpClient createUnsafeOkHttpClient() {
         try {
@@ -93,6 +94,11 @@ public class MusicSignerPlugin extends Plugin {
 
     @PluginMethod
     public void search(PluginCall pluginCall) {
+        if (currentCall != null && !currentCall.isCanceled()) {
+            currentCall.cancel();
+            currentCall = null;
+        }
+
         String secretKey = BuildConfig.API_SECRET;
 
         String keyword = pluginCall.getString("keyword");
@@ -155,23 +161,33 @@ public class MusicSignerPlugin extends Plugin {
                 .writeTimeout(30, TimeUnit.SECONDS)
                 .build();
 
-        client.newCall(request).enqueue(new okhttp3.Callback() {
+        final okhttp3.Call call = client.newCall(request);
+        currentCall = call;
+
+        call.enqueue(new okhttp3.Callback() {
             @Override
             public void onFailure(@NonNull okhttp3.Call okCall, @NonNull IOException e) {
+                if (okCall.isCanceled()) {
+                    Log.d(TAG, "Search request cancelled");
+                    return;
+                }
                 Log.e(TAG, "SSE request failed", e);
                 pluginCall.reject("Network error: " + e.getMessage());
             }
 
             @Override
             public void onResponse(@NonNull okhttp3.Call okCall, @NonNull okhttp3.Response response) {
+                if (okCall.isCanceled()) {
+                    Log.d(TAG, "Response ignored due to cancellation");
+                    return;
+                }
+
                 boolean resolved = false;
 
                 try {
-                    // 打印响应信息（调试用）
                     Log.d(TAG, "Response code: " + response.code());
 
                     if (!response.isSuccessful()) {
-                        // 读取错误响应体
                         String errorBody = "";
                         try (okhttp3.ResponseBody body = response.body()) {
                             if (body != null) {
@@ -236,9 +252,23 @@ public class MusicSignerPlugin extends Plugin {
                     if (!resolved) {
                         pluginCall.reject("Unexpected error: " + e.getMessage());
                     }
+                } finally {
+                    if (currentCall == okCall) {
+                        currentCall = null;
+                    }
                 }
             }
         });
+    }
+
+    @PluginMethod
+    public void cancelSearch(PluginCall pluginCall) {
+        if (currentCall != null && !currentCall.isCanceled()) {
+            currentCall.cancel();
+            currentCall = null;
+            Log.d(TAG, "Search cancelled by user");
+        }
+        pluginCall.resolve();
     }
 
     private String hmacSha256(String key, String data) {

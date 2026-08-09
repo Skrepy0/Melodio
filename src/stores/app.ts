@@ -117,6 +117,8 @@ export const useAppStore = defineStore('app', () => {
       if (parsedError.code === -1) {
         if (errorMsg.includes('Missing keyword')) {
           searchError.value = t('search.error.no_keyword')
+        } else if (errorMsg.includes('stream was reset: CANCEL')) {
+          // ignore 请求被正常取消
         } else {
           searchError.value = t('search.error.network.no_network') + `\n${e.toString()}`
         }
