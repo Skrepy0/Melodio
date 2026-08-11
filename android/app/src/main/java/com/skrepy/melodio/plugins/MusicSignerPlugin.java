@@ -1,17 +1,8 @@
 package com.skrepy.melodio.plugins;
 
-import android.annotation.SuppressLint;
-import android.content.ContentValues;
-import android.content.Intent;
-import android.media.MediaScannerConnection;
-import android.net.Uri;
-import android.os.Build;
-import android.os.Environment;
-import android.provider.MediaStore;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.RequiresApi;
 
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
@@ -24,12 +15,8 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.io.File;
 import java.io.IOException;
-import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
-import java.security.SecureRandom;
-import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -39,58 +26,16 @@ import java.util.concurrent.TimeUnit;
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.TrustManager;
-import javax.net.ssl.X509TrustManager;
 
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
-import okhttp3.Response;
-import okio.BufferedSink;
-import okio.Okio;
 
 @CapacitorPlugin(name = "MusicSigner")
 public class MusicSignerPlugin extends Plugin {
 
     private static final String TAG = "MusicSignerPlugin";
     private static final String backendUrl = "https://api-melodio.skrepy.dpdns.org";
-    private static final OkHttpClient unsafeDownloadClient = createUnsafeOkHttpClient();
     private volatile okhttp3.Call currentCall = null;
-
-    private static OkHttpClient createUnsafeOkHttpClient() {
-        try {
-            @SuppressLint("CustomX509TrustManager") final TrustManager[] trustAllCerts = new TrustManager[]{
-                    new X509TrustManager() {
-                        @SuppressLint("TrustAllX509TrustManager")
-                        @Override
-                        public void checkClientTrusted(X509Certificate[] chain, String authType) {
-                        }
-
-                        @SuppressLint("TrustAllX509TrustManager")
-                        @Override
-                        public void checkServerTrusted(X509Certificate[] chain, String authType) {
-                        }
-
-                        @Override
-                        public X509Certificate[] getAcceptedIssuers() {
-                            return new X509Certificate[0];
-                        }
-                    }
-            };
-            final SSLContext sslContext = SSLContext.getInstance("SSL");
-            sslContext.init(null, trustAllCerts, new SecureRandom());
-
-            return new OkHttpClient.Builder()
-                    .sslSocketFactory(sslContext.getSocketFactory(), (X509TrustManager) trustAllCerts[0])
-                    .hostnameVerifier((hostname, session) -> true)
-                    .connectTimeout(30, TimeUnit.SECONDS)
-                    .readTimeout(180, TimeUnit.SECONDS)
-                    .writeTimeout(60, TimeUnit.SECONDS)
-                    .build();
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-    }
 
     @PluginMethod
     public void search(PluginCall pluginCall) {
@@ -285,117 +230,6 @@ public class MusicSignerPlugin extends Plugin {
         } catch (Exception e) {
             throw new RuntimeException("HMAC error", e);
         }
-    }
-
-    @PluginMethod
-    public void download(PluginCall call) {
-        String url = call.getString("url");
-        String fileName = call.getString("fileName");
-        if (url == null || fileName == null) {
-            call.reject("Missing url or fileName");
-            return;
-        }
-
-        performDownload(call, url, fileName);
-    }
-
-    private void performDownload(PluginCall call, String url, String fileName) {
-        Request request = new Request.Builder()
-                .url(url)
-                .addHeader("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
-                .addHeader("Accept", "*/*")
-                .addHeader("Connection", "keep-alive")
-                .build();
-
-        try {
-            Response response = unsafeDownloadClient.newCall(request).execute();
-            if (!response.isSuccessful()) {
-                call.reject("Download failed: " + response.code());
-                return;
-            }
-
-            String mimeType = response.header("Content-Type");
-
-            if (mimeType == null || !mimeType.startsWith("audio/")) {
-                mimeType = "audio/flac";
-            }
-
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                downloadViaMediaStore(call, response, fileName, mimeType);
-            } else {
-                downloadToPrivateDirAndScan(call, response, fileName);
-            }
-        } catch (IOException e) {
-            Log.e(TAG, "Download error", e);
-            call.reject("Download error: " + e.getMessage());
-        }
-    }
-
-    @RequiresApi(api = Build.VERSION_CODES.Q)
-    private void downloadViaMediaStore(PluginCall call, Response response, String fileName, String mimeType) throws IOException {
-        ContentValues values = new ContentValues();
-        values.put(MediaStore.Audio.Media.DISPLAY_NAME, fileName);
-        values.put(MediaStore.Audio.Media.MIME_TYPE, mimeType);
-        values.put(MediaStore.Audio.Media.RELATIVE_PATH, Environment.DIRECTORY_MUSIC);
-        values.put(MediaStore.Audio.Media.IS_PENDING, 1);
-
-        Uri collection = MediaStore.Audio.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY);
-        Uri itemUri = getContext().getContentResolver().insert(collection, values);
-        if (itemUri == null) {
-            call.reject("Failed to create MediaStore entry");
-            return;
-        }
-
-        try (OutputStream out = getContext().getContentResolver().openOutputStream(itemUri)) {
-            if (out == null) {
-                call.reject("Failed to open output stream");
-                return;
-            }
-            long fileSize = 0;
-            try (BufferedSink sink = Okio.buffer(Okio.sink(out))) {
-                if (response.body() != null) {
-                    fileSize = sink.writeAll(response.body().source());
-                }
-            }
-
-            values.clear();
-            values.put(MediaStore.Audio.Media.IS_PENDING, 0);
-            getContext().getContentResolver().update(itemUri, values, null, null);
-
-            JSObject result = new JSObject();
-            result.put("uri", itemUri.toString());
-            result.put("path", itemUri.toString());
-            result.put("size", fileSize);
-            call.resolve(result);
-        }
-    }
-
-    private void downloadToPrivateDirAndScan(PluginCall call, Response response, String fileName) throws IOException {
-        File downloadDir = new File(
-                getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "music");
-        if (!downloadDir.exists() && !downloadDir.mkdirs()) {
-            call.reject("Cannot create download directory");
-            return;
-        }
-
-        File outputFile = new File(downloadDir, fileName);
-        long fileSize = 0;
-        try (BufferedSink sink = Okio.buffer(Okio.sink(outputFile))) {
-            if (response.body() != null) {
-                fileSize = sink.writeAll(response.body().source());
-            }
-        }
-
-        Intent scanIntent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
-        scanIntent.setData(Uri.fromFile(outputFile));
-        getContext().sendBroadcast(scanIntent);
-        MediaScannerConnection.scanFile(getContext(),
-                new String[]{outputFile.getAbsolutePath()}, null, null);
-
-        JSObject result = new JSObject();
-        result.put("path", outputFile.getAbsolutePath());
-        result.put("size", fileSize);
-        call.resolve(result);
     }
 
     private static class ParamPair {

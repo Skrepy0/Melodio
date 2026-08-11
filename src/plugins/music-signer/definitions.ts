@@ -6,9 +6,6 @@ export interface PartialResult {
   items: OnlineSong[]
 }
 
-export interface SearchResult {
-  status: 'done'
-}
 export interface MusicSignerPlugin {
   search(options: {
     keyword: string
@@ -18,7 +15,6 @@ export interface MusicSignerPlugin {
     totalTimeOut?: number
   }): Promise<{ items: OnlineSong[]; total: number }>
   cancelSearch(): Promise<void>
-  download(options: { url: string; fileName: string }): Promise<{ path: string; size: number }>
   /**
    * 添加事件监听器。
    * @param eventName - 事件名称，支持 'searchPartial' 和 'searchDone'

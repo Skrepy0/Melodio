@@ -18,9 +18,11 @@ import { mixColors } from '@/utils/color'
 import { musicClients, USER_AGENT } from '@/config'
 import { MusicSignerPlugin } from '@/plugins/music-signer/definitions'
 import { requestMediaPermissions } from '@/utils/permission'
+import { DownloaderPlugin } from '@/plugins/downloader/definitions'
 
 const SystemBar = registerPlugin<SystemBarPlugin>('SystemBar')
 export const MusicSigner = registerPlugin<MusicSignerPlugin>('MusicSigner')
+export const Downloader = registerPlugin<DownloaderPlugin>('Downloader')
 const SUPPORTED_LOCALES = ['zh-CN', 'en-US']
 function getSystemLanguage(): string {
   const browserLang = navigator.language
