@@ -10,7 +10,7 @@ src/.vuepress/dist/*
 src/.vuepress/public/*
 src/articles/*
 src/*.md
-
+.claude/*
 android/.gradle/*
 android/.idea/*
 android/.kotlin/*

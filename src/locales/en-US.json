@@ -9,6 +9,7 @@
       "search": "Online Search",
       "newPlaylist": "New Playlist",
       "scanLibrary": "Scan Library",
+      "downloads": "Downloads",
       "blacklist": "Blacklist",
       "settings": "Settings"
     },
@@ -356,6 +357,49 @@
       },
       "client": "Client request error, please try again later",
       "unknown": "Unknown error"
+    }
+  },
+  "downloads": {
+    "title": "Downloads",
+    "tabs": {
+      "active": "Active",
+      "history": "Completed"
+    },
+    "status": {
+      "queued": "Queued",
+      "downloading": "Downloading",
+      "paused": "Paused",
+      "completed": "Completed",
+      "failed": "Failed"
+    },
+    "actions": {
+      "pause": "Pause",
+      "resume": "Resume",
+      "retry": "Retry",
+      "clearHistory": "Clear History"
+    },
+    "empty": {
+      "active": "There are no active download tasks",
+      "history": "No download history yet"
+    },
+    "history": {
+      "completedAt": "Completed at",
+      "fileSize": "File size"
+    },
+    "clearHistory": {
+      "title": "Confirm",
+      "message": "Are you sure you want to clear the download history?",
+      "confirm": "Clear",
+      "cancel": "Cancel"
+    },
+    "toast": {
+      "paused": "Download paused",
+      "pauseFailed": "Failed to pause download",
+      "resumed": "Download resumed",
+      "resumeFailed": "Failed to resume download",
+      "retryFailed": "Retry failed",
+      "taskNotFound": "Download task not found",
+      "historyCleared": "Download history cleared"
     }
   }
 }

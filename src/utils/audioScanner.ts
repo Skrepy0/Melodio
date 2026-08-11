@@ -69,15 +69,31 @@ export async function getSongInfoByPath(
 ): Promise<Song | null> {
   if (!path) return null
 
+  const invalidMetadataValues = new Set(['unknown', '<unknown>', '未知', '未知艺术家', '未知专辑'])
+  const normalizeText = (...values: Array<string | null | undefined>) => {
+    for (const value of values) {
+      if (typeof value !== 'string') continue
+      const trimmed = value.trim()
+      if (!trimmed) continue
+      if (invalidMetadataValues.has(trimmed.toLowerCase())) continue
+      return trimmed
+    }
+    return ''
+  }
+
   try {
     const result = await CapacitorMediaStore.getMediaMetadata({ filePath: path })
+    const media = (result as any)?.media || {}
 
-    const media = (result as any)?.media
-    if (!media) return null
+    const displayName = normalizeText(media.displayName, originalSong.name)
+    const title = normalizeText(media.title, media.displayName, originalSong.name, displayName)
+    const artist = normalizeText(media.artist, originalSong.singers)
+    const album = normalizeText(media.album, originalSong.album)
+    const albumArtUri = normalizeText(media.albumArtUri, originalSong.cover_url)
 
     return {
-      id: media.id,
-      displayName: media.displayName ?? originalSong.name,
+      id: String(media.id ?? `${originalSong.source}:${originalSong.identifier}`),
+      displayName,
       uri: media.uri ?? path,
       size: media.size ?? originalSong.file_size_bytes,
       mimeType: media.mimeType ?? originalSong.ext,
@@ -85,12 +101,12 @@ export async function getSongInfoByPath(
       dateModified: media.dateModified ?? Date.now(),
       mediaType: 'audio',
       duration: media.duration ?? originalSong.duration * 1000,
-      title: media.title || media.displayName || originalSong.name || '未知歌曲',
-      artist: media.artist || originalSong.singers || '未知艺术家',
-      album: media.album || originalSong.album || '',
+      title,
+      artist,
+      album,
       track: media.track ?? 0,
       year: media.year ?? 0,
-      albumArtUri: media.albumArtUri || originalSong.cover_url,
+      albumArtUri,
     }
   } catch (error) {
     console.error('获取歌曲信息失败:', error)

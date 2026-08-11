@@ -9,6 +9,7 @@
       "search": "在线搜索歌曲",
       "newPlaylist": "新建播放列表",
       "scanLibrary": "扫描曲库",
+      "downloads": "下载管理",
       "blacklist": "黑名单",
       "settings": "设置"
     },
@@ -354,6 +355,49 @@
       },
       "client": "客户端请求异常, 请稍后重试",
       "unknown": "未知错误"
+    }
+  },
+  "downloads": {
+    "title": "下载管理",
+    "tabs": {
+      "active": "下载中",
+      "history": "已完成"
+    },
+    "status": {
+      "queued": "排队中",
+      "downloading": "下载中",
+      "paused": "已暂停",
+      "completed": "已完成",
+      "failed": "下载失败"
+    },
+    "actions": {
+      "pause": "暂停",
+      "resume": "继续",
+      "retry": "重试",
+      "clearHistory": "清空历史"
+    },
+    "empty": {
+      "active": "当前没有下载任务",
+      "history": "暂无下载历史"
+    },
+    "history": {
+      "completedAt": "完成时间",
+      "fileSize": "文件大小"
+    },
+    "clearHistory": {
+      "title": "提示",
+      "message": "确定要清空下载历史吗？",
+      "confirm": "清空",
+      "cancel": "取消"
+    },
+    "toast": {
+      "paused": "下载已暂停",
+      "pauseFailed": "暂停失败",
+      "resumed": "下载已继续",
+      "resumeFailed": "继续失败",
+      "retryFailed": "重试失败",
+      "taskNotFound": "下载任务不存在",
+      "historyCleared": "下载历史已清空"
     }
   }
 }

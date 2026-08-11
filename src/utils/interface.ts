@@ -50,6 +50,60 @@ export interface HorizontalSelectProps {
   modelValue?: any // v-model 绑定的值
   iconSize?: number | string
 }
+export interface DownloadTaskStatus {
+  value: 'queued' | 'downloading' | 'paused' | 'completed' | 'failed'
+}
+
+export interface DownloadTaskSnapshot {
+  taskId: string
+  songIdentifier: string
+  source: string
+  name: string
+  singers: string
+  album: string
+  ext: string
+  coverUrl: string | null
+  fileSizeBytes: number
+  duration: number
+  downloadUrl: string | null
+  downloadUrlStatus: OnlineSong['download_url_status'] | null
+  progress: number
+  loaded: number
+  total: number
+  status: DownloadTaskStatus['value']
+  errorMessage: string | null
+  localPath: string | null
+  size: number
+  createdAt: number
+  updatedAt: number
+  completedAt: number | null
+}
+
+export interface DownloadHistoryItem {
+  taskId: string
+  songIdentifier: string
+  name: string
+  singers: string
+  album: string
+  ext: string
+  coverUrl: string | null
+  localPath: string
+  size: number
+  completedAt: number
+}
+
+export interface DownloadTaskActionResult {
+  taskId: string
+  status: DownloadTaskStatus['value']
+}
+
+export interface DownloadTaskResult {
+  taskId: string
+  path: string
+  uri?: string
+  size: number
+}
+
 export interface Song {
   id: string
   displayName: string

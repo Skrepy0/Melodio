@@ -53,6 +53,11 @@ const operations = computed<DropdownItem[]>(() => [
     value: 'new-songs-list',
   },
   { icon: 'ri:scan-2-line', description: t('home.operations.scanLibrary'), value: 'scan-songs' },
+  {
+    icon: 'material-symbols:download-rounded',
+    description: t('home.operations.downloads'),
+    value: 'downloads',
+  },
   { icon: 'mdi:ban', description: t('home.operations.blacklist'), value: 'blacklist' },
   { icon: 'ri:settings-line', description: t('home.operations.settings'), value: 'settings' },
 ])
@@ -242,6 +247,7 @@ const onSelectOperation = async (item: DropdownItem) => {
   console.log('选中:', item.description, item.value)
   if (item.value === 'settings') await router.push('/settings')
   else if (item.value === 'search') await router.push('/search')
+  else if (item.value === 'downloads') await router.push('/downloads')
   else if (item.value === 'scan-songs') await loadAllSongs()
   else if (item.value === 'new-songs-list') {
     const name = await showPrompt({

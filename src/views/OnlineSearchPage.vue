@@ -10,7 +10,7 @@ import PageTitle from '@/components/PageTitle.vue'
 import router from '@/router'
 import toast from '@/utils/createToast'
 import { MusicSigner, useAppStore } from '@/stores/app'
-import { downloadMultipleSongs, downloadMusic } from '@/utils/musicDownloader'
+import { downloadMultipleSongs, downloadMusic, isSongDownloading } from '@/utils/musicDownloader'
 import { useI18n } from 'vue-i18n'
 import NowPlayingBar from '@/components/NowPlayingBar.vue'
 import { getAccessibleUrl, getSongFromOnlineSong, isInList } from '@/utils/functions'
@@ -30,7 +30,10 @@ const isSelectMode = ref(false)
 const selectedIds = ref<Set<string>>(new Set())
 const { openDropdownId, handleDropdownToggle } = useDropdownManager()
 
-const downloadingIds = ref<Set<string>>(new Set()) // 单曲下载中
+const activeDownloadTasks = computed(() => appStore.getActiveDownloadTasks())
+const downloadingIds = computed(
+  () => new Set(activeDownloadTasks.value.map((task) => task.songIdentifier))
+)
 const isDownloadingBatch = ref(false) // 批量下载中
 
 const operations = ref<DropdownItem[]>([
@@ -73,7 +76,7 @@ const onMenuItemClicked = async (item: DropdownItem) => {
   }
 
   if (item.value === 'download') {
-    if (downloadingIds.value.has(song.identifier)) return
+    if (isSongDownloading(song)) return
 
     const url = song.download_url?.trim()
     if (!url) {
@@ -87,16 +90,12 @@ const onMenuItemClicked = async (item: DropdownItem) => {
       return
     }
 
-    downloadingIds.value.add(song.identifier)
-
     try {
       await downloadMusic(song)
       toast.success(`《${song.name}》下载成功！`)
     } catch (error: any) {
       console.error(`下载失败: ${song.name}`, error)
       toast.error(`《${song.name}》下载失败: ${error.message || '未知错误'}`)
-    } finally {
-      downloadingIds.value.delete(song.identifier)
     }
   } else if (item.value === 'play') {
     await onItemClick(song)
