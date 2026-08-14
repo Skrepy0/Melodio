@@ -418,7 +418,7 @@ public class NativeAudioPlugin extends Plugin {
 
                         if (autoPlay) {
                             mp.start();
-                            applyPlaybackRate();
+                            applyPlaybackRate(true);
                             isPlaying = true;
                             updateState(true);
                             startProgress();
@@ -490,7 +490,7 @@ public class NativeAudioPlugin extends Plugin {
         }
         if (!mediaPlayer.isPlaying()) {
             mediaPlayer.start();
-            applyPlaybackRate();
+            applyPlaybackRate(true);
             isPlaying = true;
             updateState(true);
             startProgress();
@@ -862,17 +862,22 @@ public class NativeAudioPlugin extends Plugin {
         Double rateObj = call.getDouble("rate");
         float rate = (rateObj != null) ? rateObj.floatValue() : 1.0f;
         rate = Math.max(0.5f, Math.min(2.0f, rate));
+        boolean shouldResume = prepared && mediaPlayer != null && mediaPlayer.isPlaying();
         this.playbackSpeed = rate;
-        applyPlaybackRate();
+        applyPlaybackRate(shouldResume);
         call.resolve();
     }
 
-    private void applyPlaybackRate() {
+    private void applyPlaybackRate(boolean preservePlaybackState) {
         if (mediaPlayer != null && prepared) {
+            boolean wasPlaying = mediaPlayer.isPlaying();
             try {
                 PlaybackParams params = new PlaybackParams();
                 params.setSpeed(playbackSpeed);
                 mediaPlayer.setPlaybackParams(params);
+                if (preservePlaybackState && wasPlaying && !mediaPlayer.isPlaying()) {
+                    mediaPlayer.start();
+                }
             } catch (Exception e) {
                 Log.e(TAG, "Failed to set playback rate", e);
             }
