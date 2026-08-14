@@ -10,6 +10,7 @@ import { showPlaylistSelector } from '@/utils/createPlaylistSelector'
 import { useI18n } from 'vue-i18n'
 import { computed, onUnmounted, ref, watch } from 'vue'
 import { audio } from '@/utils/createAudio'
+import { showSongInfo } from '@/utils/createInfo'
 
 const { t } = useI18n()
 const appStore = useAppStore()
@@ -108,6 +109,8 @@ const defaultOnMenuItemSelect = async (item: DropdownItem) => {
     } finally {
       appStore.setIsSwitchingSong(false)
     }
+  } else if (item.value === 'detail') {
+    await showSongInfo(props.song)
   }
 }
 
@@ -173,6 +176,7 @@ const menuOptions = computed<DropdownItem[]>(() => {
     { icon: 'mi:next', description: t('song.menu.playNext'), value: 'next' },
     { icon: 'mdi:queue', description: t('song.menu.addToQueue'), value: 'queue' },
     { icon: 'mdi:delete', description: t('song.menu.delete'), value: 'delete' },
+    { icon: 'bx:detail', description: t('song.menu.detail'), value: 'detail' },
     { icon: 'proicons:cancel', description: t('song.menu.cancel'), value: 'cancel' },
   ]
 })

@@ -16,6 +16,7 @@ import NowPlayingBar from '@/components/NowPlayingBar.vue'
 import { getAccessibleUrl, getSongFromOnlineSong, isInList } from '@/utils/functions'
 import { audio } from '@/utils/createAudio'
 import { showPlaylistSelector } from '@/utils/createPlaylistSelector'
+import { showSongInfo } from '@/utils/createInfo'
 
 const { t } = useI18n()
 const appStore = useAppStore()
@@ -47,8 +48,8 @@ const operations = ref<DropdownItem[]>([
     value: 'addToPlaylist',
   },
   { icon: 'mdi:heart-outline', description: t('song.menu.like'), value: 'like' },
-  { icon: 'mi:next', description: t('song.menu.playNext'), value: 'next' },
-  { icon: 'mdi:queue', description: t('song.menu.addToQueue'), value: 'queue' },
+  // { icon: 'mi:next', description: t('song.menu.playNext'), value: 'next' },
+  // { icon: 'mdi:queue', description: t('song.menu.addToQueue'), value: 'queue' },
   { icon: 'bx:detail', description: t('search.song_operations.detail'), value: 'detail' },
 ])
 
@@ -104,7 +105,7 @@ const onMenuItemClicked = async (item: DropdownItem) => {
   } else if (item.value === 'play') {
     await onItemClick(song)
   } else if (item.value === 'detail') {
-    //todo
+    await showSongInfo(song)
   } else if (item.value === 'queue') {
     addToQueue([song])
   } else if (item.value === 'addToPlaylist') {
@@ -117,15 +118,26 @@ const onMenuItemClicked = async (item: DropdownItem) => {
     }
     appStore.mergeLikeListData([targetSong])
     toast.success(t('song.toast.liked'))
+  } else if (item.value === 'next') {
+    const targetSong: Song = getSongFromOnlineSong(song)
+    const queue = [...appStore.getPlayQueue()]
+    const currentIndex = appStore.getPlayData().currentIndex
+    if (queue.length === 0 || currentIndex < 0) {
+      queue.push(targetSong)
+    } else {
+      queue.splice(currentIndex + 1, 0, targetSong)
+    }
+    appStore.setPlayQueue(queue)
+    toast.success(t('song.toast.next', { name: targetSong.title }))
   }
 }
 
 const addToQueue = (songs: OnlineSong[]) => {
-  const queue = appStore.getPlayQueue()
+  const queue = [...appStore.getPlayQueue()]
   const newSongs: Song[] = []
   songs.forEach((o_song) => {
     const song = getSongFromOnlineSong(o_song)
-    if (selectedIds.value.has(song.id) && !isInList(song.id, queue)) {
+    if (song.id && !isInList(song.id, queue)) {
       newSongs.push(song)
     }
   })
@@ -177,7 +189,7 @@ const addToSongList = async (songs: OnlineSong[]) => {
       const list: Song[] = []
       songs.forEach((o_song) => {
         const song = getSongFromOnlineSong(o_song)
-        if (selectedIds.value.has(song.id) && !isInList(song.id, selected.data)) {
+        if (song.id && !isInList(song.id, selected.data)) {
           list.push(song)
         }
       })

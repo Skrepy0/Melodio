@@ -123,7 +123,6 @@ export interface Song {
   albumArtUri: string
 }
 
-//
 export interface SongItemSelectableProps {
   song: Song
   selectable: boolean

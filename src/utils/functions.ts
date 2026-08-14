@@ -155,13 +155,13 @@ export async function fetchCoverFromWeb(title: string, artist: string): Promise<
 
 export function getSongFromOnlineSong(song: OnlineSong): Song {
   return {
-    id: song.identifier,
+    id: song.identifier.toString(),
     displayName: song.name,
     uri: song.download_url || '',
     size: song.file_size_bytes,
     mimeType: song.ext,
-    dateAdded: 0, //todo
-    dateModified: 0, //todo
+    dateAdded: Date.now(),
+    dateModified: Date.now(),
     mediaType: 'audio',
     duration: song.duration * 1000,
     title: song.name,

@@ -80,6 +80,7 @@
       "playNext": "Play Next",
       "addToQueue": "Add to Queue",
       "delete": "Delete",
+      "detail": "Detail",
       "cancel": "Cancel"
     },
     "toast": {
@@ -404,6 +405,39 @@
       "retryFailed": "Retry failed",
       "taskNotFound": "Download task not found",
       "historyCleared": "Download history cleared"
+    }
+  },
+  "infoDialog": {
+    "title": "Song Info",
+    "close": "✕",
+    "confirm": "Got it",
+    "online": "Online",
+    "local": "Local",
+    "placeholder": "--",
+    "coverAvailable": "✓ Yes",
+    "fields": {
+      "name": "Name",
+      "artist": "Artist",
+      "album": "Album",
+      "source": "Source",
+      "duration": "Duration",
+      "fileSize": "File Size",
+      "extension": "Extension",
+      "cover": "Cover",
+      "title": "Title",
+      "track": "Track",
+      "year": "Year",
+      "mediaType": "Media Type",
+      "dateAdded": "Date Added",
+      "dateModified": "Date Modified"
+    },
+    "source": {
+      "netease": "NetEase Cloud Music",
+      "qq": "QQ Music",
+      "xiami": "Xiami Music",
+      "kugou": "KuGou Music",
+      "kuwo": "KuWo Music",
+      "migu": "MiGu Music"
     }
   }
 }

@@ -42,14 +42,17 @@ import { showConfirm } from './utils/createConfirm'
 import { addCollection } from '@iconify/vue'
 import mdiIcons from '@iconify-json/mdi/icons.json'
 import { i18n } from './i18n'
+import { setInfoDialogAppContext, showSongInfo } from './utils/createInfo.js'
 
 const app = createApp(App).use(IonicVue).use(router)
 app.use(createPinia())
 app.use(i18n)
+setInfoDialogAppContext(app._context)
 app.config.globalProperties.$toast = toast
 app.config.globalProperties.$audio = audio
 app.config.globalProperties.$prompt = showPrompt
 app.config.globalProperties.$createConfirm = showConfirm
+app.config.globalProperties.$showSongInfo = showSongInfo
 router.isReady().then(() => {
   app.mount('#app')
 })
