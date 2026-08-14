@@ -32,6 +32,7 @@ function createDownloadSnapshot(song: OnlineSong, taskId: string): DownloadTaskS
     duration: song.duration,
     downloadUrl: song.download_url,
     downloadUrlStatus: song.download_url_status,
+    searchKeyword: null,
     progress: 0,
     loaded: 0,
     total: song.file_size_bytes > 0 ? song.file_size_bytes : -1,

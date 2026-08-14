@@ -67,6 +67,7 @@ export interface DownloadTaskSnapshot {
   duration: number
   downloadUrl: string | null
   downloadUrlStatus: OnlineSong['download_url_status'] | null
+  searchKeyword: string | null
   progress: number
   loaded: number
   total: number

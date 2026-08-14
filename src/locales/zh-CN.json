@@ -332,6 +332,10 @@
     "initialHint": "输入关键词开始搜索~",
     "noResults": "未找到相关内容",
     "loading": "搜索中, 请耐心等待...",
+    "history": {
+      "title": "搜索历史",
+      "clear": "清空"
+    },
     "song_operations": {
       "download": "下载",
       "detail": "详情"

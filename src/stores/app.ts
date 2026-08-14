@@ -52,6 +52,7 @@ export const useAppStore = defineStore('app', () => {
   // 搜索
   const searchKeyword = ref<string>('')
   const searchResults = ref<OnlineSong[]>([])
+  const searchHistory = ref<string[]>(JSON.parse(localStorage.getItem('searchHistory') || '[]'))
   const isLoading = ref(false)
   const searchError = ref<string | null>(null)
   const hasSearched = ref(false)
@@ -66,6 +67,28 @@ export const useAppStore = defineStore('app', () => {
     if (toAdd.length) {
       searchResults.value = [...searchResults.value, ...toAdd]
     }
+  }
+
+  const pushSearchHistory = (keyword: string) => {
+    const normalized = keyword.trim()
+    if (!normalized) return
+    const next = [normalized, ...searchHistory.value.filter((item) => item !== normalized)].slice(
+      0,
+      20
+    )
+    searchHistory.value = next
+    localStorage.setItem('searchHistory', JSON.stringify(next))
+  }
+
+  const removeSearchHistoryItem = (keyword: string) => {
+    const next = searchHistory.value.filter((item) => item !== keyword)
+    searchHistory.value = next
+    localStorage.setItem('searchHistory', JSON.stringify(next))
+  }
+
+  const clearSearchHistory = () => {
+    searchHistory.value = []
+    localStorage.setItem('searchHistory', JSON.stringify([]))
   }
 
   const cleanupSearch = () => {
@@ -96,6 +119,7 @@ export const useAppStore = defineStore('app', () => {
     searchError.value = null
     isLoading.value = true
     hasSearched.value = true
+    pushSearchHistory(keyword)
 
     try {
       partialListener = await MusicSigner.addListener('searchPartial', (data: any) => {
@@ -733,6 +757,7 @@ export const useAppStore = defineStore('app', () => {
       initAllSongs()
       initDownloadTasks()
       initDownloadHistory()
+      initSearchHistory()
       initPlayQueue()
       initPlayData()
       initCurrentPlayListIndex()
@@ -954,6 +979,7 @@ export const useAppStore = defineStore('app', () => {
       duration: Number(task.duration) || 0,
       downloadUrl: task.downloadUrl ?? null,
       downloadUrlStatus: task.downloadUrlStatus ?? null,
+      searchKeyword: task.searchKeyword ?? null,
       progress: Number(task.progress) || 0,
       loaded: Number(task.loaded) || 0,
       total: typeof task.total === 'number' ? task.total : -1,
@@ -998,6 +1024,18 @@ export const useAppStore = defineStore('app', () => {
       }
     }
   }
+  function initSearchHistory() {
+    const obj = localStorage.getItem('searchHistory')
+    if (!obj) return
+    try {
+      const parsed = JSON.parse(obj)
+      if (Array.isArray(parsed)) searchHistory.value = parsed
+      else if (Array.isArray(parsed.data)) searchHistory.value = parsed.data
+    } catch (e) {
+      console.error(e)
+    }
+  }
+
   function initPlayQueue() {
     const obj = localStorage.getItem('playQueue')
     if (obj) {
@@ -1006,6 +1044,7 @@ export const useAppStore = defineStore('app', () => {
       else if (Array.isArray(parsed.data)) playQueue.value = parsed.data
     }
   }
+
   function initPlayData() {
     const obj = localStorage.getItem('playData')
     console.log(`已加载上次播放数据: ${obj}`)
@@ -1162,6 +1201,10 @@ export const useAppStore = defineStore('app', () => {
     setEachSongAveTimeOut,
 
     searchKeyword,
+    searchHistory,
+    pushSearchHistory,
+    removeSearchHistoryItem,
+    clearSearchHistory,
     searchResults,
     isLoading,
     searchError,

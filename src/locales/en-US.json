@@ -338,6 +338,10 @@
       "download": "Download",
       "detail": "Detail Info"
     },
+    "history": {
+      "title": "Search History",
+      "clear": "Clear"
+    },
     "operations": {
       "selectAll": "Select All",
       "clear": "Clear",

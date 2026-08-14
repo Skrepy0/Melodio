@@ -21,23 +21,21 @@ const { t } = useI18n()
 const appStore = useAppStore()
 
 const keyword = ref(appStore.searchKeyword)
+const searchHistory = computed(() => appStore.searchHistory)
 const searchResults = computed(() => appStore.searchResults)
 const isLoading = computed(() => appStore.isLoading)
 const searchError = computed(() => appStore.searchError)
 const hasSearched = computed(() => appStore.hasSearched)
+const showHistory = ref(true)
 
 const isSelectMode = ref(false)
 const selectedIds = ref<Set<string>>(new Set())
 const { openDropdownId, handleDropdownToggle } = useDropdownManager()
 
-const activeDownloadTasks = computed(() => appStore.getActiveDownloadTasks())
-const downloadingIds = computed(
-  () => new Set(activeDownloadTasks.value.map((task) => task.songIdentifier))
-)
 const isDownloadingBatch = ref(false) // 批量下载中
 
 const operations = ref<DropdownItem[]>([
-  { icon: 'line-md:play-filled', description: 'Play', value: 'play' },
+  { icon: 'line-md:play-filled', description: t('song.menu.play'), value: 'play' },
   {
     icon: 'material-symbols:download',
     description: t('search.song_operations.download'),
@@ -56,8 +54,14 @@ const operations = ref<DropdownItem[]>([
 
 const goBack = () => router.back()
 
+const onHistoryClick = (value: string) => {
+  keyword.value = value
+  showHistory.value = false
+}
+
 const onSearch = async () => {
   if (isLoading.value) return
+  showHistory.value = false
   await appStore.search(
     keyword.value,
     appStore.getEnabledClients(),
@@ -353,6 +357,33 @@ onBeforeUnmount(() => {
         </Transition>
       </div>
 
+      <div v-if="showHistory && searchHistory.length > 0" class="history-panel">
+        <div class="history-header">
+          <span>{{ $t('search.history.title') }}</span>
+          <button class="history-clear" @click="appStore.clearSearchHistory()">
+            {{ $t('search.history.clear') }}
+          </button>
+        </div>
+        <div class="history-list">
+          <button
+            v-for="item in searchHistory"
+            :key="item"
+            class="history-item"
+            @click="onHistoryClick(item)"
+          >
+            <Icon icon="mdi:history" width="16" />
+            <span>{{ item }}</span>
+            <button
+              class="history-remove"
+              @click.stop="appStore.removeSearchHistoryItem(item)"
+              aria-label="remove history item"
+            >
+              <Icon icon="mdi:close" width="14" />
+            </button>
+          </button>
+        </div>
+      </div>
+
       <div class="song-list">
         <!-- 错误状态（优先显示） -->
         <div v-if="searchError" class="status-placeholder error">
@@ -481,12 +512,65 @@ onBeforeUnmount(() => {
   transform: translateY(-12px);
 }
 
-.song-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+.history-panel {
+  margin: 12px;
   padding: 12px;
-  min-height: 200px;
+  border-radius: 14px;
+  background: var(--card-bg, rgba(255, 255, 255, 0.8));
+  border: 1px solid var(--border-color, rgba(0, 0, 0, 0.08));
+}
+
+.history-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  gap: 12px;
+  font-weight: 600;
+}
+
+.history-clear {
+  border: none;
+  background: transparent;
+  color: var(--primary-color);
+  font-size: 14px;
+  cursor: pointer;
+  padding: 0;
+}
+
+.history-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.history-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border-color, rgba(0, 0, 0, 0.08));
+  background: var(--chip-bg, rgba(0, 0, 0, 0.03));
+  color: var(--text-color);
+  cursor: pointer;
+}
+
+.history-item span {
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.history-remove {
+  border: none;
+  background: transparent;
+  color: inherit;
+  display: inline-flex;
+  align-items: center;
+  padding: 0;
+  cursor: pointer;
 }
 
 .status-placeholder {
