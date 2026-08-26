@@ -4,9 +4,28 @@ import { getSongInfoByPath } from '@/utils/audioScanner'
 
 let progressListenerPromise: Promise<void> | null = null
 const downloadSources = new Map<string, OnlineSong>()
-
+const ext: string[] = [
+  '.mp3',
+  '.aac',
+  '.ogg',
+  '.wma',
+  '.opus',
+  '.wav',
+  '.flac',
+  '.aiff',
+  '.alac',
+  '.ape',
+]
 function sanitizeFileName(name: string) {
-  return name.replace(/[\\/:*?"<>|]/g, '_').trim() || 'unknown'
+  const rawName = name.replace(/[\\/:*?"<>|]/g, '_').trim()
+  if (!rawName) return 'unknown'
+  for (const item in ext) {
+    if (rawName.endsWith(item)) {
+      rawName.replace(item, '')
+      return rawName
+    }
+  }
+  return rawName
 }
 
 function sanitizeText(value: string | null | undefined) {
