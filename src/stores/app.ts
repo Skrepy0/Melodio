@@ -575,8 +575,6 @@ export const useAppStore = defineStore('app', () => {
 
       if (!newQueue.length) {
         await audio.setPlaylist([])
-        playData.value.currentIndex = 0
-        savePlayData()
         return
       }
 
