@@ -22,7 +22,7 @@ const { t } = useI18n()
 const appStore = useAppStore()
 
 const keyword = ref(appStore.searchKeyword)
-const searchHistory = computed(() => appStore.searchHistory)
+const searchHistory = computed(() => appStore.searchHistory.slice(0, 9))
 const searchResults = computed(() => appStore.searchResults)
 const isLoading = computed(() => appStore.isLoading)
 const searchError = computed(() => appStore.searchError)
