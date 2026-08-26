@@ -67,6 +67,7 @@ public class SystemBarPlugin extends Plugin {
             // the content uses the decor view's background, so we tint that as well.
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
                 window.getDecorView().setBackgroundColor(bgColor);
+                WindowCompat.setDecorFitsSystemWindows(window, true);
             } else {
                 window.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);
             }

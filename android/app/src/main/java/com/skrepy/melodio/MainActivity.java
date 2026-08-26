@@ -13,6 +13,8 @@ import com.skrepy.melodio.plugins.MusicSignerPlugin;
 import com.skrepy.melodio.plugins.NativeAudioPlugin;
 import com.skrepy.melodio.plugins.SystemBarPlugin;
 
+import androidx.core.view.WindowCompat;
+
 public class MainActivity extends BridgeActivity {
 
     private BroadcastReceiver noisyAudioReceiver;
@@ -34,6 +36,8 @@ public class MainActivity extends BridgeActivity {
         this.registerPlugin(MusicSignerPlugin.class);
         this.registerPlugin(DownloaderPlugin.class);
         super.load();
+        // 禁止内容绘制到状态栏/导航栏下方
+        WindowCompat.setDecorFitsSystemWindows(getWindow(), true);
     }
 
     @Override
