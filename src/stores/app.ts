@@ -455,6 +455,23 @@ export const useAppStore = defineStore('app', () => {
     })
   }
 
+  /**
+   * Listen for WebView renderer being killed (e.g., when app is in background
+   * and Android reclaims memory). When this happens, the WebView is destroyed
+   * and the app will be reloaded when the user returns.
+   */
+  function setupWebViewRendererKilledListener() {
+    window.addEventListener('webviewRendererKilled', () => {
+      console.log('[Store] WebView renderer was killed by system (likely app was in background)')
+      // The native WebView has been destroyed. Stop sending UI updates to avoid
+      // "Application attempted to call on a destroyed WebView" errors.
+      // The native side will trigger a reload when the app resumes.
+      webViewMayBeDestroyed.value = true
+    })
+  }
+
+  const webViewMayBeDestroyed = ref(false)
+
   const playData = ref({
     currentIndex: 0,
     isPlaying: false,
@@ -763,6 +780,7 @@ export const useAppStore = defineStore('app', () => {
       initSongLists()
       initPlayMode()
       setupAudioBecomingNoisyListener()
+      setupWebViewRendererKilledListener()
       // playQueue watcher (immediate: true) already syncs playlist to native
       setupNativeAudioListeners()
       await initCanFetchCoverFromWeb()

@@ -25,6 +25,7 @@ import android.util.Log;
 import androidx.activity.result.ActivityResult;
 import androidx.core.app.NotificationManagerCompat;
 
+import com.getcapacitor.Bridge;
 import com.getcapacitor.JSArray;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
@@ -80,9 +81,34 @@ public class NativeAudioPlugin extends Plugin {
     private AudioManager.OnAudioFocusChangeListener focusChangeListener;
     private boolean audioFocusGranted = false;
 
+    /**
+     * Set to true when the WebView renderer process is destroyed (e.g., app was in
+     * background and Android reclaimed memory). When true, all native-to-JS events
+     * are suppressed to avoid "Application attempted to call on a destroyed WebView"
+     * crashes. Audio keeps playing (MediaPlayer runs in the main app process, not the
+     * WebView renderer process), but no JS callbacks are sent until the WebView is
+     * recreated when the user returns to the app.
+     */
+    private static volatile boolean webViewDestroyed = false;
+    private static volatile NativeAudioPlugin instance = null;
+
+    /**
+     * Called from MainActivity.onRenderProcessGone to stop all native-to-JS
+     * communication before the WebView is destroyed. Audio continues playing.
+     */
+    public static void onWebViewRendererDestroyed() {
+        webViewDestroyed = true;
+        if (instance != null) {
+            instance.stopProgress();
+        }
+        Log.w(TAG, "WebView renderer destroyed - suppressing all native-to-JS events");
+    }
+
     @Override
     public void load() {
         Log.d(TAG, "Plugin loaded, initializing...");
+        instance = this;
+        webViewDestroyed = false;
         initPlayer();
         initSession();
         createChannel();
@@ -527,9 +553,31 @@ public class NativeAudioPlugin extends Plugin {
     }
 
     private void notifyPlayState(boolean playing) {
+        if (isWebViewDestroyed()) {
+            Log.d(TAG, "notifyPlayState: WebView destroyed, suppressing event");
+            return;
+        }
         JSObject data = new JSObject();
         data.put("isPlaying", playing);
         notifyListeners("playStateChange", data);
+    }
+
+    /**
+     * Check if the WebView has been destroyed. Returns true if either:
+     * 1. The plugin's own webViewDestroyed flag is set, OR
+     * 2. The bridge's isRendererDestroyed flag is set
+     */
+    private boolean isWebViewDestroyed() {
+        if (webViewDestroyed) return true;
+        try {
+            Bridge bridge = getBridge();
+            if (bridge != null) {
+                return bridge.isRendererDestroyed;
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "Failed to check bridge renderer state", e);
+        }
+        return false;
     }
 
     @PluginMethod
@@ -704,6 +752,10 @@ public class NativeAudioPlugin extends Plugin {
     }
 
     private void notifySongChanged() {
+        if (isWebViewDestroyed()) {
+            Log.d(TAG, "notifySongChanged: WebView destroyed, suppressing event");
+            return;
+        }
         JSObject o = new JSObject();
         o.put("index", currentIndex);
         o.put("title", title);
@@ -713,6 +765,10 @@ public class NativeAudioPlugin extends Plugin {
     }
 
     private void notifyError(int w, int e) {
+        if (isWebViewDestroyed()) {
+            Log.d(TAG, "notifyError: WebView destroyed, suppressing event");
+            return;
+        }
         JSObject o = new JSObject();
         o.put("what", w);
         o.put("extra", e);
@@ -728,9 +784,11 @@ public class NativeAudioPlugin extends Plugin {
             public void run() {
                 if (prepared && isPlaying) {
                     int pos = mediaPlayer.getCurrentPosition();
-                    JSObject o = new JSObject();
-                    o.put("position", pos / 1000.0);
-                    notifyListeners("timeupdate", o);
+                    if (!isWebViewDestroyed()) {
+                        JSObject o = new JSObject();
+                        o.put("position", pos / 1000.0);
+                        notifyListeners("timeupdate", o);
+                    }
                     updateState(true);
                     progressHandler.postDelayed(this, 1000);
                 }
@@ -759,6 +817,8 @@ public class NativeAudioPlugin extends Plugin {
     @Override
     protected void handleOnDestroy() {
         Log.d(TAG, "Plugin destroyed");
+        instance = null;
+        webViewDestroyed = false;
         rejectPendingCall("plugin destroyed");
         stopProgress();
         if (mediaPlayer != null) mediaPlayer.release();

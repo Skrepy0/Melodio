@@ -4,6 +4,7 @@ import android.util.Log;
 
 import androidx.annotation.NonNull;
 
+import com.getcapacitor.Bridge;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
@@ -36,6 +37,34 @@ public class MusicSignerPlugin extends Plugin {
     private static final String TAG = "MusicSignerPlugin";
     private static final String backendUrl = "https://api-melodio.skrepy.dpdns.org";
     private volatile okhttp3.Call currentCall = null;
+    private static volatile boolean webViewDestroyed = false;
+    private static volatile MusicSignerPlugin instance = null;
+
+    @Override
+    public void load() {
+        Log.d(TAG, "MusicSigner loaded");
+        instance = this;
+        webViewDestroyed = false;
+    }
+
+    /**
+     * Called from MainActivity.onRenderProcessGone to stop all native-to-JS
+     * communication before the WebView is destroyed.
+     */
+    public static void onWebViewRendererDestroyed() {
+        webViewDestroyed = true;
+        if (instance != null) {
+            instance.cancelCurrentCall();
+        }
+        Log.w(TAG, "WebView renderer destroyed - suppressing all native-to-JS events");
+    }
+
+    private void cancelCurrentCall() {
+        if (currentCall != null) {
+            currentCall.cancel();
+            currentCall = null;
+        }
+    }
 
     @PluginMethod
     public void search(PluginCall pluginCall) {
@@ -163,6 +192,11 @@ public class MusicSignerPlugin extends Plugin {
                                     JSONObject eventJson = new JSONObject(jsonData);
                                     String status = eventJson.optString("status");
                                     if ("partial".equals(status)) {
+                                        Bridge bridge = getBridge();
+                                        if (webViewDestroyed || (bridge != null && bridge.isRendererDestroyed)) {
+                                            Log.d(TAG, "WebView destroyed, ignoring partial result");
+                                            continue;
+                                        }
                                         JSObject partialResult = new JSObject();
                                         partialResult.put("source", eventJson.getString("source"));
                                         partialResult.put("items", eventJson.getJSONArray("items"));

@@ -12,6 +12,7 @@ import android.util.Log;
 
 import androidx.annotation.RequiresApi;
 
+import com.getcapacitor.Bridge;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
@@ -44,6 +45,24 @@ public class DownloaderPlugin extends Plugin {
     private static final String TAG = "DownloaderPlugin";
     private static final OkHttpClient unsafeDownloadClient = createUnsafeOkHttpClient();
     private final Map<String, DownloadTaskState> taskStates = new ConcurrentHashMap<>();
+    private static volatile boolean webViewDestroyed = false;
+    private static volatile DownloaderPlugin instance = null;
+
+    @Override
+    public void load() {
+        Log.d(TAG, "Downloader loaded");
+        instance = this;
+        webViewDestroyed = false;
+    }
+
+    /**
+     * Called from MainActivity.onRenderProcessGone to stop all native-to-JS
+     * communication before the WebView is destroyed.
+     */
+    public static void onWebViewRendererDestroyed() {
+        webViewDestroyed = true;
+        Log.w(TAG, "WebView renderer destroyed - suppressing all native-to-JS events");
+    }
 
     private static OkHttpClient createUnsafeOkHttpClient() {
         try {
@@ -401,6 +420,11 @@ public class DownloaderPlugin extends Plugin {
     }
 
     private void notifyProgress(DownloadTaskState state) {
+        Bridge bridge = getBridge();
+        if (webViewDestroyed || (bridge != null && bridge.isRendererDestroyed)) {
+            Log.d(TAG, "notifyProgress: WebView destroyed, suppressing event");
+            return;
+        }
         JSObject progress = new JSObject();
         progress.put("taskId", state.taskId);
         progress.put("loaded", state.loaded);
