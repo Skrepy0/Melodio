@@ -250,6 +250,13 @@ public class MusicSignerPlugin extends Plugin {
         pluginCall.resolve();
     }
 
+    @Override
+    protected void handleOnDestroy() {
+        Log.d(TAG, "MusicSigner destroyed");
+        cancelCurrentCall();
+        instance = null;
+    }
+
     private String hmacSha256(String key, String data) {
         try {
             Mac mac = Mac.getInstance("HmacSHA256");

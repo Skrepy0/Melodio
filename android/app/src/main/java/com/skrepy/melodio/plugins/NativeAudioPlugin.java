@@ -46,6 +46,8 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 @CapacitorPlugin(name = "NativeAudio")
 public class NativeAudioPlugin extends Plugin {
@@ -74,6 +76,8 @@ public class NativeAudioPlugin extends Plugin {
     private float playbackSpeed = 1.0f;
     private boolean fetchCoverFromWeb = false;
     private String userAgent = "";
+    private final ExecutorService networkExecutor = Executors.newSingleThreadExecutor();
+    private Bitmap currentAlbumArt;
 
     //焦点管理
     private boolean audioFocusEnabled = true;
@@ -311,7 +315,7 @@ public class NativeAudioPlugin extends Plugin {
     }
 
     private void loadBitmap(String urlString, BitmapCallback callback) {
-        new Thread(() -> {
+        networkExecutor.submit(() -> {
             Bitmap bitmap = null;
             try {
                 if (urlString.startsWith("data:")) {
@@ -334,7 +338,7 @@ public class NativeAudioPlugin extends Plugin {
             }
             Bitmap finalBitmap = bitmap;
             new Handler(Looper.getMainLooper()).post(() -> callback.onResult(finalBitmap));
-        }).start();
+        });
     }
 
     @PluginMethod
@@ -384,7 +388,7 @@ public class NativeAudioPlugin extends Plugin {
         prepared = false;
         isPlaying = false;
 
-        new Thread(() -> {
+        networkExecutor.submit(() -> {
             String resolvedUrl = song.url;
             try {
                 if (song.url.startsWith("http://") || song.url.startsWith("https://")) {
@@ -468,7 +472,7 @@ public class NativeAudioPlugin extends Plugin {
                     nextInternal();
                 }
             });
-        }).start();
+        });
     }
 
     /**
@@ -650,6 +654,10 @@ public class NativeAudioPlugin extends Plugin {
         if (song.cover != null && !song.cover.isEmpty()) {
             loadBitmap(song.cover, bitmap -> {
                 if (bitmap != null) {
+                    if (currentAlbumArt != null && !currentAlbumArt.isRecycled()) {
+                        currentAlbumArt.recycle();
+                    }
+                    currentAlbumArt = bitmap;
                     builder.putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, bitmap);
                 }
                 mediaSession.setMetadata(builder.build());
@@ -667,6 +675,10 @@ public class NativeAudioPlugin extends Plugin {
             loadBitmap(song.cover, bitmap -> {
                 if (bitmap != null) {
                     // 本地封面加载成功，直接设置
+                    if (currentAlbumArt != null && !currentAlbumArt.isRecycled()) {
+                        currentAlbumArt.recycle();
+                    }
+                    currentAlbumArt = bitmap;
                     builder.putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, bitmap);
                     mediaSession.setMetadata(builder.build());
                     showNotification();
@@ -690,6 +702,10 @@ public class NativeAudioPlugin extends Plugin {
                 if (coverUrl != null && !coverUrl.isEmpty()) {
                     loadBitmap(coverUrl, bitmap -> {
                         if (bitmap != null) {
+                            if (currentAlbumArt != null && !currentAlbumArt.isRecycled()) {
+                                currentAlbumArt.recycle();
+                            }
+                            currentAlbumArt = bitmap;
                             builder.putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, bitmap);
                         }
                         // 无论是否成功加载到 bitmap，都设置元数据
@@ -799,10 +815,10 @@ public class NativeAudioPlugin extends Plugin {
     }
 
     private void stopProgress() {
-        if (progressHandler != null && progressRunnable != null) {
-            progressHandler.removeCallbacks(progressRunnable);
-            Log.d(TAG, "Progress updates stopped");
+        if (progressHandler != null) {
+            progressHandler.removeCallbacksAndMessages(null);
         }
+        progressRunnable = null;
     }
 
     private void createChannel() {
@@ -821,10 +837,23 @@ public class NativeAudioPlugin extends Plugin {
         webViewDestroyed = false;
         rejectPendingCall("plugin destroyed");
         stopProgress();
-        if (mediaPlayer != null) mediaPlayer.release();
-        if (mediaSession != null) mediaSession.release();
+        progressHandler = null;
+        networkExecutor.shutdownNow();
+        if (mediaPlayer != null) {
+            mediaPlayer.release();
+            mediaPlayer = null;
+        }
+        if (mediaSession != null) {
+            mediaSession.release();
+            mediaSession = null;
+        }
+        if (currentAlbumArt != null && !currentAlbumArt.isRecycled()) {
+            currentAlbumArt.recycle();
+            currentAlbumArt = null;
+        }
         abandonAudioFocus();
         audioManager = null;
+        focusChangeListener = null;
     }
 
     @PluginMethod

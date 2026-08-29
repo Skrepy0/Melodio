@@ -31,7 +31,7 @@ public class CoverResolver {
         DEFAULT_COVER = "data:image/svg+xml;base64," + base64;
     }
 
-    private final ExecutorService executor = Executors.newCachedThreadPool();
+    private static final ExecutorService executor = Executors.newCachedThreadPool();
 
     private final String UserAgent;
 

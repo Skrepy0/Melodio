@@ -440,6 +440,18 @@ public class DownloaderPlugin extends Plugin {
         call.reject(message);
     }
 
+    @Override
+    protected void handleOnDestroy() {
+        Log.d(TAG, "Downloader destroyed, cancelling active downloads");
+        for (DownloadTaskState state : taskStates.values()) {
+            if (state.currentCall != null) {
+                state.currentCall.cancel();
+            }
+        }
+        taskStates.clear();
+        instance = null;
+    }
+
     private static final class DownloadTaskState {
         String taskId;
         String url;
