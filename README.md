@@ -37,19 +37,6 @@ A smooth, minimalist music player built for Android. Developed with Ionic Vue an
 - **Drag‑and‑Drop Sorting** – Long‑press and drag to reorder the queue
 - **Clear Queue** – One‑tap to clear the entire playback queue
 
-### Online Search
-
-<div style="display: flex; justify-content: center; flex-wrap: wrap; gap: 12px; margin-bottom: 20px;">
-  <div>
-    <img src="../images/7.png" width="180" alt="Online Search" />
-    <p><em>Online Search</em></p>
-  </div>
-  <div>
-    <img src="../images/8.png" width="180" alt="Download management" />
-    <p><em>Download management</em></p>
-  </div>
-</div>
-
 ### 🎤 Playlist System
 
 - **Custom Playlists** – Create, rename, and delete playlists
@@ -101,6 +88,19 @@ A smooth, minimalist music player built for Android. Developed with Ionic Vue an
   <div>
     <img src="./docs/images/5.png" width="180" alt="Playlist Sorting" />
     <p><em>Playlist Sorting</em></p>
+  </div>
+</div>
+
+### Online Search
+
+<div style="display: flex; justify-content: center; flex-wrap: wrap; gap: 12px; margin-bottom: 20px;">
+  <div>
+    <img src="./docs/images/7.png" width="180" alt="Online Search" />
+    <p><em>Online Search</em></p>
+  </div>
+  <div>
+    <img src="./docs/images/8.png" width="180" alt="Download management" />
+    <p><em>Download management</em></p>
   </div>
 </div>
 
