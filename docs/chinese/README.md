@@ -2,7 +2,7 @@
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-pink.svg)](LICENSE) [![Android](https://img.shields.io/badge/Platform-Android-3DDC84?logo=android)](https://developer.android.com) ![Min SDK](<https://img.shields.io/badge/Min%20SDK-24%20(Android%207.0)-green>)
 
-一个流畅、简洁的音乐播放器，专为 Android 打造。基于 Ionic Vue 和 Capacitor 构建，支持离线播放本地音频文件，提供清爽的播放体验、锁屏媒体控件以及完善的后台播放能力。
+一个流畅、简洁的音乐播放器，专为 Android 打造。基于 Ionic Vue 和 Capacitor 构建，支持离线播放本地音频文件，也支持在线播放和下载音乐(通过基于`musicdl`的[后端](https://github.com/Skrepy0/Melodio-Backend))，提供清爽的播放体验、锁屏媒体控件以及完善的后台播放能力。
 
 ## 📱 适配系统
 
@@ -21,6 +21,8 @@
 
 - **本地音乐扫描** – 自动扫描设备存储中的音频文件，支持 FLAC、MP3、AAC、WAV、OGG 等主流格式
 - **原生播放引擎** – 通过自定义 Capacitor 插件调用 Android MediaPlayer + MediaSession，实现稳定流畅的播放体验
+- **在线搜索** - 通过后端请求获取在线歌曲数据，支持从多种不同的音乐源获取
+- **下载管理** - 管理正在下载中的歌曲, 支持暂停下载, 查看下载记录
 - **后台播放** – 即使应用退到后台也能持续播放，通知栏提供完整的媒体控制
 - **锁屏/通知栏控件** – 显示封面、歌曲信息、进度条，支持播放/暂停、上一首/下一首、拖动进度
 - **倍速播放** – 播放器界面一键切换播放速率（0.5x ~ 2.0x）
@@ -84,6 +86,19 @@
   <div>
     <img src="../images/5.png" width="180" alt="歌单排序" />
     <p><em>歌单排序</em></p>
+  </div>
+</div>
+
+### 在线搜索
+
+<div style="display: flex; justify-content: center; flex-wrap: wrap; gap: 12px; margin-bottom: 20px;">
+  <div>
+    <img src="../images/7.png" width="180" alt="在线搜索" />
+    <p><em>在线搜索</em></p>
+  </div>
+  <div>
+    <img src="../images/8.png" width="180" alt="下载管理" />
+    <p><em>下载管理</em></p>
   </div>
 </div>
 

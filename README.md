@@ -4,7 +4,7 @@
 
 [🇨🇳 中文](./docs/chinese/README.md)
 
-A smooth, minimalist music player built for Android. Built with Ionic Vue and Capacitor, it supports offline playback of local audio files, providing a clean playback experience, lock screen media controls, and comprehensive background playback capabilities.
+A smooth, minimalist music player built for Android. Developed with Ionic Vue and Capacitor, it supports offline playback of local audio files as well as online streaming and downloading (powered by a [`musicdl`-based backend](https://github.com/Skrepy0/Melodio-Backend)). It offers a clean listening experience, lock-screen media controls, and comprehensive background playback capabilities.
 
 ## 📱 System Requirements
 
@@ -23,6 +23,8 @@ A smooth, minimalist music player built for Android. Built with Ionic Vue and Ca
 
 - **Local Music Scanning** – Automatically scans audio files on device storage, supports FLAC, MP3, AAC, WAV, OGG and other mainstream formats
 - **Native Playback Engine** – Custom Capacitor plugin utilizing Android MediaPlayer + MediaSession for stable and smooth playback
+- **Online search** – Fetch online song data via backend requests, with support for multiple music sources.
+- **Download management** – Manage songs currently being downloaded, with the ability to pause downloads and view download history.
 - **Background Playback** – Continues playing even when the app is in the background, with full media controls in the notification shade
 - **Lock Screen / Notification Controls** – Displays cover art, track info, progress bar; supports play/pause, previous/next, and seek
 - **Playback Speed** – One‑tap speed toggle (0.5x ~ 2.0x) on the player screen
@@ -34,6 +36,19 @@ A smooth, minimalist music player built for Android. Built with Ionic Vue and Ca
 - **Queue Management** – Add to queue, play next, or remove from queue
 - **Drag‑and‑Drop Sorting** – Long‑press and drag to reorder the queue
 - **Clear Queue** – One‑tap to clear the entire playback queue
+
+### Online Search
+
+<div style="display: flex; justify-content: center; flex-wrap: wrap; gap: 12px; margin-bottom: 20px;">
+  <div>
+    <img src="../images/7.png" width="180" alt="Online Search" />
+    <p><em>Online Search</em></p>
+  </div>
+  <div>
+    <img src="../images/8.png" width="180" alt="Download management" />
+    <p><em>Download management</em></p>
+  </div>
+</div>
 
 ### 🎤 Playlist System
 
