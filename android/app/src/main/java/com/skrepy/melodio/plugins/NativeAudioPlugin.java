@@ -55,7 +55,18 @@ public class NativeAudioPlugin extends Plugin {
     private static final String TAG = "NativeAudio";
     private static final String CHANNEL_ID = "melodio_audio_channel";
     private static final int NOTIF_ID = 1;
+    /**
+     * Set to true when the WebView renderer process is destroyed (e.g., app was in
+     * background and Android reclaimed memory). When true, all native-to-JS events
+     * are suppressed to avoid "Application attempted to call on a destroyed WebView"
+     * crashes. Audio keeps playing (MediaPlayer runs in the main app process, not the
+     * WebView renderer process), but no JS callbacks are sent until the WebView is
+     * recreated when the user returns to the app.
+     */
+    private static volatile boolean webViewDestroyed = false;
+    private static volatile NativeAudioPlugin instance = null;
     private final List<SongItem> playlist = new ArrayList<>();
+    private final ExecutorService networkExecutor = Executors.newSingleThreadExecutor();
     private MediaPlayer mediaPlayer;
     private MediaSessionCompat mediaSession;
     private PlaybackStateCompat.Builder stateBuilder;
@@ -76,25 +87,12 @@ public class NativeAudioPlugin extends Plugin {
     private float playbackSpeed = 1.0f;
     private boolean fetchCoverFromWeb = false;
     private String userAgent = "";
-    private final ExecutorService networkExecutor = Executors.newSingleThreadExecutor();
     private Bitmap currentAlbumArt;
-
     //焦点管理
     private boolean audioFocusEnabled = true;
     private AudioManager audioManager;
     private AudioManager.OnAudioFocusChangeListener focusChangeListener;
     private boolean audioFocusGranted = false;
-
-    /**
-     * Set to true when the WebView renderer process is destroyed (e.g., app was in
-     * background and Android reclaimed memory). When true, all native-to-JS events
-     * are suppressed to avoid "Application attempted to call on a destroyed WebView"
-     * crashes. Audio keeps playing (MediaPlayer runs in the main app process, not the
-     * WebView renderer process), but no JS callbacks are sent until the WebView is
-     * recreated when the user returns to the app.
-     */
-    private static volatile boolean webViewDestroyed = false;
-    private static volatile NativeAudioPlugin instance = null;
 
     /**
      * Called from MainActivity.onRenderProcessGone to stop all native-to-JS

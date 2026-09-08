@@ -1,38 +1,43 @@
 package com.skrepy.melodio;
 
-import android.content.BroadcastReceiver;
 import android.content.Context;
-import android.content.Intent;
-import android.content.IntentFilter;
+import android.media.AudioDeviceCallback;
+import android.media.AudioDeviceInfo;
 import android.media.AudioManager;
 import android.os.Bundle;
 import android.util.Log;
 import android.webkit.RenderProcessGoneDetail;
 import android.webkit.WebView;
-import android.webkit.WebViewClient;
 
-import com.getcapacitor.Bridge;
+import androidx.core.view.WindowCompat;
+
 import com.getcapacitor.BridgeActivity;
 import com.skrepy.melodio.plugins.DownloaderPlugin;
 import com.skrepy.melodio.plugins.MusicSignerPlugin;
 import com.skrepy.melodio.plugins.NativeAudioPlugin;
 import com.skrepy.melodio.plugins.SystemBarPlugin;
 
-import androidx.core.view.WindowCompat;
-
 public class MainActivity extends BridgeActivity {
 
     private static final String TAG = "MainActivity";
-    private BroadcastReceiver noisyAudioReceiver;
+    private static volatile boolean bridgeDestroyed = false;
+    private AudioDeviceCallback audioDeviceCallback;
     private boolean webViewMayBeDestroyed = false;
     private boolean rendererCleanupInProgress = false;
-    private static volatile boolean bridgeDestroyed = false;
+
+    /**
+     * Returns true if the bridge has been destroyed (WebView renderer killed).
+     * Used by the Capacitor Bridge to prevent JavaScript evaluation on a destroyed WebView.
+     */
+    public static boolean isBridgeDestroyed() {
+        return bridgeDestroyed;
+    }
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setupWebViewCrashHandler();
-        registerNoisyAudioReceiver();
+        registerAudioDeviceCallback();
     }
 
     private void setupWebViewCrashHandler() {
@@ -88,14 +93,6 @@ public class MainActivity extends BridgeActivity {
         });
     }
 
-    /**
-     * Returns true if the bridge has been destroyed (WebView renderer killed).
-     * Used by the Capacitor Bridge to prevent JavaScript evaluation on a destroyed WebView.
-     */
-    public static boolean isBridgeDestroyed() {
-        return bridgeDestroyed;
-    }
-
     @Override
     public void onResume() {
         super.onResume();
@@ -128,31 +125,66 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onDestroy() {
         super.onDestroy();
-        unregisterNoisyAudioReceiver();
+        unregisterAudioDeviceCallback();
     }
 
-    private void registerNoisyAudioReceiver() {
-        if (noisyAudioReceiver != null) return;
+    private void triggerAudioConnectedEvent() {
+        if (getBridge() != null && !isBridgeDestroyed()) {
+            getBridge().triggerWindowJSEvent("audioConnected");
+            Log.i(TAG, "Triggered audioConnected event");
+        }
+    }
 
-        noisyAudioReceiver = new BroadcastReceiver() {
+    private void triggerAudioDisconnectedEvent() {
+        if (getBridge() != null && !isBridgeDestroyed()) {
+            getBridge().triggerWindowJSEvent("audioBecomingNoisy");
+            Log.i(TAG, "Triggered audioBecomingNoisy event");
+        }
+    }
+
+    private void registerAudioDeviceCallback() {
+
+        AudioManager audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+        if (audioManager == null) return;
+
+        if (audioDeviceCallback != null) return;
+
+        audioDeviceCallback = new AudioDeviceCallback() {
             @Override
-            public void onReceive(Context context, Intent intent) {
-                if (AudioManager.ACTION_AUDIO_BECOMING_NOISY.equals(intent.getAction())) {
-                    if (getBridge() != null && !isBridgeDestroyed()) {
-                        getBridge().triggerWindowJSEvent("audioBecomingNoisy");
+            public void onAudioDevicesAdded(AudioDeviceInfo[] addedDevices) {
+                for (AudioDeviceInfo device : addedDevices) {
+                    // 只关心输出设备（播放设备）
+                    if (device.isSink()) {
+                        Log.i(TAG, "Audio output device added: " + device.getProductName());
+                        // 触发前端连接事件
+                        triggerAudioConnectedEvent();
+                        break; // 只需触发一次
+                    }
+                }
+            }
+
+            @Override
+            public void onAudioDevicesRemoved(AudioDeviceInfo[] removedDevices) {
+                for (AudioDeviceInfo device : removedDevices) {
+                    if (device.isSink()) {
+                        Log.i(TAG, "Audio output device removed: " + device.getProductName());
+                        triggerAudioDisconnectedEvent();
+                        break;
                     }
                 }
             }
         };
 
-        IntentFilter filter = new IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY);
-        registerReceiver(noisyAudioReceiver, filter);
+        audioManager.registerAudioDeviceCallback(audioDeviceCallback, null);
     }
 
-    private void unregisterNoisyAudioReceiver() {
-        if (noisyAudioReceiver != null) {
-            unregisterReceiver(noisyAudioReceiver);
-            noisyAudioReceiver = null;
+    private void unregisterAudioDeviceCallback() {
+        if (audioDeviceCallback == null) return;
+
+        AudioManager audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+        if (audioManager != null) {
+            audioManager.unregisterAudioDeviceCallback(audioDeviceCallback);
         }
+        audioDeviceCallback = null;
     }
 }

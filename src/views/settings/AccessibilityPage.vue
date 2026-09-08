@@ -13,6 +13,7 @@ const goBack = () => {
 }
 
 const autoPauseOnDisconnect = ref(appStore.getAutoPauseOnDisconnect())
+const autoPlayOnConnect = ref(appStore.getAutoPlayOnConnect())
 const autoDelInvalidSongs = ref(appStore.getAutoDelInvalidSongs())
 const audioFocusPause = ref(appStore.getAudioFocusPause())
 const canFetchCoverFromWeb = ref(appStore.getCanFetchCoverFromWeb())
@@ -22,13 +23,15 @@ const togglePinyinSearch = (e: Event) => {
   pinyinSearch.value = target.checked
   appStore.setPinyinSearch(pinyinSearch.value)
 }
-
 const toggleAutoPauseOnDisconnect = (e: Event) => {
   const target = e.target as HTMLInputElement
   autoPauseOnDisconnect.value = target.checked
   appStore.setAutoPauseOnDisconnect(autoPauseOnDisconnect.value)
 }
-
+const toggleAutoPlayOnConnect = (e: Event) => {
+  const target = e.target as HTMLInputElement
+  appStore.setAutoPlayOnConnect(target.checked)
+}
 const toggleAutoDelInvalidSongs = (e: Event) => {
   const target = e.target as HTMLInputElement
   autoDelInvalidSongs.value = target.checked
@@ -65,6 +68,13 @@ const toggleCanFetchCoverFromWeb = (e: Event) => {
           :desc="$t('settings.accessibility.autoPauseOnDisconnectDesc')"
           :title="$t('settings.accessibility.autoPauseOnDisconnect')"
           icon="ant-design:disconnect-outlined"
+        />
+        <FunctionSwitch
+          :change="toggleAutoPlayOnConnect"
+          :checked="autoPlayOnConnect"
+          :desc="$t('settings.accessibility.autoPlayOnConnectDesc')"
+          :title="$t('settings.accessibility.autoPlayOnConnect')"
+          icon="akar-icons:play"
         />
         <FunctionSwitch
           :change="toggleAutoDelInvalidSongs"

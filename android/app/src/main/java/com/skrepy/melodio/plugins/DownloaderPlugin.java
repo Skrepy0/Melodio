@@ -44,16 +44,9 @@ import okio.Okio;
 public class DownloaderPlugin extends Plugin {
     private static final String TAG = "DownloaderPlugin";
     private static final OkHttpClient unsafeDownloadClient = createUnsafeOkHttpClient();
-    private final Map<String, DownloadTaskState> taskStates = new ConcurrentHashMap<>();
     private static volatile boolean webViewDestroyed = false;
     private static volatile DownloaderPlugin instance = null;
-
-    @Override
-    public void load() {
-        Log.d(TAG, "Downloader loaded");
-        instance = this;
-        webViewDestroyed = false;
-    }
+    private final Map<String, DownloadTaskState> taskStates = new ConcurrentHashMap<>();
 
     /**
      * Called from MainActivity.onRenderProcessGone to stop all native-to-JS
@@ -97,6 +90,13 @@ public class DownloaderPlugin extends Plugin {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
+    }
+
+    @Override
+    public void load() {
+        Log.d(TAG, "Downloader loaded");
+        instance = this;
+        webViewDestroyed = false;
     }
 
     @PluginMethod

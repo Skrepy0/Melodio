@@ -239,6 +239,8 @@
       "pinyinSearchDesc": "开启后，所有搜索将支持拼音模糊匹配",
       "autoPauseOnDisconnect": "设备断开时自动暂停",
       "autoPauseOnDisconnectDesc": "当拔出耳机或断开蓝牙设备时自动暂停播放",
+      "autoPlayOnConnect": "设备连接时自动播放",
+      "autoPlayOnConnectDesc": "当插入耳机或连接到蓝牙设备时自动播放",
       "autoCleanInvalidSongs": "自动清理无效歌曲",
       "autoCleanInvalidSongsDesc": "自动移除已被移动或删除的歌曲条目",
       "canFetchCoverFromWeb": "在线获取歌曲封面",

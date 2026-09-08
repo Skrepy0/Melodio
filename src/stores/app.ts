@@ -37,6 +37,7 @@ export const useAppStore = defineStore('app', () => {
   const darkMode = ref(localStorage.getItem('darkMode') === 'true')
   const pinyinSearch = ref(localStorage.getItem('pinyinSearch') === 'true')
   const autoPauseOnDisconnect = ref(true)
+  const autoPlayOnConnect = ref(false)
   const autoDelInvalidSongs = ref(true)
   const currentLanguage = ref('zh-CN')
   const isI18nReady = ref(false)
@@ -399,13 +400,31 @@ export const useAppStore = defineStore('app', () => {
     }
   }
 
+  function initAutoPlayOnConnect() {
+    const val = localStorage.getItem('autoPlayOnConnect')
+    if (val && ['true', 'false'].includes(val)) {
+      autoPlayOnConnect.value = val === 'true'
+    } else {
+      setAutoPlayOnConnect(false)
+    }
+  }
+
   function setAutoPauseOnDisconnect(val: boolean) {
     autoPauseOnDisconnect.value = val
     localStorage.setItem('autoPauseOnDisconnect', String(autoPauseOnDisconnect.value))
   }
 
+  function setAutoPlayOnConnect(val: boolean) {
+    autoPlayOnConnect.value = val
+    localStorage.setItem('autoPlayOnConnect', String(autoPlayOnConnect.value))
+  }
+
   function getAutoPauseOnDisconnect() {
     return autoPauseOnDisconnect.value
+  }
+
+  function getAutoPlayOnConnect() {
+    return autoPlayOnConnect.value
   }
 
   function setPinyinSearch(val: boolean) {
@@ -446,11 +465,17 @@ export const useAppStore = defineStore('app', () => {
     return currentToBeSortedSongList.value
   }
 
-  function setupAudioBecomingNoisyListener() {
+  function setupAudioListener() {
     window.addEventListener('audioBecomingNoisy', () => {
       console.log('[Store] 收到音频输出设备断开事件，自动暂停')
       if (getAutoPauseOnDisconnect() && playData.value.isPlaying) {
-        togglePlay()
+        togglePlay().then()
+      }
+    })
+    window.addEventListener('audioConnected', () => {
+      console.log('[Store] 收到音频输出设备连接事件，自动播放')
+      if (getAutoPlayOnConnect() && !playData.value.isPlaying) {
+        togglePlay().then()
       }
     })
   }
@@ -767,6 +792,7 @@ export const useAppStore = defineStore('app', () => {
       initBlacklist()
       initPlaybackRate()
       initAutoPauseOnDisconnect()
+      initAutoPlayOnConnect()
       initAutoDelInvalidSongs()
       initAudioFocusPause().then((r) => console.log('initAudioFocusPause', r))
       initAllSongs()
@@ -779,7 +805,7 @@ export const useAppStore = defineStore('app', () => {
       initLikeList()
       initSongLists()
       initPlayMode()
-      setupAudioBecomingNoisyListener()
+      setupAudioListener()
       setupWebViewRendererKilledListener()
       // playQueue watcher (immediate: true) already syncs playlist to native
       setupNativeAudioListeners()
@@ -1154,6 +1180,8 @@ export const useAppStore = defineStore('app', () => {
     getPinyinSearch,
     setAutoPauseOnDisconnect,
     getAutoPauseOnDisconnect,
+    setAutoPlayOnConnect,
+    getAutoPlayOnConnect,
     setAutoDelInvalidSongs,
     getAutoDelInvalidSongs,
     syncLanguageFromI18n,

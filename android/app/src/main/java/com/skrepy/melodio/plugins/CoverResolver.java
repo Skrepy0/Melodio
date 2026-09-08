@@ -23,6 +23,7 @@ public class CoverResolver {
     private static final String TAG = "CoverResolver";
     private static final String DEFAULT_COVER;
     private static final int TIMEOUT_MS = 4000;
+    private static final ExecutorService executor = Executors.newCachedThreadPool();
 
     static {
         String svg = "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"#888\"><path d=\"M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z\"/></svg>";
@@ -30,8 +31,6 @@ public class CoverResolver {
         String base64 = Base64.encodeToString(bytes, Base64.NO_WRAP);
         DEFAULT_COVER = "data:image/svg+xml;base64," + base64;
     }
-
-    private static final ExecutorService executor = Executors.newCachedThreadPool();
 
     private final String UserAgent;
 

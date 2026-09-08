@@ -239,6 +239,8 @@
       "pinyinSearchDesc": "When enabled, all searches will support fuzzy Pinyin matching.",
       "autoPauseOnDisconnect": "Auto-pause on device disconnect",
       "autoPauseOnDisconnectDesc": "Automatically pause playback when headphones are unplugged or a Bluetooth device is disconnected.",
+      "autoPlayOnConnect": "Auto-play on device connection",
+      "autoPlayOnConnectDesc": "Auto-play when headphones or Bluetooth device are connected",
       "autoCleanInvalidSongs": "Auto-clean invalid songs",
       "autoCleanInvalidSongsDesc": "Automatically remove song entries that have been moved or deleted.",
       "canFetchCoverFromWeb": "Fetch song covers online",

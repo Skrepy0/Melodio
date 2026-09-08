@@ -36,16 +36,9 @@ public class MusicSignerPlugin extends Plugin {
 
     private static final String TAG = "MusicSignerPlugin";
     private static final String backendUrl = "https://api-melodio.skrepy.dpdns.org";
-    private volatile okhttp3.Call currentCall = null;
     private static volatile boolean webViewDestroyed = false;
     private static volatile MusicSignerPlugin instance = null;
-
-    @Override
-    public void load() {
-        Log.d(TAG, "MusicSigner loaded");
-        instance = this;
-        webViewDestroyed = false;
-    }
+    private volatile okhttp3.Call currentCall = null;
 
     /**
      * Called from MainActivity.onRenderProcessGone to stop all native-to-JS
@@ -57,6 +50,13 @@ public class MusicSignerPlugin extends Plugin {
             instance.cancelCurrentCall();
         }
         Log.w(TAG, "WebView renderer destroyed - suppressing all native-to-JS events");
+    }
+
+    @Override
+    public void load() {
+        Log.d(TAG, "MusicSigner loaded");
+        instance = this;
+        webViewDestroyed = false;
     }
 
     private void cancelCurrentCall() {
