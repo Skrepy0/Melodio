@@ -1,7 +1,7 @@
+import type { AppContext } from 'vue'
 import { createVNode, render } from 'vue'
 import InfoDialog from '@/components/InfoDialog.vue'
-import { Song, OnlineSong } from '@/utils/interface'
-import type { AppContext } from 'vue'
+import { OnlineSong, Song } from '@/utils/interface'
 
 let appContext: AppContext | null = null
 

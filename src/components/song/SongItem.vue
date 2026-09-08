@@ -106,6 +106,7 @@ const defaultOnMenuItemSelect = async (item: DropdownItem) => {
       // songChanged event from native updates isPlaying and currentIndex
     } catch (e) {
       toast.error(t('common.playFailed'))
+      console.error('Failed to play song:', e)
     } finally {
       appStore.setIsSwitchingSong(false)
     }

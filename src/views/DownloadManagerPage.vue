@@ -11,7 +11,7 @@ import router from '@/router'
 import { useAppStore } from '@/stores/app'
 import { showConfirm } from '@/utils/createConfirm'
 import toast from '@/utils/createToast'
-import { resumeDownloadTask, pauseDownloadTask, retryDownloadTask } from '@/utils/musicDownloader'
+import { pauseDownloadTask, resumeDownloadTask, retryDownloadTask } from '@/utils/musicDownloader'
 import { useI18n } from 'vue-i18n'
 import type { HorizontalSelectOption } from '@/utils/interface'
 

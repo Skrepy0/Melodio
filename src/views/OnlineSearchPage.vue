@@ -386,9 +386,9 @@ onBeforeUnmount(() => {
             <Icon icon="mdi:history" width="16" />
             <span>{{ item }}</span>
             <button
+              aria-label="remove history item"
               class="history-remove"
               @click.stop="appStore.removeSearchHistoryItem(item)"
-              aria-label="remove history item"
             >
               <Icon icon="mdi:close" width="14" />
             </button>
