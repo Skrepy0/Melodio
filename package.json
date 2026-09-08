@@ -1,7 +1,7 @@
 {
   "name": "melodio",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -15,7 +15,8 @@
     "android:build": "npm run build && npx cap copy",
     "android:dev": "npm run android:build && npx cap open android",
     "android:open": "npx cap open android",
-    "cap": "npx cap sync"
+    "cap": "npx cap sync",
+    "check": "npx eslint src/"
   },
   "dependencies": {
     "@capacitor/android": "^8.3.4",
@@ -43,6 +44,8 @@
   "devDependencies": {
     "@capacitor/cli": "^8.3.4",
     "@iconify/vue": "^5.0.1",
+    "@typescript-eslint/eslint-plugin": "^8.70.0",
+    "@typescript-eslint/parser": "^8.70.0",
     "@vitejs/plugin-legacy": "^5.0.0",
     "@vitejs/plugin-vue": "^4.0.0",
     "@vue/eslint-config-typescript": "^12.0.0",
