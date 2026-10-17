@@ -424,18 +424,35 @@ const formatTime = (seconds: number): string => {
 
 const coverSrc = ref('')
 let coverAbort: AbortController | null = null
+let triedWebFallback = false
 
-const resolveCover = async (song: Song | null) => {
-  if (coverAbort) coverAbort.abort()
+const fetchWebCover = async (song: Song) => {
+  coverAbort?.abort()
   coverAbort = new AbortController()
   const signal = coverAbort.signal
+  try {
+    const url = await fetchCoverFromWeb(song.title, song.artist || '', signal)
+    if (!signal.aborted) coverSrc.value = url || DEFAULT_COVER
+  } catch {
+    if (!signal.aborted) coverSrc.value = DEFAULT_COVER
+  }
+}
+
+const resolveCover = (song: Song | null) => {
+  coverAbort?.abort()
+  coverAbort = null
+  triedWebFallback = false
+  // Drop the previous track's artwork so it cannot flash while resolving.
+  coverSrc.value = DEFAULT_COVER
 
   if (!song) {
-    coverSrc.value = DEFAULT_COVER
     return
   }
-  if (song.albumArtUri && song.albumArtUri.trim() !== '') {
-    coverSrc.value = getCoverSrc(song.albumArtUri)
+  const local = getCoverSrc(song.albumArtUri || '')
+  if (local) {
+    // The embedded URI may be stale (missing MediaStore album art); the error
+    // handler retries online.
+    coverSrc.value = local
     return
   }
   // 检查设置是否允许联网获取
@@ -443,16 +460,20 @@ const resolveCover = async (song: Song | null) => {
     coverSrc.value = DEFAULT_COVER
     return
   }
-  try {
-    const url = await fetchCoverFromWeb(song.title, song.artist || '', signal)
-    if (!signal.aborted) {
-      coverSrc.value = url || DEFAULT_COVER
-    }
-  } catch {
-    if (!signal.aborted) {
-      coverSrc.value = DEFAULT_COVER
-    }
+  triedWebFallback = true
+  void fetchWebCover(song)
+}
+
+/** A broken local cover retries online once before falling back to the icon. */
+const onCoverError = () => {
+  const song = currentSong.value
+  if (!song || triedWebFallback || appStore.getCanFetchCoverFromWeb?.() === false) {
+    coverSrc.value = DEFAULT_COVER
+    return
   }
+  triedWebFallback = true
+  coverSrc.value = DEFAULT_COVER
+  void fetchWebCover(song)
 }
 
 watch(currentSong, (s) => resolveCover(s), { immediate: true })
@@ -493,7 +514,7 @@ onUnmounted(() => {
           :alt="currentSong?.title"
           :class="{ playing: isPlaying }"
           :src="coverSrc"
-          @error="coverSrc = DEFAULT_COVER"
+          @error="onCoverError"
         />
         <Icon v-else :width="120" color="var(--text-secondary)" icon="mdi:music" />
       </div>

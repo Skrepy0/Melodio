@@ -2,20 +2,14 @@
 import { Icon } from '@iconify/vue'
 import DropdownButton from '@/components/button/DropdownButton.vue'
 import { useDropdownControl } from '@/composables/useDropdownControl'
+import { useCoverSrc } from '@/composables/useCoverSrc'
 import type { DropdownItem, Song } from '@/utils/interface'
 import { useAppStore } from '@/stores/app'
 import toast from '@/utils/createToast'
-import {
-  DEFAULT_COVER,
-  fetchCoverFromWeb,
-  getAccessibleUrl,
-  getCoverSrc,
-  getNativeCoverUrl,
-  isInList,
-} from '@/utils/functions'
+import { DEFAULT_COVER, getAccessibleUrl, getNativeCoverUrl, isInList } from '@/utils/functions'
 import { showPlaylistSelector } from '@/utils/createPlaylistSelector'
 import { useI18n } from 'vue-i18n'
-import { computed, onUnmounted, ref, watch } from 'vue'
+import { computed } from 'vue'
 import { audio } from '@/utils/createAudio'
 import { showSongInfo } from '@/utils/createInfo'
 
@@ -134,47 +128,9 @@ const emit = defineEmits<{
 
 const { dropdownVisible } = useDropdownControl(props, emit)
 
-const coverSrc = ref<string>('')
-const isCoverLoading = ref(false)
-let abortController: AbortController | null = null
-
-async function resolveCover() {
-  if (
-    (props.song.albumArtUri && props.song.albumArtUri.trim() !== '') ||
-    !appStore.getCanFetchCoverFromWeb()
-  ) {
-    const src = getCoverSrc(props.song.albumArtUri)
-    coverSrc.value = src || DEFAULT_COVER
-    return
-  }
-
-  isCoverLoading.value = true
-  abortController?.abort()
-  abortController = new AbortController()
-  const controller = abortController
-  try {
-    const url = await fetchCoverFromWeb(
-      props.song.title,
-      props.song.artist || '',
-      controller.signal
-    )
-    if (!controller.signal.aborted) coverSrc.value = url || DEFAULT_COVER
-  } catch {
-    if (!controller.signal.aborted) coverSrc.value = DEFAULT_COVER
-  } finally {
-    if (!controller.signal.aborted) isCoverLoading.value = false
-  }
-}
-
-watch(
-  () => props.song,
-  () => resolveCover(),
-  { immediate: true }
-)
-
-onUnmounted(() => {
-  abortController?.abort()
-})
+// Local artwork first; if the image fails to load (a MediaStore album-art URI
+// can be stale), retry via the web providers before showing the default icon.
+const { coverSrc, isCoverLoading, onCoverError } = useCoverSrc(() => props.song)
 
 const menuOptions = computed<DropdownItem[]>(() => {
   if (props.operations) {
@@ -223,7 +179,7 @@ const onMenuItemSelect = computed(() => {
         v-if="coverSrc && coverSrc !== DEFAULT_COVER && !isCoverLoading"
         :alt="song.title"
         :src="coverSrc"
-        @error="coverSrc = DEFAULT_COVER"
+        @error="onCoverError"
       />
       <Icon
         v-else
