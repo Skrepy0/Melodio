@@ -21,6 +21,7 @@ import {
 import toast from '@/utils/createToast'
 import { i18n } from '@/i18n'
 import { registerPlugin } from '@capacitor/core'
+import { App } from '@capacitor/app'
 import type { SystemBarPlugin } from '@/plugins/system-bar/definitions'
 import { hexToRgb, mixColors } from '@/utils/color'
 import { musicClients } from '@/config'
@@ -590,10 +591,13 @@ export const useAppStore = defineStore('app', () => {
   }
   function initSongLists() {
     const obj = localStorage.getItem('songLists')
-    if (obj) {
+    if (!obj) return
+    try {
       const parsed = JSON.parse(obj)
       if (Array.isArray(parsed)) songLists.value = parsed
       else if (Array.isArray(parsed.data)) songLists.value = parsed.data
+    } catch (e) {
+      console.error('歌单数据解析失败', e)
     }
   }
 
@@ -752,23 +756,91 @@ export const useAppStore = defineStore('app', () => {
     audio.setRepeatMode(newMode === 'repeatOne').then((r) => console.log('repeatOne', r))
   })
 
+  /** Throttle for writing playback progress to localStorage. */
+  const TIME_PERSIST_INTERVAL_MS = 5000
+  let lastTimePersistAt = 0
+
   function setupNativeAudioListeners() {
-    audio.addEventListener('songChanged', (data: { index: number }) => {
-      playData.value.currentIndex = data.index
-      playData.value.isPlaying = true
-      savePlayData()
-    })
+    audio.addEventListener(
+      'songChanged',
+      (data: { index: number; isPlaying?: boolean; position?: number }) => {
+        playData.value.currentIndex = data.index
+        // The track index changed, so the old progress is meaningless — reset it
+        // before persisting to avoid "new index + previous track's position".
+        playData.value.mockCurrentTime =
+          Number.isFinite(data.position) && (data.position as number) >= 0
+            ? (data.position as number)
+            : 0
+        // A load does not imply playback (restore/prepare may leave it paused).
+        playData.value.isPlaying = data.isPlaying ?? true
+        savePlayData()
+      }
+    )
     audio.addEventListener('playStateChange' as any, (data: { isPlaying: boolean }) => {
       playData.value.isPlaying = data.isPlaying
       savePlayData()
     })
     audio.addEventListener('timeupdate', () => {
       playData.value.mockCurrentTime = audio.currentTime
+      // Writing localStorage on every tick is wasteful; flush at most every
+      // few seconds so a killed WebView still restores near the right spot.
+      const now = Date.now()
+      if (now - lastTimePersistAt >= TIME_PERSIST_INTERVAL_MS) {
+        lastTimePersistAt = now
+        savePlayData()
+      }
     })
     audio.addEventListener('error', (data) => {
       console.error('[NativeAudio] Error', data)
       toast.error('播放出错')
     })
+  }
+
+  /** Flush everything needed to resume playback; safe to call synchronously. */
+  function persistPlaybackSnapshot() {
+    savePlayData()
+    savePlayQueue()
+  }
+
+  /**
+   * Persist on the way out: Capacitor's appStateChange fires before the process
+   * is backgrounded/killed, and the page events cover WebView teardown.
+   */
+  function setupPersistenceListeners() {
+    try {
+      App.addListener('appStateChange', ({ isActive }) => {
+        if (!isActive) persistPlaybackSnapshot()
+      }).catch((e) => console.warn('[Store] appStateChange listener failed', e))
+    } catch (e) {
+      console.warn('[Store] appStateChange listener unavailable', e)
+    }
+    const flush = () => persistPlaybackSnapshot()
+    window.addEventListener('pagehide', flush)
+    window.addEventListener('beforeunload', flush)
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') flush()
+    })
+  }
+
+  /**
+   * After a WebView reload the native player may still be running with its own
+   * track/position. Prefer that truth over the persisted snapshot.
+   */
+  async function reconcilePlaybackState() {
+    try {
+      const state = await audio.getState()
+      if (!state || state.currentIndex < 0) return
+      if (state.currentIndex >= playQueue.value.length) return
+      playData.value.currentIndex = state.currentIndex
+      playData.value.isPlaying = state.isPlaying
+      if (Number.isFinite(state.currentPosition) && state.currentPosition >= 0) {
+        playData.value.mockCurrentTime = state.currentPosition
+      }
+      savePlayData()
+    } catch (e) {
+      // Web / older native build: keep the persisted values.
+      console.warn('[Store] getState unavailable', e)
+    }
   }
 
   async function togglePlay() {
@@ -797,10 +869,25 @@ export const useAppStore = defineStore('app', () => {
     }
 
     try {
+      // Ask the native side for its position before (re)loading: after a
+      // WebView reload the persisted mockCurrentTime may be stale.
+      let resumeAt = playData.value.mockCurrentTime
+      try {
+        const state = await audio.getState()
+        if (
+          state &&
+          state.currentIndex === playData.value.currentIndex &&
+          Number.isFinite(state.currentPosition) &&
+          state.currentPosition > 0
+        ) {
+          resumeAt = state.currentPosition
+        }
+      } catch {
+        // getState unavailable — fall back to the persisted position.
+      }
       await audio.playIndex(playData.value.currentIndex, false)
-      const savedTime = playData.value.mockCurrentTime
-      if (savedTime > 0) {
-        await audio.seek(savedTime)
+      if (resumeAt > 0) {
+        await audio.seek(resumeAt)
       }
       await audio.play()
       playData.value.isPlaying = true
@@ -817,6 +904,17 @@ export const useAppStore = defineStore('app', () => {
 
     switchPromise = (async () => {
       try {
+        // Sequential mode plays through the queue and stops at the end; only
+        // repeatOne (handled natively) wraps around.
+        if (
+          playMode.value === 'sequential' &&
+          playData.value.currentIndex + 1 >= playQueue.value.length
+        ) {
+          await audio.pause()
+          playData.value.isPlaying = false
+          savePlayData()
+          return
+        }
         const nextIndex = (playData.value.currentIndex + 1) % playQueue.value.length
         console.log('[Store] nextSong: playing index=', nextIndex)
         await audio.playIndex(nextIndex)
@@ -841,6 +939,10 @@ export const useAppStore = defineStore('app', () => {
 
     switchPromise = (async () => {
       try {
+        // Sequential mode does not wrap backwards either.
+        if (playMode.value === 'sequential' && playData.value.currentIndex <= 0) {
+          return
+        }
         const prevIndex =
           (playData.value.currentIndex - 1 + playQueue.value.length) % playQueue.value.length
         console.log('[Store] prevSong: playing index=', prevIndex)
@@ -892,6 +994,10 @@ export const useAppStore = defineStore('app', () => {
       setupWebViewRendererKilledListener()
       // playQueue watcher (immediate: true) already syncs playlist to native
       setupNativeAudioListeners()
+      setupPersistenceListeners()
+      // The native player outlives a WebView reload; its state wins over the
+      // snapshot we just restored from localStorage.
+      await reconcilePlaybackState()
       await initCanFetchCoverFromWeb()
       await audio.setRepeatMode(playMode.value === 'repeatOne')
       initFlag.value = true
@@ -1017,9 +1123,20 @@ export const useAppStore = defineStore('app', () => {
     savePlayQueue()
   }
 
-  function setCurrentIndex(index: number) {
+  let currentIndexRequest = 0
+  async function setCurrentIndex(index: number) {
+    const request = ++currentIndexRequest
+    try {
+      // Prefer the native player's confirmation before committing the index;
+      // the playlist may be mid-update, so a rejection still keeps the local
+      // value (the following playIndex re-syncs it).
+      await audio.setCurrentIndex(index)
+    } catch (e) {
+      console.warn('[Store] native setCurrentIndex rejected', e)
+    }
+    // A newer request (e.g. playIndex from a song tap) wins over this one.
+    if (request !== currentIndexRequest) return
     playData.value.currentIndex = index
-    audio.setCurrentIndex(index).then((r) => console.log(r))
     savePlayData()
   }
   function setIsPlaying(status: boolean) {
@@ -1173,10 +1290,13 @@ export const useAppStore = defineStore('app', () => {
 
   function initPlayQueue() {
     const obj = localStorage.getItem('playQueue')
-    if (obj) {
+    if (!obj) return
+    try {
       const parsed = JSON.parse(obj)
       if (Array.isArray(parsed)) playQueue.value = parsed
       else if (Array.isArray(parsed.data)) playQueue.value = parsed.data
+    } catch (e) {
+      console.error('播放队列解析失败', e)
     }
   }
 

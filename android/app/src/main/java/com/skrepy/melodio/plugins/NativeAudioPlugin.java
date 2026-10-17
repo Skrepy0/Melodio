@@ -59,6 +59,9 @@ public class NativeAudioPlugin extends Plugin {
     private static final int COVER_READ_TIMEOUT_MS = 5000;
     /** Hard cap on a downloaded cover so a misbehaving URL cannot exhaust memory. */
     private static final int MAX_COVER_BYTES = 10 * 1024 * 1024;
+    private static final String PREFS_NAME = "melodio_playback";
+    private static final String KEY_LAST_INDEX = "lastIndex";
+    private static final String KEY_LAST_POSITION_MS = "lastPositionMs";
     /**
      * Set to true when the WebView renderer process is destroyed (e.g., app was in
      * background and Android reclaimed memory). When true, all native-to-JS events
@@ -103,6 +106,8 @@ public class NativeAudioPlugin extends Plugin {
     public static void onWebViewRendererDestroyed() {
         webViewDestroyed = true;
         if (instance != null) {
+            // Progress events stop here, so snapshot the position now.
+            instance.persistPlaybackState();
             instance.stopProgress();
         }
         Log.w(TAG, "WebView renderer destroyed - suppressing all native-to-JS events");
@@ -163,8 +168,17 @@ public class NativeAudioPlugin extends Plugin {
                 mediaPlayer.start();
                 updateState(true);
                 startProgress();
-            } else {
+            } else if (currentIndex + 1 < playlist.size()) {
+                // Sequential mode: advance while there is a next track.
                 nextInternal();
+            } else {
+                // End of the queue in sequential mode: stop instead of wrapping.
+                Log.d(TAG, "Playlist finished (sequential mode)");
+                isPlaying = false;
+                updateState(false);
+                stopProgress();
+                notifyPlayState(false);
+                persistPlaybackState();
             }
         });
 
@@ -270,8 +284,17 @@ public class NativeAudioPlugin extends Plugin {
         Integer indexObj = call.getInt("index");
         int index = (indexObj != null) ? indexObj : -1;
         if (index >= 0 && index < playlist.size()) {
+            boolean sameTrack = index == currentIndex;
             currentIndex = index;
             Log.d(TAG, "Current index updated to: " + index);
+            if (!sameTrack) {
+                // The selected track changed without loading it: its progress is
+                // unknown, so record a fresh start for the fallback snapshot.
+                playbackPrefs().edit()
+                        .putInt(KEY_LAST_INDEX, index)
+                        .putLong(KEY_LAST_POSITION_MS, 0)
+                        .apply();
+            }
             call.resolve();
         } else {
             call.reject("Invalid index");
@@ -490,6 +513,7 @@ public class NativeAudioPlugin extends Plugin {
                         }
 
                         notifySongChanged();
+                        persistPlaybackState();
                         resolvePendingCall();
                         loading = false;
                     });
@@ -582,6 +606,7 @@ public class NativeAudioPlugin extends Plugin {
             stopProgress();
             notifyPlayState(false);
             abandonAudioFocus();
+            persistPlaybackState();
             Log.d(TAG, "pauseInternal: paused");
         } else {
             Log.d(TAG, "pauseInternal: already paused");
@@ -645,16 +670,28 @@ public class NativeAudioPlugin extends Plugin {
 
     private void nextInternal() {
         if (playlist.isEmpty()) return;
+        if (!repeatOne && currentIndex + 1 >= playlist.size()) {
+            // Sequential mode: the queue is finished, do not wrap around.
+            Log.d(TAG, "nextInternal: end of playlist (sequential mode)");
+            if (prepared && mediaPlayer.isPlaying()) pauseInternal();
+            return;
+        }
         int n = (currentIndex + 1) % playlist.size();
         Log.d(TAG, "nextInternal: switching to index=" + n);
-        loadAndPlay(n, true);
+        // Notification/MediaSession skips keep the user's current play state
+        // instead of forcing playback.
+        loadAndPlay(n, isPlaying);
     }
 
     private void prevInternal() {
         if (playlist.isEmpty()) return;
+        if (!repeatOne && currentIndex <= 0) {
+            Log.d(TAG, "prevInternal: start of playlist (sequential mode)");
+            return;
+        }
         int p = (currentIndex - 1 + playlist.size()) % playlist.size();
         Log.d(TAG, "prevInternal: switching to index=" + p);
-        loadAndPlay(p, true);
+        loadAndPlay(p, isPlaying);
     }
 
     private void updateState(boolean playing) {
@@ -762,8 +799,65 @@ public class NativeAudioPlugin extends Plugin {
         o.put("index", currentIndex);
         o.put("title", title);
         o.put("artist", artist);
+        // Carry the real playback state: the web layer must not assume a track
+        // change means "playing" (e.g. after a restore that only prepares).
+        o.put("isPlaying", isPlaying);
+        o.put("duration", durationSec);
+        o.put("position", prepared ? mediaPlayer.getCurrentPosition() / 1000.0 : 0);
         notifyListeners("songChanged", o);
-        Log.d(TAG, "songChanged event sent: index=" + currentIndex + " title=" + title);
+        Log.d(TAG, "songChanged event sent: index=" + currentIndex + " title=" + title + " isPlaying=" + isPlaying);
+    }
+
+    /**
+     * Snapshot of the native player, used by the web layer to reconcile its
+     * persisted state after a WebView reload. When no track is loaded (fresh
+     * process) the last state written before shutdown is returned instead.
+     */
+    @PluginMethod
+    public void getState(PluginCall call) {
+        JSObject ret = new JSObject();
+        if (currentIndex >= 0) {
+            ret.put("isPlaying", isPlaying);
+            ret.put("currentIndex", currentIndex);
+            if (prepared) {
+                ret.put("currentPosition", mediaPlayer.getCurrentPosition() / 1000.0);
+                ret.put("duration", durationSec);
+            } else {
+                // Index selected but no track loaded (e.g. after a WebView
+                // reload) — use the persisted position only when it belongs to
+                // this track.
+                android.content.SharedPreferences prefs = playbackPrefs();
+                long savedMs = prefs.getInt(KEY_LAST_INDEX, -1) == currentIndex
+                        ? prefs.getLong(KEY_LAST_POSITION_MS, 0) : 0;
+                ret.put("currentPosition", savedMs / 1000.0);
+                ret.put("duration", 0);
+            }
+        } else {
+            android.content.SharedPreferences prefs = playbackPrefs();
+            ret.put("isPlaying", false);
+            ret.put("currentIndex", prefs.getInt(KEY_LAST_INDEX, -1));
+            ret.put("currentPosition", prefs.getLong(KEY_LAST_POSITION_MS, 0) / 1000.0);
+            ret.put("duration", 0);
+        }
+        call.resolve(ret);
+    }
+
+    private android.content.SharedPreferences playbackPrefs() {
+        return getContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+    }
+
+    /** Best-effort snapshot so playback can be resumed even if JS storage is lost. */
+    private void persistPlaybackState() {
+        if (currentIndex < 0) return;
+        try {
+            long positionMs = prepared ? mediaPlayer.getCurrentPosition() : 0;
+            playbackPrefs().edit()
+                    .putInt(KEY_LAST_INDEX, currentIndex)
+                    .putLong(KEY_LAST_POSITION_MS, positionMs)
+                    .apply();
+        } catch (Exception e) {
+            Log.w(TAG, "Failed to persist playback state", e);
+        }
     }
 
     private void notifyError(int w, int e) {
@@ -782,6 +876,8 @@ public class NativeAudioPlugin extends Plugin {
         if (progressHandler == null) progressHandler = new Handler(Looper.getMainLooper());
         stopProgress();
         progressRunnable = new Runnable() {
+            int ticks = 0;
+
             @Override
             public void run() {
                 if (prepared && isPlaying) {
@@ -791,6 +887,9 @@ public class NativeAudioPlugin extends Plugin {
                         o.put("position", pos / 1000.0);
                         notifyListeners("timeupdate", o);
                     }
+                    // Fallback snapshot roughly every 5s so a process kill
+                    // still resumes close to where playback stopped.
+                    if (++ticks % 5 == 0) persistPlaybackState();
                     updateState(true);
                     progressHandler.postDelayed(this, 1000);
                 }
@@ -819,6 +918,7 @@ public class NativeAudioPlugin extends Plugin {
     @Override
     protected void handleOnDestroy() {
         Log.d(TAG, "Plugin destroyed");
+        persistPlaybackState();
         instance = null;
         webViewDestroyed = false;
         rejectPendingCall("plugin destroyed");

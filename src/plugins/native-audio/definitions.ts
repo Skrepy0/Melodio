@@ -6,6 +6,13 @@ export interface SongItem {
   coverUrl: string | any
 }
 
+export interface PlaybackStateSnapshot {
+  isPlaying: boolean
+  currentIndex: number
+  currentPosition: number
+  duration: number
+}
+
 export interface NativeAudioPlugin {
   load(options: { url: string }): Promise<void>
   play(): Promise<void>
@@ -23,6 +30,8 @@ export interface NativeAudioPlugin {
   updatePlaybackState(options: { isPlaying: boolean }): Promise<void>
   setRepeatMode(options: { repeatOne: boolean }): Promise<void>
   setCurrentIndex(options: { index: number }): Promise<void>
+  /** Native player snapshot used to reconcile state after a WebView reload. */
+  getState(): Promise<PlaybackStateSnapshot>
   addListener(
     eventName:
       | 'ended'

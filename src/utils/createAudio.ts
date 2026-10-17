@@ -70,6 +70,11 @@ export class NativeAudioPlayer {
     await NativeAudio.setCurrentIndex({ index })
   }
 
+  /** Native player snapshot, used to reconcile persisted state on reload. */
+  async getState() {
+    return NativeAudio.getState()
+  }
+
   addEventListener(event: AudioEvent, cb: EventCallback) {
     if (!this.listeners.has(event)) this.listeners.set(event, new Set())
     this.listeners.get(event)!.add(cb)
@@ -145,8 +150,10 @@ export class NativeAudioPlayer {
       }
     })
     NativeAudio.addListener('songChanged', (data: any) => {
-      this._duration = 0
-      this._paused = false
+      this._duration = data?.duration ?? 0
+      // A track change is not necessarily a play: a restore/prepare with
+      // autoPlay=false leaves the player paused.
+      this._paused = data?.isPlaying === false
       this.emit('songChanged', data)
     })
     NativeAudio.addListener('nexttrack', () => this.emit('nexttrack'))
