@@ -499,6 +499,8 @@
     "reset": "恢复默认",
     "invalidImage": "请选择图片文件",
     "readFailed": "无法读取该图片",
-    "searching": "正在联网查找封面…"
+    "searching": "正在联网查找封面…",
+    "remaining": "还有 {count} 首未查找",
+    "noCover": "暂无封面"
   }
 }

@@ -10,7 +10,13 @@ import toast from '@/utils/createToast'
 import { showConfirm } from '@/utils/createConfirm'
 import { audio } from '@/utils/createAudio'
 import { useI18n } from 'vue-i18n'
-import { DEFAULT_COVER, fetchCoverFromWeb, getCoverSrc, isInList } from '@/utils/functions'
+import {
+  DEFAULT_COVER,
+  fetchCoverFromWeb,
+  getCoverSrc,
+  isInList,
+  isSafeCoverSource,
+} from '@/utils/functions'
 import router from '@/router'
 
 const { t } = useI18n()
@@ -448,7 +454,7 @@ const resolveCover = (song: Song | null) => {
   if (!song) {
     return
   }
-  const local = getCoverSrc(song.albumArtUri || '')
+  const local = isSafeCoverSource(song.albumArtUri) ? getCoverSrc(song.albumArtUri || '') : ''
   if (local) {
     // The embedded URI may be stale (missing MediaStore album art); the error
     // handler retries online.

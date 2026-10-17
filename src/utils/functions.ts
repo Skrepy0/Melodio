@@ -130,6 +130,70 @@ export const DEFAULT_COVER =
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#888"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>'
   )
 
+/**
+ * Schemes an artwork reference may use when rendering it. `http:` is rejected
+ * (downgraded, mixed-content-blocked in the WebView), as are executable
+ * schemes such as `javascript:` and non-image data URIs.
+ */
+export const isSafeCoverSource = (value: string | null | undefined): boolean => {
+  const trimmed = (value || '').trim().toLowerCase()
+  if (!trimmed) return false
+  return (
+    trimmed.startsWith('https:') ||
+    trimmed.startsWith('file:') ||
+    trimmed.startsWith('content:') ||
+    trimmed.startsWith('data:image/')
+  )
+}
+
+/**
+ * Whether a cover reference can be stored long-term. `content://` album-art
+ * URIs go stale (the MediaStore entry can disappear), so they are converted to
+ * a data URL before being persisted.
+ */
+export const isPersistableCoverSource = (value: string | null | undefined): boolean => {
+  const trimmed = (value || '').trim().toLowerCase()
+  if (!trimmed) return false
+  return trimmed.startsWith('https:') || trimmed.startsWith('data:image/')
+}
+
+/** Timeout applied to every cover-provider request. */
+const COVER_FETCH_TIMEOUT_MS = 8000
+
+/**
+ * Combine the caller's signal with a timeout. Prefers the native
+ * `AbortSignal.any` / `AbortSignal.timeout` pair and falls back to a manual
+ * controller for older WebViews.
+ */
+const withCoverTimeout = (signal?: AbortSignal): AbortSignal => {
+  const timeoutMs = COVER_FETCH_TIMEOUT_MS
+  if (
+    typeof AbortSignal !== 'undefined' &&
+    typeof AbortSignal.any === 'function' &&
+    typeof AbortSignal.timeout === 'function'
+  ) {
+    const timeout = AbortSignal.timeout(timeoutMs)
+    return signal ? AbortSignal.any([signal, timeout]) : timeout
+  }
+
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
+  controller.signal.addEventListener('abort', () => clearTimeout(timer), { once: true })
+  if (signal) {
+    if (signal.aborted) controller.abort()
+    else
+      signal.addEventListener(
+        'abort',
+        () => {
+          clearTimeout(timer)
+          controller.abort()
+        },
+        { once: true }
+      )
+  }
+  return controller.signal
+}
+
 export const isInList = (id: string, queue: Song[]) => queue.some((song) => song.id === id)
 
 /**
@@ -169,15 +233,19 @@ export async function fetchCoverFromWeb(
   if (cached) return cached
 
   const store = (url: string | null): string | null => {
-    if (url) coverCache.set(cacheKey, url)
-    return url
+    // Only hand back references that are safe to render later.
+    if (url && isSafeCoverSource(url)) {
+      coverCache.set(cacheKey, url)
+      return url
+    }
+    return null
   }
 
   try {
     const itunesUrl = `https://itunes.apple.com/search?term=${encodeURIComponent(
       `${title} ${artist}`
     )}&media=music&limit=1`
-    const r = await fetch(itunesUrl, { signal })
+    const r = await fetch(itunesUrl, { signal: withCoverTimeout(signal) })
     const d = await r.json()
     if (d.resultCount > 0) {
       const art = d.results[0].artworkUrl100?.replace('100x100bb', '600x600bb')
@@ -190,7 +258,7 @@ export async function fetchCoverFromWeb(
   try {
     const query = encodeURIComponent(`track:"${title}" artist:"${artist}"`)
     const deezerUrl = `https://api.deezer.com/search?q=${query}&limit=1`
-    const r = await fetch(deezerUrl, { signal })
+    const r = await fetch(deezerUrl, { signal: withCoverTimeout(signal) })
     const d = await r.json()
     if (d.data?.length > 0) {
       const cover = d.data[0].album?.cover_big || d.data[0].album?.cover_xl
@@ -205,7 +273,7 @@ export async function fetchCoverFromWeb(
     const mbUrl = `https://musicbrainz.org/ws/2/recording/?query=${mbQuery}&fmt=json&limit=1`
     const r = await fetch(mbUrl, {
       headers: { 'User-Agent': USER_AGENT },
-      signal,
+      signal: withCoverTimeout(signal),
     })
     const d = await r.json()
     const recordings = d.recordings
@@ -213,7 +281,10 @@ export async function fetchCoverFromWeb(
       const mbid = recordings[0].releases?.[0]?.['release-group']?.id
       if (mbid) {
         const coverUrl = `https://coverartarchive.org/release-group/${mbid}/front-250`
-        const imgCheck = await fetch(coverUrl, { method: 'HEAD', signal })
+        const imgCheck = await fetch(coverUrl, {
+          method: 'HEAD',
+          signal: withCoverTimeout(signal),
+        })
         if (imgCheck.ok) return store(coverUrl)
       }
     }

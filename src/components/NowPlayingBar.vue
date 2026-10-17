@@ -4,7 +4,7 @@ import { Icon } from '@iconify/vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'
 import { audio } from '@/utils/createAudio'
-import { DEFAULT_COVER, fetchCoverFromWeb, getCoverSrc } from '@/utils/functions'
+import { DEFAULT_COVER, fetchCoverFromWeb, getCoverSrc, isSafeCoverSource } from '@/utils/functions'
 
 const appStore = useAppStore()
 const { t } = useI18n()
@@ -79,7 +79,7 @@ const resolveCover = (song: any) => {
   if (!song) {
     return
   }
-  const local = getCoverSrc(song.albumArtUri || '')
+  const local = isSafeCoverSource(song.albumArtUri) ? getCoverSrc(song.albumArtUri || '') : ''
   if (local) {
     // The embedded URI may be stale (missing MediaStore album art); the error
     // handler retries online.

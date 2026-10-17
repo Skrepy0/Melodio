@@ -1,6 +1,6 @@
 import { onUnmounted, ref, watch, type Ref } from 'vue'
 import type { Playlist } from '@/utils/interface'
-import { DEFAULT_COVER, fetchCoverFromWeb, getCoverSrc } from '@/utils/functions'
+import { DEFAULT_COVER, fetchCoverFromWeb, getCoverSrc, isSafeCoverSource } from '@/utils/functions'
 import { useAppStore } from '@/stores/app'
 
 /**
@@ -32,7 +32,9 @@ export function usePlaylistCover(playlist: Ref<Playlist | null | undefined>, ena
     }
 
     if (list.coverUrl && list.coverUrl.trim() !== '') {
-      coverSrc.value = getCoverSrc(list.coverUrl)
+      // Persisted values may predate the scheme whitelist (or have been
+      // tampered with) — never request a disallowed reference.
+      coverSrc.value = isSafeCoverSource(list.coverUrl) ? getCoverSrc(list.coverUrl) : DEFAULT_COVER
       return
     }
 
@@ -42,7 +44,7 @@ export function usePlaylistCover(playlist: Ref<Playlist | null | undefined>, ena
     const library = new Map(appStore.getAllSongs().map((song) => [song.id, song]))
     const withArt = songs.find((song) => {
       const uri = (song.albumArtUri || library.get(song.id)?.albumArtUri || '').trim()
-      return uri !== ''
+      return uri !== '' && isSafeCoverSource(uri)
     })
     if (withArt) {
       const uri = (withArt.albumArtUri || library.get(withArt.id)?.albumArtUri || '').trim()

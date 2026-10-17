@@ -1,7 +1,7 @@
 import { onUnmounted, ref, toValue, watch, type MaybeRefOrGetter } from 'vue'
 import type { Song } from '@/utils/interface'
 import { useAppStore } from '@/stores/app'
-import { DEFAULT_COVER, fetchCoverFromWeb, getCoverSrc } from '@/utils/functions'
+import { DEFAULT_COVER, fetchCoverFromWeb, getCoverSrc, isSafeCoverSource } from '@/utils/functions'
 
 type CoverSong = Pick<Song, 'title' | 'artist' | 'albumArtUri'>
 
@@ -57,7 +57,7 @@ export function useCoverSrc(song: MaybeRefOrGetter<CoverSong | null | undefined>
       return
     }
 
-    const local = getCoverSrc(target.albumArtUri || '')
+    const local = isSafeCoverSource(target.albumArtUri) ? getCoverSrc(target.albumArtUri || '') : ''
     if (local) {
       coverSrc.value = local
       return

@@ -3,7 +3,14 @@ import { computed, onUnmounted, ref } from 'vue'
 import { Icon } from '@iconify/vue'
 import { useI18n } from 'vue-i18n'
 import type { Playlist } from '@/utils/interface'
-import { DEFAULT_COVER, fetchCoverFromWeb, getCoverSrc } from '@/utils/functions'
+import {
+  DEFAULT_COVER,
+  fetchCoverFromWeb,
+  getCoverBase64,
+  getCoverSrc,
+  isPersistableCoverSource,
+  isSafeCoverSource,
+} from '@/utils/functions'
 import { useAppStore } from '@/stores/app'
 import toast from '@/utils/createToast'
 import { trapTabKey, useDialogA11y } from '@/composables/useDialogA11y'
@@ -11,8 +18,8 @@ import { trapTabKey, useDialogA11y } from '@/composables/useDialogA11y'
 /** Covers are stored in localStorage, so keep the uploaded image small. */
 const MAX_COVER_SIZE = 384
 const JPEG_QUALITY = 0.85
-/** How many songs without embedded artwork to look up online. */
-const MAX_WEB_LOOKUPS = 12
+/** Concurrent provider requests; the queue itself is unbounded. */
+const WEB_CONCURRENCY = 4
 
 const { t } = useI18n()
 const appStore = useAppStore()
@@ -23,21 +30,51 @@ const fileInputRef = ref<HTMLInputElement | null>(null)
 const titleId = `playlist-cover-title-${Math.random().toString(36).slice(2)}`
 const playlist = ref<Playlist | null>(null)
 const isReading = ref(false)
-const isLookingUp = ref(false)
+const currentCoverFailed = ref(false)
 
-interface CoverOption {
-  raw: string
-  src: string
+interface CoverRow {
+  key: string
   title: string
+  artist: string
+  /** Reference that would be persisted if this row is picked. */
+  raw: string
+  /** URL for the thumbnail. */
+  src: string
+  state: 'local' | 'pending' | 'web' | 'none'
 }
 
-const songCovers = ref<CoverOption[]>([])
+const songRows = ref<CoverRow[]>([])
 let lookupAbort: AbortController | null = null
+
+// Web-lookup queue. Songs are processed in small concurrent batches; entries
+// that already ran (or failed) are remembered so a broken thumbnail cannot loop.
+interface LookupEntry {
+  row: CoverRow
+  title: string
+  artist: string
+}
+
+let lookupQueue: LookupEntry[] = []
+/** The controller whose drain loop is currently running. */
+let activeDrain: AbortController | null = null
+const attempted = new Set<string>()
+const queued = new Set<string>()
+const lookupKey = (title: string, artist: string) =>
+  `${title.trim().toLowerCase()}\u0000${artist.trim().toLowerCase()}`
+
+const remainingCount = computed(
+  () => songRows.value.filter((row) => row.state === 'pending').length
+)
 
 let resolvePromise: ((value: string | null | undefined) => void) | null = null
 
 /** undefined = cancelled, null = reset to default, string = new cover. */
 const finish = (value: string | null | undefined) => {
+  // Closing the dialog must also stop any in-flight provider requests.
+  lookupAbort?.abort()
+  lookupAbort = null
+  lookupQueue = []
+  activeDrain = null
   visible.value = false
   resolvePromise?.(value)
   resolvePromise = null
@@ -49,6 +86,7 @@ useDialogA11y(containerRef, cancel, () => visible.value)
 
 const show = (target: Playlist): Promise<string | null | undefined> => {
   playlist.value = target
+  currentCoverFailed.value = false
   visible.value = true
   loadCovers(target)
   return new Promise((resolve) => {
@@ -59,54 +97,158 @@ const show = (target: Playlist): Promise<string | null | undefined> => {
 defineExpose({ show })
 
 /**
- * Songs in the list often show artwork that came from the web rather than from
- * the file's embedded tag, so fall back to the same lookup here instead of
- * reporting an empty playlist.
+ * Build one row per song, in playlist order. Songs that share artwork are
+ * intentionally kept as separate rows so the whole playlist is visible; the
+ * same cover can be picked from any of them.
  */
-async function loadCovers(target: Playlist) {
+function loadCovers(target: Playlist) {
   lookupAbort?.abort()
   lookupAbort = new AbortController()
-  const signal = lookupAbort.signal
+
+  lookupQueue = []
+  activeDrain = null
+  attempted.clear()
+  queued.clear()
 
   const songs = target.data ?? []
   // Playlists are stored as snapshots, so a song may carry stale metadata here.
   // Fall back to the live library entry before giving up on embedded artwork.
   const library = new Map(appStore.getAllSongs().map((song) => [song.id, song]))
-  const options: CoverOption[] = []
-  const seen = new Set<string>()
-  const pending: { title: string; artist: string }[] = []
+  const rows: CoverRow[] = []
+  const pending: LookupEntry[] = []
 
-  for (const song of songs) {
+  for (const [index, song] of songs.entries()) {
     const uri = (song.albumArtUri || library.get(song.id)?.albumArtUri || '').trim()
-    if (uri) {
-      if (seen.has(uri)) continue
-      seen.add(uri)
-      // Keep the raw URI in storage; the local-server URL can change between runs.
-      options.push({ raw: uri, src: getCoverSrc(uri), title: song.title })
-    } else if (pending.length < MAX_WEB_LOOKUPS) {
-      pending.push({ title: song.title, artist: song.artist || '' })
+    const artist = song.artist || ''
+    const row: CoverRow = {
+      key: `${song.id}-${index}`,
+      title: song.title,
+      artist,
+      raw: '',
+      src: DEFAULT_COVER,
+      state: 'none',
     }
+
+    if (uri && isSafeCoverSource(uri)) {
+      row.raw = uri
+      row.src = getCoverSrc(uri)
+      row.state = 'local'
+    } else if (appStore.getCanFetchCoverFromWeb()) {
+      row.state = 'pending'
+      pending.push({ row, title: song.title, artist })
+    }
+
+    rows.push(row)
   }
 
-  songCovers.value = options
-  isLookingUp.value = false
+  songRows.value = rows
+  enqueueLookups(pending)
+}
 
-  if (pending.length === 0 || !appStore.getCanFetchCoverFromWeb()) return
+/**
+ * Queue songs for a web lookup. Every song without artwork is eligible — the
+ * queue is drained in small concurrent batches, so a large playlist is not
+ * silently truncated.
+ */
+function enqueueLookups(entries: LookupEntry[]) {
+  if (!appStore.getCanFetchCoverFromWeb() || !lookupAbort) return
+  for (const entry of entries) {
+    const key = lookupKey(entry.title, entry.artist)
+    if (attempted.has(key) || queued.has(key)) continue
+    queued.add(key)
+    lookupQueue.push(entry)
+  }
+  void drainLookups()
+}
 
-  isLookingUp.value = true
-  for (const song of pending) {
-    if (signal.aborted) break
-    try {
-      const url = await fetchCoverFromWeb(song.title, song.artist, signal)
-      if (signal.aborted || !url) continue
-      if (seen.has(url)) continue
-      seen.add(url)
-      songCovers.value = [...songCovers.value, { raw: url, src: url, title: song.title }]
-    } catch {
-      // Offline or provider failure — keep whatever we already have.
+async function drainLookups() {
+  const controller = lookupAbort
+  if (!controller || controller.signal.aborted || activeDrain === controller) return
+  activeDrain = controller
+
+  try {
+    while (lookupQueue.length > 0 && !controller.signal.aborted) {
+      const batch = lookupQueue.splice(0, WEB_CONCURRENCY)
+      if (activeDrain !== controller) return
+      await Promise.all(
+        batch.map(async (entry) => {
+          const key = lookupKey(entry.title, entry.artist)
+          queued.delete(key)
+          attempted.add(key)
+          if (controller.signal.aborted) return
+          try {
+            const url = await fetchCoverFromWeb(entry.title, entry.artist, controller.signal)
+            if (controller.signal.aborted) return
+            if (url && isSafeCoverSource(url)) {
+              entry.row.raw = url
+              entry.row.src = url
+              entry.row.state = 'web'
+            } else {
+              entry.row.state = 'none'
+            }
+          } catch {
+            // Offline or provider failure — the placeholder stays.
+            entry.row.state = 'none'
+          }
+        })
+      )
+    }
+  } finally {
+    // A newer dialog open may already own the drain; leave its state alone.
+    if (activeDrain === controller) {
+      activeDrain = null
+      // Songs may have been enqueued while the last batch was finishing.
+      if (lookupQueue.length > 0 && lookupAbort === controller && !controller.signal.aborted) {
+        void drainLookups()
+      }
     }
   }
-  if (!signal.aborted) isLookingUp.value = false
+}
+
+/**
+ * A thumbnail failed to decode (a MediaStore album-art URI can point at a
+ * missing entry). Replace it with a web lookup; if that also fails the row
+ * shows the default icon.
+ */
+function onRowError(row: CoverRow) {
+  if (row.state === 'local') {
+    if (currentCoverFailed.value === false && (playlist.value?.coverUrl || '').trim() === row.raw) {
+      currentCoverFailed.value = true
+    }
+    row.raw = ''
+    row.src = DEFAULT_COVER
+  }
+  const key = lookupKey(row.title, row.artist)
+  // A failed web result (or one already attempted) must not be retried, or the
+  // row would sit in "pending" forever.
+  if (!appStore.getCanFetchCoverFromWeb() || !lookupAbort || attempted.has(key)) {
+    row.state = 'none'
+    return
+  }
+  row.state = 'pending'
+  enqueueLookups([{ row, title: row.title, artist: row.artist }])
+}
+
+/**
+ * Persist only references that stay valid: https URLs and image data URIs.
+ * A `content://` album-art URI can disappear, so local covers are inlined as a
+ * data URL first; anything else is rejected.
+ */
+const chooseRow = async (row: CoverRow) => {
+  const cover = row.raw
+  if (!cover || !isSafeCoverSource(cover)) return
+  if (isPersistableCoverSource(cover)) {
+    finish(cover)
+    return
+  }
+  isReading.value = true
+  const inline = await getCoverBase64(cover)
+  isReading.value = false
+  if (isPersistableCoverSource(inline)) {
+    finish(inline)
+  } else {
+    toast.error(t('playlistCover.readFailed'))
+  }
 }
 
 onUnmounted(() => {
@@ -115,14 +257,17 @@ onUnmounted(() => {
 })
 
 const currentCover = computed(() => {
+  if (currentCoverFailed.value) return DEFAULT_COVER
   const custom = playlist.value?.coverUrl?.trim()
-  if (custom) return getCoverSrc(custom)
-  return songCovers.value[0]?.src || DEFAULT_COVER
+  // A persisted value from an older version (or a tampered store) may carry a
+  // disallowed scheme; never hand that to the browser.
+  if (custom && isSafeCoverSource(custom)) return getCoverSrc(custom)
+  return songRows.value.find((row) => row.raw)?.src || DEFAULT_COVER
 })
 
+// Keep the reset action available whenever a stored value exists, even if that
+// value is no longer considered safe to render.
 const hasCustomCover = computed(() => (playlist.value?.coverUrl?.trim() ?? '') !== '')
-
-const choose = (cover: string) => finish(cover)
 
 const resetCover = () => finish(null)
 
@@ -200,29 +345,59 @@ const onFileChange = async (event: Event) => {
 
           <div class="cover-picker-body">
             <div class="current-cover">
-              <img :alt="t('playlistCover.current')" :src="currentCover" />
+              <img
+                :alt="t('playlistCover.current')"
+                :src="currentCover"
+                loading="lazy"
+                @error="currentCoverFailed = true"
+              />
               <span>{{ t('playlistCover.current') }}</span>
             </div>
 
             <section class="cover-section">
               <h4>{{ t('playlistCover.fromSongs') }}</h4>
-              <div v-if="songCovers.length" class="cover-grid">
-                <button
-                  v-for="cover in songCovers"
-                  :key="cover.raw"
-                  :aria-label="cover.title"
-                  :title="cover.title"
-                  class="cover-option"
-                  type="button"
-                  @click="choose(cover.raw)"
+              <ul v-if="songRows.length" class="song-cover-list">
+                <li
+                  v-for="row in songRows"
+                  :key="row.key"
+                  :class="{ 'is-pending': row.state === 'pending' }"
                 >
-                  <img :alt="cover.title" :src="cover.src" />
-                </button>
+                  <button
+                    :aria-label="row.title"
+                    :disabled="!row.raw"
+                    class="song-cover-row"
+                    type="button"
+                    @click="chooseRow(row)"
+                  >
+                    <img :alt="row.title" :src="row.src" loading="lazy" @error="onRowError(row)" />
+                    <span class="song-cover-meta">
+                      <span class="song-cover-title">{{ row.title }}</span>
+                      <span class="song-cover-artist">
+                        {{
+                          row.state === 'pending'
+                            ? t('playlistCover.searching')
+                            : row.state === 'none'
+                              ? t('playlistCover.noCover')
+                              : row.artist
+                        }}
+                      </span>
+                    </span>
+                    <Icon
+                      v-if="row.state === 'local' || row.state === 'web'"
+                      class="song-cover-pick"
+                      icon="mdi:check-circle-outline"
+                      width="18"
+                    />
+                  </button>
+                </li>
+              </ul>
+              <div v-else class="empty-cover">
+                <img :alt="t('playlistCover.empty')" :src="DEFAULT_COVER" loading="lazy" />
+                <p class="empty-hint">{{ t('playlistCover.empty') }}</p>
               </div>
-              <p v-else-if="isLookingUp" class="empty-hint">
-                {{ t('playlistCover.searching') }}
+              <p v-if="remainingCount > 0" class="lookup-hint">
+                {{ t('playlistCover.remaining', { count: remainingCount }) }}
               </p>
-              <p v-else class="empty-hint">{{ t('playlistCover.empty') }}</p>
             </section>
 
             <section class="cover-section">
@@ -387,49 +562,118 @@ const onFileChange = async (event: Event) => {
   }
 }
 
-.cover-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
-  gap: 8px;
-  max-height: 168px;
-  overflow-y: auto;
-  padding: 2px;
-}
-
-.cover-option {
+.song-cover-list {
+  margin: 0;
   padding: 0;
-  border: 2px solid transparent;
-  border-radius: var(--radius-md);
-  background: var(--bg-placeholder);
-  overflow: hidden;
-  cursor: pointer;
-  aspect-ratio: 1;
-  transition:
-    border-color 0.2s,
-    transform 0.2s;
+  list-style: none;
+  max-height: 240px;
+  overflow-y: auto;
+  scrollbar-width: thin;
 
-  img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    display: block;
+  &::-webkit-scrollbar {
+    width: 4px;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-thumb);
+    border-radius: 4px;
   }
 
-  &:hover {
-    transform: scale(1.04);
+  li + li {
+    margin-top: 4px;
+  }
+}
+
+.song-cover-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 6px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text-color);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background 0.2s,
+    border-color 0.2s;
+
+  img {
+    flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+    object-fit: cover;
+    border-radius: var(--radius-sm);
+    background: var(--bg-placeholder);
+  }
+
+  &:hover:not(:disabled) {
+    background: var(--setting-hover-bg);
   }
 
   &:focus-visible {
     border-color: var(--primary-color);
     outline: none;
   }
+
+  &:disabled {
+    cursor: default;
+    opacity: 0.65;
+  }
+}
+
+.song-cover-meta {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.song-cover-title {
+  font-size: 13px;
+  font-weight: 500;
+  @include text-ellipsis;
+}
+
+.song-cover-artist {
+  font-size: 11px;
+  color: var(--text-secondary);
+  @include text-ellipsis;
+}
+
+.song-cover-pick {
+  flex-shrink: 0;
+  color: var(--primary-color);
 }
 
 .empty-hint,
-.upload-hint {
+.upload-hint,
+.lookup-hint {
   margin: 0;
   font-size: 12px;
   color: var(--text-secondary);
+}
+
+.empty-cover {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+
+  img {
+    width: 64px;
+    height: 64px;
+    object-fit: cover;
+    border-radius: var(--radius-md);
+    background: var(--bg-placeholder);
+    opacity: 0.7;
+  }
+}
+
+.lookup-hint {
+  margin-top: 8px;
 }
 
 .upload-btn {

@@ -499,6 +499,8 @@
     "reset": "Reset to default",
     "invalidImage": "Please choose an image file",
     "readFailed": "Could not read that image",
-    "searching": "Looking up covers online…"
+    "searching": "Looking up covers online…",
+    "remaining": "{count} songs still to look up",
+    "noCover": "No cover"
   }
 }
