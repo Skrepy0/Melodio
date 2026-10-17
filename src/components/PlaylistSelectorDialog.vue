@@ -1,9 +1,9 @@
 <script lang="ts" setup>
-import { nextTick, ref, watch } from 'vue'
+import { nextTick, ref } from 'vue'
 import { Icon } from '@iconify/vue'
 import { useI18n } from 'vue-i18n'
 import type { Playlist } from '@/utils/interface'
-import { DEFAULT_COVER, fetchCoverFromWeb } from '@/utils/functions'
+import PlaylistCoverImage from '@/components/lists/PlaylistCoverImage.vue'
 import { trapTabKey, useDialogA11y } from '@/composables/useDialogA11y'
 
 const props = withDefaults(
@@ -26,7 +26,6 @@ const containerRef = ref<HTMLElement | null>(null)
 const titleId = `playlist-selector-title-${Math.random().toString(36).slice(2)}`
 let resolvePromise: ((value: Playlist | null) => void) | null = null
 const playlists = ref<Playlist[]>([])
-const coverCache = ref<Record<number, string>>({})
 
 const { focusFirst } = useDialogA11y(
   containerRef,
@@ -37,7 +36,6 @@ const { focusFirst } = useDialogA11y(
 const show = (list: Playlist[]): Promise<Playlist | null> => {
   playlists.value = list
   visible.value = true
-  list.forEach((p) => loadCover(p))
   nextTick(focusFirst)
   return new Promise((resolve) => {
     resolvePromise = resolve
@@ -55,42 +53,6 @@ const cancel = () => {
   if (resolvePromise) resolvePromise(null)
   resolvePromise = null
 }
-
-async function loadCover(playlist: Playlist) {
-  if (playlist.id === 0) return
-  const songs = playlist.data ?? []
-  for (const song of songs) {
-    if (song.albumArtUri && song.albumArtUri.trim() !== '') {
-      coverCache.value[playlist.id] = song.albumArtUri
-      return
-    }
-  }
-  if (songs.length > 0) {
-    const firstSong = songs[0]
-    try {
-      const webCover = await fetchCoverFromWeb(firstSong.title, firstSong.artist || '')
-      if (webCover) {
-        coverCache.value[playlist.id] = webCover
-        return
-      }
-    } catch (e) {
-      console.warn('联网获取封面失败', e)
-    }
-  }
-  coverCache.value[playlist.id] = DEFAULT_COVER
-}
-
-function getCover(playlist: Playlist): string {
-  return coverCache.value[playlist.id] || ''
-}
-
-watch(
-  () => playlists.value,
-  (newList) => {
-    newList.forEach((p) => loadCover(p))
-  },
-  { deep: true }
-)
 
 defineExpose({ show })
 </script>
@@ -130,25 +92,7 @@ defineExpose({ show })
               type="button"
               @click="selectPlaylist(playlist)"
             >
-              <div class="playlist-cover">
-                <template v-if="playlist.id === 0">
-                  <Icon :width="40" color="red" icon="si:heart-duotone" />
-                </template>
-                <template v-else>
-                  <img
-                    v-if="getCover(playlist) && getCover(playlist) !== DEFAULT_COVER"
-                    :alt="playlist.name"
-                    :src="getCover(playlist)"
-                  />
-                  <Icon
-                    v-else
-                    :width="40"
-                    class="default-cover"
-                    color="var(--primary-color)"
-                    icon="mdi:playlist-music"
-                  />
-                </template>
-              </div>
+              <PlaylistCoverImage :playlist="playlist" :icon-size="40" :size="48" radius="12px" />
               <div class="playlist-info">
                 <div class="playlist-name">
                   {{ playlist.id === 0 ? props.likeListName : playlist.name }}
@@ -268,27 +212,6 @@ defineExpose({ show })
     background: var(--setting-hover-bg);
     transform: translateX(4px);
     outline: none;
-  }
-}
-
-.playlist-cover {
-  flex-shrink: 0;
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
-  background: var(--bg-placeholder);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-  .default-cover {
-    color: var(--text-secondary);
-    opacity: 0.7;
   }
 }
 

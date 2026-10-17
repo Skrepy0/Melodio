@@ -1,6 +1,7 @@
 import { createVNode, render } from 'vue'
 import PlaylistSelectorDialog from '@/components/PlaylistSelectorDialog.vue'
 import type { Playlist } from '@/utils/interface'
+import { getDialogAppContext } from '@/utils/appContext'
 
 export function showPlaylistSelector(
   playlists: Playlist[],
@@ -16,6 +17,9 @@ export function showPlaylistSelector(
     likeListName: likeListName,
     likeListDescription: likeListDescription,
   })
+  const appContext = getDialogAppContext()
+  if (appContext) vnode.appContext = appContext
+
   render(vnode, container)
 
   const cleanup = () => {

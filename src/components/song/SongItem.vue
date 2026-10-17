@@ -5,7 +5,13 @@ import { useDropdownControl } from '@/composables/useDropdownControl'
 import type { DropdownItem, Song } from '@/utils/interface'
 import { useAppStore } from '@/stores/app'
 import toast from '@/utils/createToast'
-import { DEFAULT_COVER, fetchCoverFromWeb, getAccessibleUrl, isInList } from '@/utils/functions'
+import {
+  DEFAULT_COVER,
+  fetchCoverFromWeb,
+  getAccessibleUrl,
+  getCoverSrc,
+  isInList,
+} from '@/utils/functions'
 import { showPlaylistSelector } from '@/utils/createPlaylistSelector'
 import { useI18n } from 'vue-i18n'
 import { computed, onUnmounted, ref, watch } from 'vue'
@@ -136,7 +142,8 @@ async function resolveCover() {
     (props.song.albumArtUri && props.song.albumArtUri.trim() !== '') ||
     !appStore.getCanFetchCoverFromWeb()
   ) {
-    coverSrc.value = props.song.albumArtUri
+    const src = getCoverSrc(props.song.albumArtUri)
+    coverSrc.value = src || DEFAULT_COVER
     return
   }
 

@@ -87,14 +87,43 @@ async function checkRemoteUrl(url: string): Promise<boolean> {
 }
 
 export async function getCoverBase64(uri: string): Promise<string> {
+  if (!uri) return ''
   try {
     const result = await Filesystem.readFile({ path: uri })
-    return `data:image/jpeg;base64,${result.data}`
+    const base64 = typeof result.data === 'string' ? result.data : ''
+    if (!base64) return ''
+    // Embedded artwork is not always JPEG; pick the type from the header so the
+    // browser does not reject the data URL.
+    let mime = 'image/jpeg'
+    if (base64.startsWith('iVBOR')) mime = 'image/png'
+    else if (base64.startsWith('R0lGOD')) mime = 'image/gif'
+    else if (base64.startsWith('UklGR')) mime = 'image/webp'
+    else if (base64.startsWith('Qk0')) mime = 'image/bmp'
+    return `data:${mime};base64,${base64}`
   } catch (error) {
     console.error('读取封面失败:', error)
     return ''
   }
 }
+/**
+ * Turn a stored cover reference into something an <img> can load.
+ * Data URLs and remote URLs pass through; local paths and content:// URIs go
+ * through Capacitor's local server, which the WebView cannot load on its own.
+ */
+export const getCoverSrc = (path: string): string => {
+  const trimmed = path?.trim() ?? ''
+  if (!trimmed) return ''
+  if (
+    trimmed.startsWith('data:') ||
+    trimmed.startsWith('http://') ||
+    trimmed.startsWith('https://') ||
+    trimmed.startsWith('blob:')
+  ) {
+    return trimmed
+  }
+  return Capacitor.convertFileSrc(trimmed)
+}
+
 export const DEFAULT_COVER =
   'data:image/svg+xml,' +
   encodeURIComponent(

@@ -1,13 +1,7 @@
-import type { AppContext } from 'vue'
 import { createVNode, render } from 'vue'
 import InfoDialog from '@/components/InfoDialog.vue'
 import { OnlineSong, Song } from '@/utils/interface'
-
-let appContext: AppContext | null = null
-
-export function setInfoDialogAppContext(context: AppContext) {
-  appContext = context
-}
+import { getDialogAppContext } from '@/utils/appContext'
 
 export function showSongInfo(song: Song | OnlineSong): Promise<boolean> {
   const container = document.createElement('div')
@@ -17,6 +11,7 @@ export function showSongInfo(song: Song | OnlineSong): Promise<boolean> {
     song,
   })
 
+  const appContext = getDialogAppContext()
   if (appContext) {
     vnode.appContext = appContext
   }

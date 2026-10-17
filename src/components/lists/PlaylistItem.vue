@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, ref, watch } from 'vue'
+import { computed, toRef } from 'vue'
 import { Icon } from '@iconify/vue'
 import DropdownButton from '@/components/button/DropdownButton.vue'
 import type { DropdownItem, Playlist } from '@/utils/interface'
@@ -8,7 +8,9 @@ import toast from '@/utils/createToast'
 import { useAppStore } from '@/stores/app'
 import { showConfirm } from '@/utils/createConfirm'
 import { useI18n } from 'vue-i18n'
-import { DEFAULT_COVER, fetchCoverFromWeb } from '@/utils/functions'
+import { DEFAULT_COVER } from '@/utils/functions'
+import { usePlaylistCover } from '@/composables/usePlaylistCover'
+import { showPlaylistCoverPicker } from '@/utils/createPlaylistCoverPicker'
 
 const { t } = useI18n()
 const appStore = useAppStore()
@@ -35,6 +37,7 @@ const dropdownVisible = computed({
 })
 
 const menuOptions = computed<DropdownItem[]>(() => [
+  { icon: 'mdi:image-edit', description: t('playlist.menu.cover'), value: 'cover' },
   { icon: 'mdi:pencil', description: t('playlist.menu.edit'), value: 'edit' },
   { icon: 'mdi:delete', description: t('playlist.menu.delete'), value: 'delete' },
   { icon: 'proicons:cancel', description: t('playlist.menu.cancel'), value: 'cancel' },
@@ -46,7 +49,20 @@ const onCardClick = () => {
 
 const onMenuItemSelect = async (item: DropdownItem) => {
   emit('menuSelect', item.value as string, props.playlist)
-  if (item.value === 'edit') {
+  if (item.value === 'cover') {
+    if (props.playlist.id === 0) {
+      toast.warning(t('playlist.warning.defaultPlaylist'))
+      return
+    }
+    const cover = await showPlaylistCoverPicker(props.playlist)
+    // undefined means the picker was dismissed without a choice.
+    if (cover === undefined) return
+    const newList = { ...props.playlist, coverUrl: cover ?? '' }
+    const index = appStore.getSongLists().findIndex((list) => list.id === newList.id)
+    if (index === -1) return
+    appStore.setSongListById(index + 1, newList)
+    toast.success(cover ? t('playlist.success.coverUpdated') : t('playlist.success.coverReset'))
+  } else if (item.value === 'edit') {
     if (props.playlist.id === 0) {
       toast.warning(t('playlist.warning.defaultPlaylist'))
       return
@@ -64,7 +80,9 @@ const onMenuItemSelect = async (item: DropdownItem) => {
         toast.warning(t('playlist.warning.sameName'))
       } else {
         const newList = { ...props.playlist, name }
-        appStore.setSongListById(newList.id, newList)
+        const index = appStore.getSongLists().findIndex((list) => list.id === newList.id)
+        if (index === -1) return
+        appStore.setSongListById(index + 1, newList)
         toast.success(t('playlist.success.renamed'))
       }
     }
@@ -86,41 +104,7 @@ const onMenuItemSelect = async (item: DropdownItem) => {
   }
 }
 
-const coverSrc = ref<string>('')
-
-const resolveCover = async () => {
-  if (props.playlist.id === 0) {
-    coverSrc.value = ''
-    return
-  }
-  if (appStore.getCanFetchCoverFromWeb()) {
-    const songs = props.playlist.data ?? []
-    for (const song of songs) {
-      if (song.albumArtUri && song.albumArtUri.trim() !== '') {
-        coverSrc.value = song.albumArtUri
-        return
-      }
-    }
-
-    if (songs.length > 0) {
-      const firstSong = songs[0]
-      const webCover = await fetchCoverFromWeb(firstSong.title, firstSong.artist || '')
-      if (webCover) {
-        coverSrc.value = webCover
-        return
-      }
-    }
-  }
-  coverSrc.value = DEFAULT_COVER
-}
-
-watch(
-  () => props.playlist,
-  () => {
-    resolveCover()
-  },
-  { immediate: true, deep: true }
-)
+const { coverSrc } = usePlaylistCover(toRef(props, 'playlist'))
 </script>
 
 <template>
@@ -130,7 +114,12 @@ watch(
         <Icon :width="36" color="red" icon="si:heart-duotone" />
       </template>
       <template v-else>
-        <img v-if="coverSrc && coverSrc !== DEFAULT_COVER" :alt="playlist.name" :src="coverSrc" />
+        <img
+          v-if="coverSrc && coverSrc !== DEFAULT_COVER"
+          :alt="playlist.name"
+          :src="coverSrc"
+          @error="coverSrc = DEFAULT_COVER"
+        />
         <Icon
           v-else
           :width="36"

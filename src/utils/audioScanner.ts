@@ -34,7 +34,11 @@ export const scanAllAudio = async (retryOnPermission = true): Promise<ScanResult
     }
 
     for (const item of result.media) {
-      item.albumArtUri = await getCoverBase64(item.albumArtUri)
+      // Inline the artwork when it can be read; otherwise keep the original
+      // content:// URI so the image can still be loaded through Capacitor's
+      // local file server (see getCoverSrc).
+      const inlineCover = await getCoverBase64(item.albumArtUri)
+      if (inlineCover) item.albumArtUri = inlineCover
     }
 
     const songs: Song[] = result.media

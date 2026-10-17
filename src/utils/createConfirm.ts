@@ -1,5 +1,6 @@
 import { createVNode, render } from 'vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
+import { getDialogAppContext } from '@/utils/appContext'
 
 export interface ConfirmOptions {
   title?: string
@@ -18,6 +19,9 @@ export function showConfirm(options: ConfirmOptions): Promise<boolean> {
     confirmText: options.confirmText,
     cancelText: options.cancelText,
   })
+
+  const appContext = getDialogAppContext()
+  if (appContext) vnode.appContext = appContext
 
   render(vnode, container)
 

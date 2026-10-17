@@ -15,8 +15,10 @@ import { getAccessibleUrl } from '@/utils/functions'
 import SearchBox from '@/components/SearchBox.vue'
 import DropdownButton from '@/components/button/DropdownButton.vue'
 import CircleButton from '@/components/button/CircleButton.vue'
+import PlaylistCoverImage from '@/components/lists/PlaylistCoverImage.vue'
 import { useSongSearch } from '@/utils/search'
 import { showPrompt } from '@/utils/createPrompt'
+import { showPlaylistCoverPicker } from '@/utils/createPlaylistCoverPicker'
 
 const { t } = useI18n()
 const appStore = useAppStore()
@@ -30,10 +32,18 @@ const isLoading = ref(false)
 const isSearchMode = ref(false)
 
 const operations = computed<DropdownItem[]>(() => [
+  { icon: 'mdi:image-edit', description: t('playlist.menu.cover'), value: 'cover' },
   { icon: 'material-symbols:sort', description: t('songList.operations.sort'), value: 'sort' },
   { icon: 'mdi:pencil', description: t('songList.operations.edit_name'), value: 'edit_name' },
   { icon: 'mdi:delete', description: t('songList.operations.delete_all'), value: 'delete_all' },
 ])
+
+/** The playlist this page is showing, kept reactive so a new cover shows at once. */
+const currentPlaylist = computed<Playlist | null>(() => {
+  const index = appStore.getCurrentPlayListIndex()
+  if (index === 0) return appStore.getLikeList()
+  return appStore.getSongLists()[index - 1] ?? null
+})
 
 const synchroShowSongsList = () => {
   showSongsList.value = songsList.value
@@ -146,7 +156,20 @@ const playSong = async (song: Song) => {
 }
 
 const onSelectOperation = async (item: DropdownItem) => {
-  if (item.value === 'edit_name') {
+  if (item.value === 'cover') {
+    const index = appStore.getCurrentPlayListIndex()
+    if (index === 0) {
+      toast.warning(t('playlist.warning.defaultPlaylist'))
+      return
+    }
+    const list = currentPlaylist.value
+    if (!list) return
+    const cover = await showPlaylistCoverPicker(list)
+    if (cover === undefined) return
+    const newList = { ...list, coverUrl: cover ?? '' }
+    appStore.setSongListById(index, newList)
+    toast.success(cover ? t('playlist.success.coverUpdated') : t('playlist.success.coverReset'))
+  } else if (item.value === 'edit_name') {
     const index = appStore.getCurrentPlayListIndex()
     if (index === 0) {
       toast.warning(t('playlist.warning.defaultPlaylist'))
@@ -231,7 +254,16 @@ const onSearch = () => {
 
         <Transition mode="out-in" name="fade">
           <div v-if="!isSearchMode" key="normal" class="normal-mode">
-            <div class="header-title">{{ title }}</div>
+            <div class="header-identity">
+              <PlaylistCoverImage
+                v-if="currentPlaylist"
+                :icon-size="18"
+                :playlist="currentPlaylist"
+                :size="36"
+                radius="var(--radius-sm)"
+              />
+              <div class="header-title">{{ title }}</div>
+            </div>
             <div class="button-container">
               <CircleButton
                 :label="$t('common.search')"
@@ -340,6 +372,14 @@ const onSearch = () => {
     outline: 2px solid var(--primary-color);
     outline-offset: 2px;
   }
+}
+
+.header-identity {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .header-title {

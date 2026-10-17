@@ -142,6 +142,7 @@
     "defaultDesc": "{count} 首歌曲",
     "songCount": "{count} 首",
     "menu": {
+      "cover": "更换封面",
       "edit": "编辑名称",
       "delete": "删除",
       "cancel": "取消"
@@ -162,7 +163,9 @@
     },
     "success": {
       "renamed": "播放列表已重命名",
-      "deleted": "播放列表“{name}”已删除"
+      "deleted": "播放列表“{name}”已删除",
+      "coverUpdated": "播放列表封面已更新",
+      "coverReset": "已恢复默认封面"
     }
   },
   "dialog": {
@@ -483,5 +486,19 @@
       "kuwo": "酷我音乐",
       "migu": "咪咕音乐"
     }
+  },
+  "playlistCover": {
+    "title": "播放列表封面",
+    "current": "当前封面",
+    "fromSongs": "从歌曲中选择",
+    "upload": "上传图片",
+    "pickImage": "选择图片",
+    "reading": "处理中…",
+    "uploadHint": "图片会自动裁剪并压缩后保存。",
+    "empty": "此播放列表暂无可用封面",
+    "reset": "恢复默认",
+    "invalidImage": "请选择图片文件",
+    "readFailed": "无法读取该图片",
+    "searching": "正在联网查找封面…"
   }
 }

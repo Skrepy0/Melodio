@@ -142,6 +142,7 @@
     "defaultDesc": "{count} song(s)",
     "songCount": "{count} song(s)",
     "menu": {
+      "cover": "Change Cover",
       "edit": "Edit Name",
       "delete": "Delete",
       "cancel": "Cancel"
@@ -162,7 +163,9 @@
     },
     "success": {
       "renamed": "Playlist renamed",
-      "deleted": "Playlist \"{name}\" deleted"
+      "deleted": "Playlist \"{name}\" deleted",
+      "coverUpdated": "Playlist cover updated",
+      "coverReset": "Default cover restored"
     }
   },
   "dialog": {
@@ -483,5 +486,19 @@
       "kuwo": "KuWo Music",
       "migu": "MiGu Music"
     }
+  },
+  "playlistCover": {
+    "title": "Playlist Cover",
+    "current": "Current cover",
+    "fromSongs": "Choose from songs",
+    "upload": "Upload an image",
+    "pickImage": "Choose image",
+    "reading": "Processing…",
+    "uploadHint": "The image is cropped and compressed before saving.",
+    "empty": "No covers available in this playlist",
+    "reset": "Reset to default",
+    "invalidImage": "Please choose an image file",
+    "readFailed": "Could not read that image",
+    "searching": "Looking up covers online…"
   }
 }

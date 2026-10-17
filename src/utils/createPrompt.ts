@@ -1,5 +1,6 @@
 import { createVNode, render } from 'vue'
 import PromptComponent from '@/components/PromptDialog.vue'
+import { getDialogAppContext } from '@/utils/appContext'
 
 export interface PromptOptions {
   title?: string
@@ -22,6 +23,9 @@ export function showPrompt(options: PromptOptions = {}): Promise<string | null> 
     confirmContent: options.confirmContent,
     cancelContent: options.cancelContent,
   })
+
+  const appContext = getDialogAppContext()
+  if (appContext) vnode.appContext = appContext
 
   render(vnode, container)
 

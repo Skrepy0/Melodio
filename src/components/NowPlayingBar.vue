@@ -4,7 +4,7 @@ import { Icon } from '@iconify/vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'
 import { audio } from '@/utils/createAudio'
-import { DEFAULT_COVER, fetchCoverFromWeb } from '@/utils/functions'
+import { DEFAULT_COVER, fetchCoverFromWeb, getCoverSrc } from '@/utils/functions'
 
 const appStore = useAppStore()
 const { t } = useI18n()
@@ -66,7 +66,7 @@ const resolveCover = async (song: any) => {
     return
   }
   if ((song.albumArtUri && song.albumArtUri.trim() !== '') || !appStore.getCanFetchCoverFromWeb()) {
-    coverSrc.value = song.albumArtUri
+    coverSrc.value = getCoverSrc(song.albumArtUri)
     return
   }
   try {

@@ -557,7 +557,13 @@ export const useAppStore = defineStore('app', () => {
     return songLists.value
   }
   function saveSongLists() {
-    localStorage.setItem('songLists', JSON.stringify(songLists.value))
+    try {
+      localStorage.setItem('songLists', JSON.stringify(songLists.value))
+    } catch (error) {
+      // Uploaded covers are stored inline; if storage is full keep the in-memory
+      // state usable instead of throwing into the caller.
+      console.error('保存播放列表失败:', error)
+    }
   }
   function setSongLists(list: Playlist[]) {
     songLists.value = list

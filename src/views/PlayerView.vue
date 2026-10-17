@@ -10,7 +10,7 @@ import toast from '@/utils/createToast'
 import { showConfirm } from '@/utils/createConfirm'
 import { audio } from '@/utils/createAudio'
 import { useI18n } from 'vue-i18n'
-import { DEFAULT_COVER, fetchCoverFromWeb, isInList } from '@/utils/functions'
+import { DEFAULT_COVER, fetchCoverFromWeb, getCoverSrc, isInList } from '@/utils/functions'
 import router from '@/router'
 
 const { t } = useI18n()
@@ -435,7 +435,7 @@ const resolveCover = async (song: Song | null) => {
     return
   }
   if (song.albumArtUri && song.albumArtUri.trim() !== '') {
-    coverSrc.value = song.albumArtUri
+    coverSrc.value = getCoverSrc(song.albumArtUri)
     return
   }
   // 检查设置是否允许联网获取
