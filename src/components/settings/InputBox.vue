@@ -142,12 +142,7 @@ const resetToDefault = () => {
   <div class="setting-item">
     <div class="setting-row">
       <div class="item-left">
-        <Icon
-          :icon="props.icon"
-          :width="props.icon_width"
-          class="item-icon"
-          color="var(--primary-color)"
-        />
+        <Icon :icon="props.icon" :width="props.icon_width" class="item-icon" />
         <span class="item-label">{{ props.title }}</span>
       </div>
       <div class="input-wrapper">
@@ -179,74 +174,53 @@ const resetToDefault = () => {
 
 <style lang="scss" scoped>
 @use '@/theme/settings.scss';
+
 .input-wrapper {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-1);
+  flex-shrink: 0;
 }
 
 .text-input {
-  border: 1px solid var(--primary-color);
-  border-radius: 8px;
-  padding: 8px 14px;
-  font-size: 14px;
-  font-family: inherit;
-  width: 100px;
-  background: var(--bg-color);
+  width: 96px;
+  padding: 7px 10px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: var(--bg-input);
   color: var(--text-color);
+  font: inherit;
+  font-size: var(--font-size-sm);
   outline: none;
-  transition:
-    border-color 0.2s ease,
-    box-shadow 0.2s ease,
-    background 0.2s ease;
+  transition: border-color var(--duration-fast) ease;
 
   &::placeholder {
-    color: var(--text-secondary);
-    font-weight: 300;
-    font-size: 13px;
-    opacity: 0.8;
+    color: var(--text-tertiary);
   }
 
-  &:hover {
-    border-color: var(--primary-color);
+  &:focus {
+    border-color: var(--focus-ring);
   }
 
   &.has-error {
-    border-color: #f44336 !important;
-    box-shadow: 0 0 0 3px rgba(244, 67, 54, 0.15) !important;
+    border-color: var(--danger-color);
   }
 }
 
 .reset-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  border: none;
-  border-radius: 8px;
-  background: transparent;
-  color: var(--primary-color);
-  cursor: pointer;
-  transition:
-    background 0.2s ease,
-    opacity 0.2s ease;
+  @include icon-button(32px);
   flex-shrink: 0;
 
-  &:hover:not(:disabled) {
-    background: rgba(76, 106, 255, 0.1);
-  }
-
   &:disabled {
-    opacity: 0.4;
+    opacity: 0.35;
     cursor: not-allowed;
   }
 }
 
 .setting-error {
-  color: #f44336;
-  font-size: 12px;
-  margin-top: 4px;
-  padding-left: 4px;
+  padding: 0 var(--space-4) var(--space-3) calc(var(--space-4) + 34px);
+  color: var(--danger-color);
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-normal);
 }
 </style>

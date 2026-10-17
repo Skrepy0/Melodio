@@ -44,9 +44,9 @@ function formatBytes(bytes: number) {
 
 <template>
   <div class="download-task-item">
-    <img v-if="task.coverUrl" :src="task.coverUrl" alt="cover" class="cover" />
-    <div v-else class="cover placeholder">
-      <Icon icon="mdi:music" width="24" />
+    <div class="cover">
+      <img v-if="task.coverUrl" :src="task.coverUrl" alt="" />
+      <Icon v-else icon="mdi:music-note" width="20" />
     </div>
 
     <div class="content">
@@ -62,15 +62,12 @@ function formatBytes(bytes: number) {
         <div class="progress-track">
           <div :style="{ width: `${progressPercent}%` }" class="progress-fill" />
         </div>
-        <div class="progress-value">{{ progressText }}</div>
+        <div class="progress-value tabular">{{ progressText }}</div>
       </div>
 
       <div class="detail-row">
-        <span>{{ loadedText }} / {{ totalText }}</span>
+        <span class="tabular">{{ loadedText }} / {{ totalText }}</span>
         <span v-if="task.errorMessage" class="error-text">{{ task.errorMessage }}</span>
-      </div>
-
-      <div class="actions">
         <button
           v-if="task.status === 'downloading'"
           class="action-btn"
@@ -98,29 +95,35 @@ function formatBytes(bytes: number) {
 </template>
 
 <style lang="scss" scoped>
+// Downloads read as rows in the same list as songs: artwork, title, and a
+// progress rule that belongs to the row rather than to a card.
 .download-task-item {
   display: flex;
-  gap: 12px;
-  padding: 12px;
-  background: var(--bg-card);
-  border: 1px solid var(--border-light);
-  border-radius: 16px;
-  box-shadow: var(--shadow-sm);
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  position: relative;
+
+  &::after {
+    content: '';
+    position: absolute;
+    left: var(--space-4);
+    right: 0;
+    bottom: 0;
+    height: 1px;
+    background-color: var(--hairline);
+    transform: scaleY(0.5);
+    transform-origin: bottom;
+  }
 }
 
 .cover {
-  width: 64px;
-  height: 64px;
-  object-fit: cover;
-  border-radius: 12px;
-  flex-shrink: 0;
+  @include cover-thumbnail(var(--radius-sm), 48px);
+  color: var(--text-tertiary);
 
-  &.placeholder {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: var(--bg-secondary);
-    color: var(--text-secondary);
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
   }
 }
 
@@ -131,15 +134,14 @@ function formatBytes(bytes: number) {
 
 .top-row,
 .progress-row,
-.detail-row,
-.actions {
+.detail-row {
   display: flex;
   align-items: center;
 }
 
 .top-row {
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--space-3);
 }
 
 .meta {
@@ -147,54 +149,61 @@ function formatBytes(bytes: number) {
 }
 
 .title {
-  font-size: 15px;
-  font-weight: 600;
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-medium);
   color: var(--text-color);
+  @include text-ellipsis;
 }
 
 .subtitle {
-  margin-top: 4px;
-  font-size: 13px;
+  margin-top: 1px;
+  font-size: var(--font-size-sm);
   color: var(--text-secondary);
+  @include text-ellipsis;
 }
 
 .status,
 .detail-row {
-  font-size: 12px;
-  color: var(--text-secondary);
+  font-size: var(--font-size-xs);
+  color: var(--text-tertiary);
+}
+
+.status {
+  flex-shrink: 0;
 }
 
 .progress-row {
-  gap: 10px;
-  margin-top: 10px;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
 }
 
 .progress-track {
   flex: 1;
-  height: 8px;
-  background: var(--bg-secondary);
-  border-radius: 999px;
+  height: 3px;
+  background: var(--progress-track);
+  border-radius: var(--radius-pill);
   overflow: hidden;
 }
 
 .progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, var(--primary-color), var(--primary-color-dark));
-  border-radius: 999px;
+  background: var(--primary-color);
+  border-radius: var(--radius-pill);
   transition: width 0.2s ease;
 }
 
 .progress-value {
-  min-width: 36px;
+  min-width: 34px;
   text-align: right;
-  font-size: 12px;
-  color: var(--text-secondary);
+  font-size: var(--font-size-xs);
+  color: var(--text-tertiary);
+  font-variant-numeric: tabular-nums;
 }
 
 .detail-row {
   justify-content: space-between;
-  gap: 12px;
-  margin-top: 10px;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
   flex-wrap: wrap;
 }
 
@@ -202,16 +211,20 @@ function formatBytes(bytes: number) {
   color: var(--danger-color);
 }
 
-.actions {
-  margin-top: 12px;
-}
-
 .action-btn {
-  padding: 6px 14px;
+  margin-left: auto;
+  padding: 4px 12px;
   border: none;
-  border-radius: 999px;
-  background: var(--primary-color);
-  color: #fff;
-  font-size: 13px;
+  border-radius: var(--radius-pill);
+  background: var(--chip-bg);
+  color: var(--text-color);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  transition: background-color var(--duration-fast) ease;
+
+  &:hover {
+    background: var(--bg-secondary);
+  }
 }
 </style>

@@ -28,20 +28,15 @@ function formatBytes(bytes: number) {
 
 <template>
   <div class="download-history-item">
-    <img v-if="item.coverUrl" :src="item.coverUrl" alt="cover" class="cover" />
-    <div v-else class="cover placeholder">
-      <Icon icon="mdi:music" width="24" />
+    <div class="cover">
+      <img v-if="item.coverUrl" :src="item.coverUrl" alt="" />
+      <Icon v-else icon="mdi:music-note" width="20" />
     </div>
 
     <div class="content">
       <div class="title">{{ item.name }}</div>
       <div class="subtitle">{{ item.singers || item.album }}</div>
-      <div class="meta-row">
-        <span>{{ $t('downloads.history.completedAt') }}: {{ completedAtText }}</span>
-      </div>
-      <div class="meta-row">
-        <span>{{ $t('downloads.history.fileSize') }}: {{ sizeText }}</span>
-      </div>
+      <div class="meta-row tabular">{{ sizeText }} · {{ completedAtText }}</div>
     </div>
   </div>
 </template>
@@ -49,45 +44,60 @@ function formatBytes(bytes: number) {
 <style lang="scss" scoped>
 .download-history-item {
   display: flex;
-  gap: 12px;
-  padding: 12px;
-  background: var(--bg-card);
-  border: 1px solid var(--border-light);
-  border-radius: 16px;
-  box-shadow: var(--shadow-sm);
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  position: relative;
+
+  &::after {
+    content: '';
+    position: absolute;
+    left: var(--space-4);
+    right: 0;
+    bottom: 0;
+    height: 1px;
+    background-color: var(--hairline);
+    transform: scaleY(0.5);
+    transform-origin: bottom;
+  }
 }
 
 .cover {
-  width: 64px;
-  height: 64px;
-  object-fit: cover;
-  border-radius: 12px;
-  flex-shrink: 0;
+  @include cover-thumbnail(var(--radius-sm), 48px);
+  color: var(--text-tertiary);
 
-  &.placeholder {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: var(--bg-secondary);
-    color: var(--text-secondary);
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
   }
 }
 
 .content {
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 .title {
-  font-size: 15px;
-  font-weight: 600;
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-medium);
   color: var(--text-color);
+  @include text-ellipsis;
 }
 
-.subtitle,
-.meta-row {
-  margin-top: 4px;
-  font-size: 13px;
+.subtitle {
+  margin-top: 1px;
+  font-size: var(--font-size-sm);
   color: var(--text-secondary);
+  @include text-ellipsis;
+}
+
+.meta-row {
+  margin-top: 2px;
+  font-size: var(--font-size-xs);
+  color: var(--text-tertiary);
+  font-variant-numeric: tabular-nums;
 }
 </style>

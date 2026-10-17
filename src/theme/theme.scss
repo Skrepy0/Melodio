@@ -1,53 +1,15 @@
-// ===== Design Tokens: Elevation =====
-// Layered shadows for depth — light mode
+// ===== Melodio design tokens =====
+//
+// The shell is deliberately colourless. Chrome, lists and navigation are drawn
+// in paper and graphite so the only saturated colour on screen comes from the
+// music itself: album artwork, and the theme accent that marks state. This is
+// why there are no gradients, glass panels or floating card shadows here — the
+// cover is the colour, the interface is the frame.
+
 :root {
-  --elevation-0: 0 0 0 0 transparent;
-  --elevation-1: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
-  --elevation-2: 0 4px 12px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.04);
-  --elevation-3: 0 8px 24px rgba(0, 0, 0, 0.1), 0 4px 8px rgba(0, 0, 0, 0.05);
-  --elevation-4: 0 12px 40px rgba(0, 0, 0, 0.14), 0 6px 12px rgba(0, 0, 0, 0.06);
-}
-
-// ===== Design Tokens: Border Radius Scale =====
-:root {
-  --radius-xs: 4px;
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
-  --radius-xl: 20px;
-  --radius-2xl: 24px;
-  --radius-pill: 9999px;
-  --radius-full: 50%;
-}
-
-// ===== Design Tokens: Animation Timing =====
-:root {
-  --duration-instant: 0.05s;
-  --duration-fast: 0.15s;
-  --duration-normal: 0.25s;
-  --duration-slow: 0.4s;
-  --duration-slower: 0.6s;
-
-  --ease-out-expo: cubic-bezier(0.19, 1, 0.22, 1);
-  --ease-out-back: cubic-bezier(0.34, 1.56, 0.64, 1);
-  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
-  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-// ===== Design Tokens: Glass Morphism =====
-:root {
-  --glass-bg: rgba(var(--bg-color-rgb), 0.75);
-  --glass-border: rgba(var(--text-color-rgb), 0.06);
-  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
-  --glass-blur: 20px;
-
-  --overlay-color: rgba(0, 0, 0, 0.45);
-}
-
-// ===== Design Tokens: Typography =====
-:root {
+  // ----- Typography -----
   --font-family:
-    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   --font-size-xs: 11px;
   --font-size-sm: 13px;
   --font-size-base: 15px;
@@ -55,16 +17,15 @@
   --font-size-xl: 20px;
   --font-size-2xl: 24px;
   --font-size-3xl: 30px;
+  --font-size-title: 32px;
   --font-weight-normal: 400;
   --font-weight-medium: 500;
   --font-weight-semibold: 600;
   --font-weight-bold: 700;
   --line-height-tight: 1.2;
   --line-height-normal: 1.5;
-}
 
-// ===== Design Tokens: Spacing =====
-:root {
+  // ----- Spacing -----
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
@@ -73,135 +34,216 @@
   --space-6: 24px;
   --space-8: 32px;
   --space-10: 40px;
-}
 
-// ===== Existing Color Variables (unchanged but reorganized) =====
-:root {
-  --bg-color: #f8f9fc;
+  // ----- Corner language -----
+  // Small radii. Rows are rectangles; only surfaces that float get a curve.
+  --radius-xs: 3px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-2xl: 20px;
+  --radius-pill: 9999px;
+  --radius-full: 50%;
+
+  // ----- Motion -----
+  --duration-instant: 0.05s;
+  --duration-fast: 0.14s;
+  --duration-normal: 0.22s;
+  --duration-slow: 0.36s;
+  --duration-slower: 0.6s;
+
+  --ease-out-expo: cubic-bezier(0.19, 1, 0.22, 1);
+  --ease-out-back: cubic-bezier(0.34, 1.4, 0.64, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-spring: cubic-bezier(0.34, 1.4, 0.64, 1);
+
+  // ----- Depth -----
+  // Restrained: hairlines carry structure, shadow only lifts things that float.
+  --elevation-0: 0 0 0 0 transparent;
+  --elevation-1: 0 1px 2px rgba(16, 17, 20, 0.05);
+  --elevation-2: 0 4px 14px rgba(16, 17, 20, 0.08);
+  --elevation-3: 0 10px 30px rgba(16, 17, 20, 0.12);
+  --elevation-4: 0 18px 50px rgba(16, 17, 20, 0.16);
+
+  // Kept for callers that still reference the old glass tokens; the value is a
+  // solid surface so nothing is blurred for decoration.
+  --glass-bg: var(--bg-elevated);
+  --glass-border: var(--hairline);
+  --glass-shadow: var(--elevation-2);
+  --glass-blur: 0px;
+
+  --overlay-color: rgba(12, 12, 14, 0.44);
+
+  // ----- Colour: light -----
+  // A cool paper ground with white content surfaces. Written from the scene:
+  // a phone held in daylight or a lit room, where a bright neutral frame keeps
+  // cover art honest and text crisp.
+  --bg-color: #f3f3f5;
+  --bg-color-rgb: 243, 243, 245;
   --bg-card: #ffffff;
-  --bg-card-hover: #f0f2f5;
-  --bg-card-dimmed: rgba(0, 0, 0, 0.02);
-  --bg-header: #ffffff;
-  --bg-header-rgb: 255, 255, 255;
-  --bg-placeholder: #e0e0e0;
-  --bg-color-rgb: 248, 249, 252;
-  --bg-input: #f5f5f5;
-  --chip-bg: rgba(0, 0, 0, 0.03);
-  --text-color: #1a1c1e;
-  --text-secondary: #6c6f78;
-  --text-disabled: #7c7f88;
-  --text-color-rgb: 26, 28, 30;
-  --primary-color: #007aff;
-  --primary-color-dark: #005bbf;
-  --primary-color-rgb: 0, 122, 255;
-  --danger-color: #ff3b30;
-  --danger-color-hover: #ff6b6b;
-  --switch-bg-off: #cccccc;
-  --switch-handle-color: #ffffff;
-  --header-border-bottom: rgba(0, 0, 0, 0.05);
-  --setting-border: rgba(0, 0, 0, 0.05);
-  --border-color: rgba(0, 0, 0, 0.08);
-  --bg-secondary: rgba(0, 0, 0, 0.08);
+  --bg-card-hover: #f0f0f3;
+  --bg-card-dimmed: rgba(17, 17, 20, 0.025);
+  --bg-elevated: #ffffff;
+  --bg-header: #f3f3f5;
+  --bg-header-rgb: 243, 243, 245;
+  --bg-placeholder: #e5e5e9;
+  --bg-input: #ebebef;
+  --bg-secondary: rgba(17, 17, 20, 0.06);
+  --chip-bg: rgba(17, 17, 20, 0.04);
+
+  --text-color: #111114;
+  --text-color-rgb: 17, 17, 20;
+  --text-secondary: #6a6a72;
+  --text-tertiary: #94949c;
+  --text-disabled: #a8a8b0;
+
+  --hairline: rgba(17, 17, 20, 0.08);
+  --hairline-strong: rgba(17, 17, 20, 0.14);
+  --header-border-bottom: var(--hairline);
+  --setting-border: var(--hairline);
+  --border-color: var(--hairline-strong);
+  --border-light: var(--hairline);
+  --border-light-hover: var(--hairline-strong);
+  --input-border: rgba(17, 17, 20, 0.1);
+  --dropdown-border: rgba(17, 17, 20, 0.08);
+  --header-back-hover: rgba(17, 17, 20, 0.06);
+  --setting-hover-bg: rgba(17, 17, 20, 0.04);
+
+  // ----- Accent -----
+  // Overwritten at runtime by the user's theme colour. The default is a muted
+  // cobalt: legible on both grounds, and quiet enough to sit under cover art.
+  --primary-color: #3d63dd;
+  --primary-color-dark: #314fb1;
+  --primary-color-rgb: 61, 99, 221;
   --primary: var(--primary-color);
   --primary-color-light: rgba(var(--primary-color-rgb), 0.1);
-  --input-border: rgba(0, 0, 0, 0.1);
-  --dropdown-border: rgba(0, 0, 0, 0.1);
-  --border-light: rgba(0, 0, 0, 0.04);
-  --border-light-hover: rgba(0, 0, 0, 0.08);
-  --header-back-hover: rgba(0, 0, 0, 0.05);
-  --setting-hover-bg: rgba(0, 0, 0, 0.02);
+  --selection-bg: rgba(var(--primary-color-rgb), 0.1);
+  --focus-ring: rgba(var(--primary-color-rgb), 0.4);
+  // Text/icon drawn on top of a filled accent surface. Recomputed at runtime
+  // from the user's colour so a pale accent still gets dark type on it.
+  --on-primary-color: #ffffff;
+
+  --danger-color: #d93a3a;
+  --danger-color-hover: #e86060;
+  --switch-bg-off: #d3d3d9;
+  --switch-handle-color: #ffffff;
+
   --shadow-sm: var(--elevation-1);
   --shadow-md: var(--elevation-2);
-  --shadow-bottom: 0 -2px 10px rgba(0, 0, 0, 0.08);
-  --selected-shadow: 0 4px 16px rgba(var(--primary-color-rgb), 0.25);
+  --shadow-bottom: 0 -1px 0 var(--hairline);
+  --selected-shadow: none;
   --dropdown-shadow: var(--elevation-3);
-  --progress-track: rgba(0, 0, 0, 0.2);
-  --scrollbar-track: rgba(0, 0, 0, 0.05);
-  --scrollbar-thumb: rgba(0, 0, 0, 0.2);
-  --scrollbar-thumb-hover: rgba(0, 0, 0, 0.3);
-  --bottom-actions-bg: var(--bg-color);
-  --bottom-actions-bg-rgb: 248, 249, 252;
-  --bottom-actions-border: rgba(0, 0, 0, 0.1);
-  --bottom-actions-shadow: rgba(0, 0, 0, 0.1);
-  --dropdown-bg: var(--bg-card);
-  --toast-bg: rgba(0, 0, 0, 0.8);
+  --progress-track: rgba(17, 17, 20, 0.12);
+  --progress-bar: rgba(17, 17, 20, 0.4);
+  --scrollbar-track: transparent;
+  --scrollbar-thumb: rgba(17, 17, 20, 0.18);
+  --scrollbar-thumb-hover: rgba(17, 17, 20, 0.3);
+
+  --bottom-actions-bg: #ffffff;
+  --bottom-actions-bg-rgb: 255, 255, 255;
+  --bottom-actions-border: var(--hairline);
+  --bottom-actions-shadow: rgba(17, 17, 20, 0.08);
+  --dropdown-bg: var(--bg-elevated);
+
+  --toast-bg: #1c1c1f;
   --toast-text: #ffffff;
-  --toast-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  --success-bg: rgba(46, 125, 50, 0.9);
-  --error-bg: rgba(211, 47, 47, 0.9);
-  --warning-bg: rgba(237, 108, 2, 0.9);
-  --info-bg: rgba(25, 118, 210, 0.9);
-  --progress-bar: #0000005c;
+  --toast-shadow: var(--elevation-3);
+  --success-color: #3fbf7f;
+  --error-color: #f26d6d;
+  --warning-color: #e3a33b;
+  --info-color: #5b9cf5;
+  --success-bg: var(--success-color);
+  --error-bg: var(--error-color);
+  --warning-bg: var(--warning-color);
+  --info-bg: var(--info-color);
+
+  // ----- Player wash -----
+  // Filled by the cover-colour composable on the player screen.
+  --wash-rgb: 61, 99, 221;
+  --wash-strength: 0.18;
 }
 
 .dark {
-  // Elevation — deeper, softer shadows for dark mode
-  --elevation-0: 0 0 0 0 transparent;
-  --elevation-1: 0 1px 3px rgba(0, 0, 0, 0.5);
-  --elevation-2: 0 4px 16px rgba(0, 0, 0, 0.55);
-  --elevation-3: 0 8px 30px rgba(0, 0, 0, 0.6);
-  --elevation-4: 0 14px 50px rgba(0, 0, 0, 0.7);
+  --elevation-1: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --elevation-2: 0 4px 16px rgba(0, 0, 0, 0.45);
+  --elevation-3: 0 10px 32px rgba(0, 0, 0, 0.55);
+  --elevation-4: 0 18px 56px rgba(0, 0, 0, 0.65);
 
-  // Glass — darker glass with stronger blur
-  --glass-bg: rgba(var(--bg-color-rgb), 0.8);
-  --glass-border: rgba(var(--text-color-rgb), 0.06);
-  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-  --overlay-color: rgba(0, 0, 0, 0.6);
-  --bg-color: #0a0a0c;
-  --bg-card: #1c1c1e;
-  --bg-card-hover: #2c2c2e;
-  --bg-card-dimmed: rgba(255, 255, 255, 0.03);
-  --bg-header: #121212;
-  --bg-header-rgb: 18, 18, 18;
-  --bg-placeholder: #2c2c2e;
-  --bg-color-rgb: 10, 10, 12;
-  --bg-input: #2c2c2c;
-  --chip-bg: rgba(255, 255, 255, 0.06);
-  --text-color: #e9e9ef;
-  --text-secondary: #8e8e93;
-  --text-disabled: #77777d;
-  --text-color-rgb: 233, 233, 239;
-  --primary-color: #0a84ff;
-  --primary-color-dark: #0055b3;
-  --primary-color-rgb: 10, 132, 255;
-  --danger-color: #ff453a;
-  --danger-color-hover: #ff6b6b;
-  --switch-bg-off: #3a3a3c;
-  --switch-handle-color: #ffffff;
-  --header-border-bottom: rgba(255, 255, 255, 0.1);
-  --setting-border: rgba(255, 255, 255, 0.1);
-  --border-color: rgba(255, 255, 255, 0.12);
+  --overlay-color: rgba(0, 0, 0, 0.62);
+
+  // Written from the scene: listening in the dark, where a near-black frame
+  // keeps the screen from glowing and lets artwork carry the light.
+  --bg-color: #0c0c0e;
+  --bg-color-rgb: 12, 12, 14;
+  --bg-card: #151518;
+  --bg-card-hover: #1e1e23;
+  --bg-card-dimmed: rgba(255, 255, 255, 0.025);
+  --bg-elevated: #1b1b20;
+  --bg-header: #0c0c0e;
+  --bg-header-rgb: 12, 12, 14;
+  --bg-placeholder: #2a2a31;
+  --bg-input: #1d1d22;
   --bg-secondary: rgba(255, 255, 255, 0.08);
-  --primary: var(--primary-color);
-  --primary-color-light: rgba(var(--primary-color-rgb), 0.16);
+  --chip-bg: rgba(255, 255, 255, 0.06);
+
+  --text-color: #f2f2f5;
+  --text-color-rgb: 242, 242, 245;
+  --text-secondary: #9c9ca6;
+  --text-tertiary: #77777f;
+  --text-disabled: #5c5c64;
+
+  --hairline: rgba(255, 255, 255, 0.08);
+  --hairline-strong: rgba(255, 255, 255, 0.14);
+  --header-border-bottom: var(--hairline);
+  --setting-border: var(--hairline);
+  --border-color: var(--hairline-strong);
+  --border-light: var(--hairline);
+  --border-light-hover: var(--hairline-strong);
   --input-border: rgba(255, 255, 255, 0.1);
-  --dropdown-border: rgba(255, 255, 255, 0.1);
-  --border-light: rgba(255, 255, 255, 0.05);
-  --border-light-hover: rgba(255, 255, 255, 0.1);
-  --header-back-hover: rgba(255, 255, 255, 0.1);
-  --setting-hover-bg: rgba(255, 255, 255, 0.03);
-  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.2);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.3);
-  --shadow-bottom: 0 -2px 10px rgba(0, 0, 0, 0.2);
-  --selected-shadow: 0 4px 12px rgba(201, 207, 212, 0.4);
-  --dropdown-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
-  --progress-track: rgba(255, 255, 255, 0.2);
-  --scrollbar-track: rgba(255, 255, 255, 0.05);
-  --scrollbar-thumb: rgba(255, 255, 255, 0.2);
+  --dropdown-border: rgba(255, 255, 255, 0.08);
+  --header-back-hover: rgba(255, 255, 255, 0.08);
+  --setting-hover-bg: rgba(255, 255, 255, 0.05);
+
+  // Fallback accent before the stored theme colour is applied. The store
+  // lightens a user colour for dark mode at runtime.
+  --primary-color: #8b9dff;
+  --primary-color-dark: #6f82e6;
+  --primary-color-rgb: 139, 157, 255;
+  --primary-color-light: rgba(var(--primary-color-rgb), 0.16);
+  --selection-bg: rgba(var(--primary-color-rgb), 0.14);
+  // The dark-mode accent is a lightened tint, so filled accent surfaces take
+  // the page's near-black for their type.
+  --on-primary-color: #0c0c0e;
+
+  --danger-color: #f06565;
+  --danger-color-hover: #ff8585;
+  --switch-bg-off: #3a3a42;
+
+  --shadow-sm: var(--elevation-1);
+  --shadow-md: var(--elevation-2);
+  --shadow-bottom: 0 -1px 0 var(--hairline);
+  --dropdown-shadow: var(--elevation-3);
+  --progress-track: rgba(255, 255, 255, 0.14);
+  --progress-bar: rgba(255, 255, 255, 0.45);
+  --scrollbar-track: transparent;
+  --scrollbar-thumb: rgba(255, 255, 255, 0.18);
   --scrollbar-thumb-hover: rgba(255, 255, 255, 0.3);
-  --bottom-actions-bg: var(--bg-color);
-  --bottom-actions-bg-rgb: 10, 10, 12;
-  --bottom-actions-border: rgba(255, 255, 255, 0.1);
-  --bottom-actions-shadow: rgba(0, 0, 0, 0.3);
-  --dropdown-bg: var(--bg-card);
-  --toast-bg: rgba(0, 0, 0, 0.85);
-  --toast-text: #f0f0f0;
-  --toast-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-  --success-bg: rgba(46, 125, 50, 0.9);
-  --error-bg: rgba(211, 47, 47, 0.9);
-  --warning-bg: rgba(237, 108, 2, 0.9);
-  --info-bg: rgba(25, 118, 210, 0.9);
-  --progress-bar: #ffffff55;
+
+  --bottom-actions-bg: #151518;
+  --bottom-actions-bg-rgb: 21, 21, 24;
+  --bottom-actions-border: var(--hairline);
+  --bottom-actions-shadow: rgba(0, 0, 0, 0.4);
+
+  --toast-bg: #26262b;
+  --toast-text: #f5f5f7;
+  --toast-shadow: var(--elevation-3);
+  --success-color: #4ecf8c;
+  --error-color: #ff7b7b;
+  --warning-color: #f0b552;
+  --info-color: #74adff;
+
+  --wash-strength: 0.26;
 }
 
 // Theme switches animate their colour changes, but a permanent global
@@ -220,4 +262,45 @@ html.theme-transition *::after {
 
 .no-transition {
   transition: none !important;
+}
+
+// ===== Browser surfaces =====
+// The parts the app does not draw still belong to the design.
+::selection {
+  background: rgba(var(--primary-color-rgb), 0.24);
+  color: var(--text-color);
+}
+
+:root {
+  accent-color: var(--primary-color);
+  caret-color: var(--primary-color);
+  color-scheme: light;
+}
+
+html.dark {
+  color-scheme: dark;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+:focus-visible {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
+}
+
+html,
+body {
+  font-family: var(--font-family);
+  color: var(--text-color);
+  background-color: var(--bg-color);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+// Numerals that sit in columns (durations, timestamps) line up.
+.tabular {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum';
 }

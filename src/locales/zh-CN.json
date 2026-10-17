@@ -1,5 +1,6 @@
 {
   "home": {
+    "libraryTitle": "曲库",
     "searchPlaceholder": "搜索",
     "categories": {
       "tracks": "曲目",
@@ -50,6 +51,8 @@
   "player": {
     "unknownTitle": "未播放",
     "unknownArtist": "未知艺术家",
+    "nowPlaying": "正在播放",
+    "speed": "播放速度",
     "playMode": {
       "sequential": "顺序播放",
       "repeatOne": "单曲循环"
@@ -209,6 +212,12 @@
   },
   "settings": {
     "title": "设置",
+    "groups": {
+      "appearance": "外观",
+      "playback": "播放",
+      "data": "数据",
+      "about": "关于"
+    },
     "blacklist": "黑名单",
     "blacklistDesc": "查看黑名单歌曲,被加入黑名单的歌曲在扫描曲库时会被排除",
     "languageSelectorHeader": "选择语言",

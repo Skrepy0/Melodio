@@ -47,33 +47,36 @@
 }
 
 // ===== Page Header =====
-// Standard page header bar
-@mixin page-header($height: 60px) {
+// Compact top bar: no fill, no shadow, a hairline only once content scrolls.
+@mixin page-header($height: 52px) {
   display: flex;
   align-items: center;
   height: $height;
-  padding: 0 16px;
-  background-color: var(--bg-header);
-  border-bottom: 1px solid var(--header-border-bottom);
+  padding: 0 12px;
+  background-color: var(--bg-color);
   flex-shrink: 0;
 }
 
 // ===== Header Back Button =====
-// Circular back button with hover effect
+// Quiet 40px hit target, square-ish press state, no circle.
 @mixin header-back {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.2s;
+  transition: background-color var(--duration-fast) ease;
   flex-shrink: 0;
   color: var(--text-color);
 
   &:hover {
     background-color: var(--header-back-hover);
+  }
+
+  &:active {
+    background-color: var(--hairline-strong);
   }
 }
 
@@ -83,10 +86,11 @@
   flex: 1;
   min-width: 0;
   @include text-ellipsis;
-  font-size: 18px;
-  font-weight: 600;
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: -0.01em;
   color: var(--text-color);
-  margin-left: 12px;
+  margin-left: 4px;
 }
 
 // ===== Button Container (header actions) =====
@@ -94,7 +98,7 @@
 @mixin button-container {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 4px;
   flex-shrink: 0;
 }
 
@@ -104,8 +108,8 @@
   flex: 1;
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-left: 12px;
+  gap: 8px;
+  margin-left: 8px;
 
   .search-input-field {
     flex: 1;
@@ -119,15 +123,17 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 12px;
-  padding: 48px 20px;
-  color: var(--text-secondary);
-  font-size: 14px;
+  gap: var(--space-3);
+  padding: 56px 24px;
+  color: var(--text-tertiary);
+  font-size: var(--font-size-sm);
+  text-align: center;
 }
 
 // ===== Cover Thumbnail =====
-// Square cover image container with rounded corners
-@mixin cover-thumbnail($radius: 12px, $size: 48px) {
+// Square cover image container. Covers sit flat against the row: a small
+// radius and a hairline stand in for a border so artwork reads as an object.
+@mixin cover-thumbnail($radius: var(--radius-sm), $size: 48px) {
   flex-shrink: 0;
   width: $size;
   height: $size;
@@ -137,6 +143,7 @@
   align-items: center;
   justify-content: center;
   background: var(--bg-placeholder);
+  box-shadow: inset 0 0 0 1px var(--hairline);
 
   img {
     width: 100%;
@@ -156,43 +163,112 @@
   gap: 2px;
 }
 
+// ===== List Row =====
+// The workhorse surface. Rows are transparent rectangles separated by a
+// hairline; pressing tints the row instead of moving it.
+@mixin list-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: 60px;
+  padding: var(--space-2) var(--space-4);
+  background-color: transparent;
+  border: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  position: relative;
+  transition: background-color var(--duration-fast) ease;
+
+  &::after {
+    content: '';
+    position: absolute;
+    left: var(--space-4);
+    right: 0;
+    bottom: 0;
+    height: 1px;
+    background-color: var(--hairline);
+    transform: scaleY(0.5);
+    transform-origin: bottom;
+  }
+
+  &:last-child::after {
+    display: none;
+  }
+
+  &:hover {
+    background-color: var(--bg-card-dimmed);
+  }
+
+  &:active {
+    background-color: var(--bg-secondary);
+  }
+
+  &.selected {
+    background-color: var(--selection-bg);
+  }
+}
+
+// ===== Section Label =====
+// Small uppercase-ish label that introduces a group of rows.
+@mixin section-label {
+  padding: var(--space-5) var(--space-4) var(--space-2);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+// ===== Large Title =====
+// Screen-level title used by top-level pages instead of a nav bar title.
+@mixin large-title {
+  padding: var(--space-2) var(--space-4) var(--space-3);
+  font-size: var(--font-size-title);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: -0.03em;
+  line-height: var(--line-height-tight);
+  color: var(--text-color);
+}
+
 // ===== Dialog Overlay =====
-// Full-screen modal backdrop with blur
+// Full-screen dim. No blur: the dim alone separates the sheet from the page.
 @mixin dialog-overlay($z: 10000) {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
+  background-color: var(--overlay-color);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: $z;
-  backdrop-filter: blur(4px);
 }
 
 // ===== Dialog Container =====
 // Modal dialog card
 @mixin dialog-container($width: 280px) {
   width: $width;
-  background: var(--bg-color);
-  border-radius: 16px;
-  box-shadow: var(--shadow-md);
+  background: var(--bg-elevated);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--elevation-4);
   overflow: hidden;
-  animation: scaleIn 0.2s ease;
+  animation: scaleIn var(--duration-normal) var(--ease-out-expo);
 }
 
 // ===== Dialog Header =====
 // Title area of a dialog
 @mixin dialog-header {
-  padding: 20px 20px 8px;
+  padding: var(--space-5) var(--space-5) var(--space-2);
   text-align: center;
 
   h3 {
     margin: 0;
-    font-size: 18px;
-    font-weight: 600;
+    font-size: var(--font-size-lg);
+    font-weight: var(--font-weight-semibold);
+    letter-spacing: -0.01em;
     color: var(--text-color);
   }
 }
@@ -200,14 +276,14 @@
 // ===== Dialog Body =====
 // Content area of a dialog
 @mixin dialog-body {
-  padding: 8px 20px 20px;
+  padding: var(--space-2) var(--space-5) var(--space-5);
   text-align: center;
 
   p {
     margin: 0;
-    font-size: 14px;
+    font-size: var(--font-size-base);
     color: var(--text-secondary);
-    line-height: 1.5;
+    line-height: var(--line-height-normal);
   }
 }
 
@@ -215,21 +291,21 @@
 // Button row at bottom of dialog
 @mixin dialog-footer {
   display: flex;
-  border-top: 1px solid var(--setting-border);
+  border-top: 1px solid var(--hairline);
 }
 
 // ===== Dialog Button =====
 // Single button in dialog footer
 @mixin dialog-btn {
   flex: 1;
-  padding: 12px;
-  font-size: 14px;
-  font-weight: 500;
+  padding: var(--space-3);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-medium);
   border: none;
   background: transparent;
   color: var(--primary-color);
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background-color var(--duration-fast) ease;
 
   &:hover {
     background: var(--setting-hover-bg);
@@ -240,80 +316,79 @@
   }
 
   &.cancel {
-    border-right: 1px solid var(--setting-border);
+    border-right: 1px solid var(--hairline);
+    color: var(--text-secondary);
   }
 
   &.confirm {
-    font-weight: 600;
+    font-weight: var(--font-weight-semibold);
   }
 }
 
 // ===== Bottom Actions Bar =====
-// Fixed bottom action bar with backdrop blur
+// Fixed bottom action bar, solid surface with a hairline above it.
 @mixin bottom-actions {
   position: sticky;
   bottom: 0;
   left: 0;
   right: 0;
   background: var(--bottom-actions-bg);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
   border-top: 1px solid var(--bottom-actions-border);
-  box-shadow: var(--shadow-bottom);
-  padding: 12px 16px;
-  padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  padding: var(--space-2) var(--space-3);
+  padding-bottom: calc(var(--space-2) + env(safe-area-inset-bottom, 0px));
   z-index: 100;
 
   .actions-container {
     display: flex;
-    gap: 12px;
+    gap: var(--space-2);
   }
 }
 
 // ===== Bottom Action Button =====
-// Button in the bottom actions bar
+// Button in the bottom actions bar. Text-first, no boxes: the selected
+// action gets the accent, everything else stays quiet.
 @mixin action-btn {
   flex: 1;
-  padding: 12px 20px;
-  border-radius: 12px;
-  border: 1px solid var(--input-border);
-  background: var(--bg-card);
+  min-width: 0;
+  padding: var(--space-3) var(--space-2);
+  border-radius: var(--radius-md);
+  border: none;
+  background: transparent;
   color: var(--text-color);
-  font-size: 15px;
-  font-weight: 500;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background-color var(--duration-fast) ease;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 3px;
+  white-space: nowrap;
 
   &:hover {
-    background: var(--bg-card-hover);
+    background: var(--setting-hover-bg);
+  }
+
+  &:active {
+    background: var(--hairline);
   }
 
   &.primary {
-    background: var(--primary-color);
-    color: #fff;
-    border-color: var(--primary-color);
-
-    &:hover {
-      background: var(--primary-color-dark);
-    }
+    color: var(--primary-color);
   }
 
   &.danger {
     color: var(--danger-color);
-    border-color: var(--danger-color);
+  }
 
-    &:hover {
-      background: var(--danger-color);
-      color: #fff;
-    }
+  &:disabled {
+    color: var(--text-disabled);
+    pointer-events: none;
   }
 }
 
-// ===== NEW: Elevation System =====
+// ===== Elevation System =====
 // Apply a layered shadow based on elevation level (0-4)
 @mixin elevation($level: 1) {
   @if $level == 0 {
@@ -329,65 +404,82 @@
   }
 }
 
-// ===== NEW: Glass Morphism =====
-// Frosted glass panel with backdrop blur
-@mixin glass($opacity: 0.75, $blur: 20px) {
-  background: rgba(var(--bg-color-rgb, 248, 249, 252), $opacity);
-  backdrop-filter: blur($blur);
-  -webkit-backdrop-filter: blur($blur);
-  border: 1px solid var(--glass-border, rgba(var(--text-color-rgb, 0, 0, 0), 0.06));
-  box-shadow: var(--glass-shadow, 0 8px 32px rgba(0, 0, 0, 0.08));
+// ===== Glass Morphism (retained) =====
+// The redesign removed decorative blur; this now paints an opaque surface so
+// older call sites stay correct without reintroducing frosted panels.
+@mixin glass($opacity: 1, $blur: 0px) {
+  background: var(--bg-elevated);
+  border: 1px solid var(--hairline);
+  box-shadow: var(--elevation-2);
 }
 
-// ===== NEW: Card Base =====
-// Shared card with hover lift + active press
-@mixin card-base($radius: var(--radius-lg)) {
-  background-color: var(--bg-card);
+// ===== Card Base =====
+// Legacy name, now a flat list row. Kept so existing components inherit the
+// new world instead of lifting off the page.
+@mixin card-base($radius: 0) {
+  background-color: transparent;
   border-radius: $radius;
-  @include elevation(1);
-  transition:
-    transform var(--duration-normal, 0.25s) var(--ease-out-expo, cubic-bezier(0.19, 1, 0.22, 1)),
-    box-shadow var(--duration-normal, 0.25s) var(--ease-out-expo, cubic-bezier(0.19, 1, 0.22, 1)),
-    background-color var(--duration-normal, 0.25s) ease;
+  transition: background-color var(--duration-fast) ease;
 
   &:hover {
-    transform: translateY(-3px);
-    @include elevation(2);
+    background-color: var(--bg-card-dimmed);
   }
 
   &:active {
-    transform: translateY(-1px) scale(0.985);
-    @include elevation(1);
+    background-color: var(--bg-secondary);
   }
 }
 
-// ===== NEW: Button Press =====
+// ===== Button Press =====
 // Tactile scale-down on active for any button/element
 @mixin button-press {
-  transition: transform var(--duration-fast, 0.15s) ease;
+  transition: transform var(--duration-fast) ease;
 
   &:active {
-    transform: scale(0.96);
-  }
-
-  &:hover {
-    transform: scale(1.05);
+    transform: scale(0.94);
   }
 }
 
-// ===== NEW: Safe Area Padding =====
+// ===== Safe Area Padding =====
 // Add env(safe-area-inset-*) to specified side
 @mixin safe-area($side: bottom, $base: 0px) {
   padding-#{$side}: calc(#{$base} + env(safe-area-inset-#{$side}, 0px));
 }
 
-// ===== NEW: Focus Ring =====
+// ===== Focus Ring =====
 // Keyboard-visible focus ring using primary color
 @mixin focus-ring {
   outline: none;
 
   &:focus-visible {
-    box-shadow: 0 0 0 3px rgba(var(--primary-color-rgb, 0, 122, 255), 0.4);
-    border-color: var(--primary-color);
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+  }
+}
+
+// ===== Icon Button =====
+// Square, quiet tap target for row actions and headers.
+@mixin icon-button($size: 40px) {
+  width: $size;
+  height: $size;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition:
+    background-color var(--duration-fast) ease,
+    color var(--duration-fast) ease;
+
+  &:hover {
+    background-color: var(--header-back-hover);
+    color: var(--text-color);
+  }
+
+  &:active {
+    background-color: var(--hairline-strong);
   }
 }

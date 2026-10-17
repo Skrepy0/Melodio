@@ -79,20 +79,16 @@ const clearHistory = async () => {
 <template>
   <ion-page>
     <div class="downloads-page">
-      <div class="header">
-        <PageTitle :go-back="goBack" :title="$t('downloads.title')" />
-        <HorizontalSelect v-model="currentTab" :options="tabOptions" />
+      <PageTitle :go-back="goBack" :title="$t('downloads.title')" />
+
+      <div class="tabs-bar">
+        <HorizontalSelect v-model="currentTab" :options="tabOptions" icon-size="16" />
       </div>
 
       <div class="content">
         <template v-if="currentTab === 'active'">
           <div v-if="activeTasks.length === 0" class="status-placeholder">
-            <Icon
-              color="var(--text-secondary)"
-              height="36"
-              icon="mdi:download-off-outline"
-              width="36"
-            />
+            <Icon :width="32" class="status-icon" icon="mdi:download-off-outline" />
             <span class="status-text">{{ $t('downloads.empty.active') }}</span>
           </div>
           <div v-else class="list">
@@ -114,7 +110,7 @@ const clearHistory = async () => {
             </button>
           </div>
           <div v-if="historyItems.length === 0" class="status-placeholder">
-            <Icon color="var(--text-secondary)" height="36" icon="mdi:history" width="36" />
+            <Icon :width="32" class="status-icon" icon="mdi:history" />
             <span class="status-text">{{ $t('downloads.empty.history') }}</span>
           </div>
           <div v-else class="list">
@@ -123,7 +119,7 @@ const clearHistory = async () => {
         </template>
       </div>
 
-      <NowPlayingBar auto-play @expand="() => router.push('/player-view')" />
+      <NowPlayingBar @expand="() => router.push('/player-view')" />
     </div>
   </ion-page>
 </template>
@@ -133,53 +129,57 @@ const clearHistory = async () => {
   position: relative;
   height: 100%;
   overflow-y: auto;
-  padding-bottom: 80px;
+  padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+  background-color: var(--bg-color);
+  @include custom-scrollbar(3px);
 }
 
-.header {
-  background: transparent;
-  border-bottom: none;
+.tabs-bar {
+  padding: 0 var(--space-4) var(--space-2);
 }
 
 .content {
-  padding: 12px;
+  padding: 0;
 }
 
 .list {
   display: flex;
   flex-direction: column;
-  gap: 10px;
 }
 
 .status-placeholder {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 60px 20px;
-  color: var(--text-secondary, #8b949e);
-  gap: 12px;
-  text-align: center;
+  @include empty-state;
+
+  .status-icon {
+    color: var(--text-tertiary);
+    opacity: 0.7;
+  }
 }
 
 .status-text {
-  font-size: 16px;
-  line-height: 1.5;
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
   max-width: 320px;
 }
 
 .history-header {
   display: flex;
   justify-content: flex-end;
-  margin-bottom: 12px;
+  padding: var(--space-2) var(--space-4);
 }
 
 .clear-btn {
-  padding: 8px 14px;
+  padding: var(--space-1) var(--space-3);
   border: none;
-  border-radius: 999px;
-  background: rgba(255, 107, 107, 0.12);
-  color: var(--danger-color-hover);
-  font-size: 13px;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--danger-color);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+
+  &:hover {
+    background: var(--setting-hover-bg);
+  }
 }
 </style>

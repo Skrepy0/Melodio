@@ -14,13 +14,9 @@ const props = withDefaults(defineProps<Props>(), {
 <template>
   <div class="settings-header">
     <button :aria-label="$t('common.back')" class="header-back" type="button" @click="props.goBack">
-      <Icon
-        :width="props.icon_width"
-        color="var(--primary-color)"
-        icon="material-symbols:arrow-back"
-      />
+      <Icon :width="props.icon_width" icon="mdi:chevron-left" />
     </button>
-    <div class="header-title">{{ props.title }}</div>
+    <h1 class="header-title">{{ props.title }}</h1>
   </div>
 </template>
 

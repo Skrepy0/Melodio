@@ -111,7 +111,7 @@ const { coverSrc } = usePlaylistCover(toRef(props, 'playlist'))
   <div class="playlist-item" @click="onCardClick">
     <div class="playlist-cover">
       <template v-if="playlist.id === 0">
-        <Icon :width="36" color="red" icon="si:heart-duotone" />
+        <Icon :width="22" class="liked-icon" icon="mdi:heart" />
       </template>
       <template v-else>
         <img
@@ -120,13 +120,7 @@ const { coverSrc } = usePlaylistCover(toRef(props, 'playlist'))
           :src="coverSrc"
           @error="coverSrc = DEFAULT_COVER"
         />
-        <Icon
-          v-else
-          :width="36"
-          class="default-cover"
-          color="var(--primary-color)"
-          icon="mdi:playlist-music"
-        />
+        <Icon v-else :width="22" class="default-cover" icon="mdi:playlist-music" />
       </template>
     </div>
     <div class="playlist-info">
@@ -161,37 +155,37 @@ const { coverSrc } = usePlaylistCover(toRef(props, 'playlist'))
 
 <style lang="scss" scoped>
 .playlist-item {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  gap: var(--space-4);
-  padding: var(--space-3) var(--space-4);
-  @include card-base;
+  @include list-row;
   cursor: pointer;
-  animation: slideInUp 0.35s var(--ease-out-expo) both;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 .playlist-cover {
-  @include cover-thumbnail(var(--radius-md), 56px);
+  @include cover-thumbnail(var(--radius-sm), 48px);
 
   .default-cover {
-    color: var(--text-secondary);
+    color: var(--text-tertiary);
+  }
+
+  .liked-icon {
+    color: var(--danger-color);
   }
 }
 
 .playlist-info {
-  flex: 1;
-  min-width: 0;
+  @include media-info;
 
   .playlist-name {
-    font-size: 16px;
-    font-weight: 600;
+    font-size: var(--font-size-base);
+    font-weight: var(--font-weight-medium);
+    letter-spacing: -0.005em;
     color: var(--text-color);
     @include text-ellipsis;
   }
 
   .playlist-desc {
-    font-size: 13px;
+    font-size: var(--font-size-sm);
     color: var(--text-secondary);
     @include text-ellipsis;
   }
@@ -201,12 +195,14 @@ const { coverSrc } = usePlaylistCover(toRef(props, 'playlist'))
   flex-shrink: 0;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--space-1);
 
   .song-count {
-    font-size: 13px;
-    color: var(--text-secondary);
+    font-size: var(--font-size-sm);
+    color: var(--text-tertiary);
+    font-variant-numeric: tabular-nums;
     font-feature-settings: 'tnum';
+    margin-right: var(--space-1);
   }
 }
 </style>

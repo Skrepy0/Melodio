@@ -14,7 +14,6 @@ import { audio } from '@/utils/createAudio'
 import { getAccessibleUrl, getNativeCoverUrl } from '@/utils/functions'
 import SearchBox from '@/components/SearchBox.vue'
 import DropdownButton from '@/components/button/DropdownButton.vue'
-import CircleButton from '@/components/button/CircleButton.vue'
 import PlaylistCoverImage from '@/components/lists/PlaylistCoverImage.vue'
 import { useSongSearch } from '@/utils/search'
 import { showPrompt } from '@/utils/createPrompt'
@@ -72,6 +71,22 @@ const saveSongList = () => {
 
 const goBack = () => router.back()
 const showFullPlayer = () => router.push('/player-view')
+
+/** Play the whole visible list from the top. */
+const playAll = async () => {
+  if (showSongsList.value.length === 0) return
+  const first = showSongsList.value[0]
+  // Tapping play-all on the track that is already loaded should resume it,
+  // not restart the queue.
+  if (
+    appStore.currentSong?.id === first.id &&
+    appStore.getPlayQueue().length === songsList.value.length
+  ) {
+    if (!appStore.getPlayData().isPlaying) await appStore.togglePlay()
+    return
+  }
+  await playSong(first)
+}
 
 const handleBatchDelete = async (ids: string[]) => {
   const result = await showConfirm({
@@ -247,76 +262,87 @@ const onSearch = () => {
 <template>
   <ion-page>
     <div class="song-list-page">
-      <div class="song-list-header">
-        <button :aria-label="$t('common.back')" class="header-back" type="button" @click="goBack">
-          <Icon :width="24" color="var(--primary-color)" icon="material-symbols:arrow-back" />
-        </button>
+      <div class="page-top">
+        <div class="nav-row">
+          <button :aria-label="$t('common.back')" class="nav-back" type="button" @click="goBack">
+            <Icon :width="24" icon="mdi:chevron-left" />
+          </button>
 
-        <Transition mode="out-in" name="fade">
-          <div v-if="!isSearchMode" key="normal" class="normal-mode">
-            <div class="header-identity">
-              <PlaylistCoverImage
-                v-if="currentPlaylist"
-                :icon-size="18"
-                :playlist="currentPlaylist"
-                :size="36"
-                radius="var(--radius-sm)"
-              />
-              <div class="header-title">{{ title }}</div>
-            </div>
-            <div class="button-container">
-              <CircleButton
-                :label="$t('common.search')"
-                :size="36"
-                icon="mdi:magnify"
+          <Transition mode="out-in" name="fade">
+            <div v-if="!isSearchMode" key="normal" class="nav-actions">
+              <button
+                :aria-label="$t('common.search')"
+                class="nav-action"
+                type="button"
                 @click="enterSearchMode"
-              />
+              >
+                <Icon :width="22" icon="mdi:magnify" />
+              </button>
               <DropdownButton
                 :dx="-100"
                 :label="$t('common.more')"
                 :options="operations"
-                :size="36"
-                button-icon="mingcute:more-2-line"
+                :size="40"
+                button-icon="mdi:dots-horizontal"
                 @select="onSelectOperation"
               />
             </div>
-          </div>
 
-          <div v-else key="search" class="search-mode">
-            <div class="search-wrapper">
+            <div v-else key="search" class="search-mode">
               <SearchBox
                 v-model="keyword"
                 :clearable="true"
                 :placeholder="$t('home.searchPlaceholder')"
                 autofocus
                 class="search-input-field"
-                size="medium"
+                size="small"
                 @search="onSearch"
               />
-              <CircleButton
-                :label="$t('common.close')"
-                :size="36"
-                bg-color="transparent"
-                icon="mdi:close"
-                icon-color="var(--text-color)"
+              <button
+                :aria-label="$t('common.close')"
+                class="nav-action"
+                type="button"
                 @click="exitSearchMode"
-              />
+              >
+                <Icon :width="22" icon="mdi:close" />
+              </button>
             </div>
+          </Transition>
+        </div>
+
+        <div class="identity">
+          <PlaylistCoverImage
+            v-if="currentPlaylist"
+            :icon-size="40"
+            :playlist="currentPlaylist"
+            :size="96"
+            radius="var(--radius-md)"
+          />
+          <div class="identity-text">
+            <h1 class="title">{{ title }}</h1>
+            <p class="subtitle">{{ $t('playlist.songCount', { count: songsList.length }) }}</p>
           </div>
-        </Transition>
+        </div>
+
+        <div class="play-row">
+          <button class="play-all" type="button" @click="playAll">
+            <Icon :width="18" icon="mdi:play" />
+            <span>{{ $t('home.a11y.playAll') }}</span>
+          </button>
+        </div>
       </div>
 
       <div class="content-body">
         <div v-if="isLoading" class="loading-state">
-          <Icon :width="32" class="loading-icon" icon="mdi:loading" />
+          <Icon :width="24" class="loading-icon" icon="mdi:loading" />
           <span>{{ $t('songList.loading') }}</span>
         </div>
         <div v-else-if="songsList.length === 0" class="empty-state">
-          <Icon :width="48" color="var(--text-secondary)" icon="mdi:music-off" />
+          <Icon :width="32" class="empty-icon" icon="mdi:music-note-off-outline" />
           <p>{{ $t('songList.empty') }}</p>
         </div>
         <div v-else-if="showSongsList.length === 0" class="empty-state">
-          <Icon :width="48" color="var(--text-secondary)" icon="mdi:music-off" />
+          <Icon :width="32" class="empty-icon" icon="mdi:magnify-close" />
           <p>{{ $t('songList.notFound') }}</p>
         </div>
         <PlayList
@@ -328,7 +354,7 @@ const onSearch = () => {
         />
       </div>
 
-      <NowPlayingBar auto-play @expand="showFullPlayer" />
+      <NowPlayingBar @expand="showFullPlayer" />
     </div>
   </ion-page>
 </template>
@@ -341,133 +367,159 @@ const onSearch = () => {
   background-color: var(--bg-color);
 }
 
-.song-list-header {
+// A playlist opens as a page, not a toolbar: navigation sits above a large
+// cover + title pair, and the list scrolls beneath them.
+.page-top {
+  flex-shrink: 0;
+  padding-top: env(safe-area-inset-top, 0px);
+  background-color: var(--bg-color);
+}
+
+.nav-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 16px;
-  height: 60px;
-  background-color: var(--bg-header);
-  border-bottom: 1px solid var(--header-border-bottom);
-  flex-shrink: 0;
+  min-height: 52px;
+  padding: 0 var(--space-2);
+  gap: var(--space-2);
 }
 
-.header-back {
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  padding: 0;
-  border: none;
-  background: transparent;
-  cursor: pointer;
-  border-radius: 50%;
-  transition: background 0.2s;
-  &:hover {
-    background-color: var(--header-back-hover);
-  }
-  &:focus-visible {
-    outline: 2px solid var(--primary-color);
-    outline-offset: 2px;
-  }
-}
-
-.header-identity {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.header-title {
-  flex: 1;
-  min-width: 0;
-  font-size: 18px;
-  font-weight: 600;
+.nav-back {
+  @include icon-button(40px);
   color: var(--text-color);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+
+  &:hover {
+    color: var(--text-color);
+  }
 }
 
-.button-container {
+.nav-actions {
   display: flex;
   align-items: center;
-  gap: 12px;
-  flex-shrink: 0;
+  gap: var(--space-1);
 }
 
-.search-wrapper {
+.nav-action {
+  @include icon-button(40px);
+  color: var(--text-color);
+
+  &:hover {
+    color: var(--text-color);
+  }
+}
+
+.search-mode {
   flex: 1;
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-left: 12px;
+  gap: var(--space-2);
+  min-width: 0;
 }
 
 .search-input-field {
   flex: 1;
+  min-width: 0;
+}
+
+.identity {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-4);
+  padding: var(--space-2) var(--space-4) var(--space-4);
+}
+
+.identity-text {
+  flex: 1;
+  min-width: 0;
+  padding-bottom: var(--space-1);
+}
+
+.title {
+  margin: 0 0 var(--space-1);
+  font-size: 28px;
+  font-weight: var(--font-weight-bold);
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+  color: var(--text-color);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.subtitle {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--text-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+
+.play-row {
+  padding: 0 var(--space-4) var(--space-3);
+}
+
+.play-all {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 9px 20px 9px 16px;
+  border: none;
+  border-radius: var(--radius-pill);
+  background-color: var(--primary-color);
+  color: var(--on-primary-color);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  transition:
+    opacity var(--duration-fast) ease,
+    transform var(--duration-fast) ease;
+
+  &:hover {
+    opacity: 0.9;
+  }
+
+  &:active {
+    transform: scale(0.97);
+  }
 }
 
 .content-body {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
-  padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
+  padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+  @include custom-scrollbar(3px);
 }
 
 .loading-state,
 .empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  padding: 48px 20px;
-  color: var(--text-secondary);
+  @include empty-state;
 }
 
-.loading-icon {
-  animation: spin 1s linear infinite;
+.loading-state {
+  flex-direction: row;
+  gap: var(--space-2);
 }
 
-@keyframes spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+.empty-icon {
+  color: var(--text-tertiary);
+  opacity: 0.7;
 }
 
-.header-title,
-.button-container,
-.search-wrapper {
-  transition: all 0.25s ease;
+.empty-state p {
+  margin: 0;
 }
-.normal-mode {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-.fade-leave-active,
-.slide-leave-active {
-  transition: all 0.2s ease;
-}
-.fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
-  transform: scale(0.95);
+
+.fade-leave-active {
+  transition: opacity var(--duration-fast) ease;
 }
 
 .fade-enter-active {
-  transition: all 0.25s cubic-bezier(0.2, 0.9, 0.4, 1.1);
+  transition: opacity var(--duration-normal) ease;
 }
-.fade-enter-from {
+
+.fade-enter-from,
+.fade-leave-to {
   opacity: 0;
-  transform: translateX(-10px);
 }
 </style>

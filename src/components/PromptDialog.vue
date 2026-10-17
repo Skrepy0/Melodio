@@ -98,94 +98,61 @@ onMounted(() => {
 
 <style lang="scss" scoped>
 .prompt-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: var(--overlay-color);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 10000;
-  backdrop-filter: blur(4px);
+  @include dialog-overlay;
 }
 
 .prompt-container {
-  width: 280px;
-  background: var(--bg-color);
-  border-radius: 16px;
-  box-shadow: var(--shadow-md);
-  overflow: hidden;
-  animation: scaleIn 0.2s ease;
+  @include dialog-container(300px);
+  max-width: calc(100vw - 48px);
 }
 
 .prompt-header {
-  padding: 16px 16px 0;
-  h3 {
-    margin: 0;
-    font-size: 18px;
-    font-weight: 600;
-    color: var(--text-color);
-  }
+  @include dialog-header;
 }
 
 .prompt-body {
-  padding: 16px;
+  padding: var(--space-2) var(--space-5) var(--space-4);
+
   p {
-    margin: 0 0 12px;
-    font-size: 14px;
+    margin: 0 0 var(--space-3);
+    font-size: var(--font-size-sm);
     color: var(--text-secondary);
+    line-height: var(--line-height-normal);
   }
 }
 
 .prompt-input {
   width: 100%;
-  padding: 8px 12px;
-  border: 1px solid var(--input-border);
-  border-radius: 8px;
-  font-size: 14px;
+  padding: 9px 12px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
   background: var(--bg-input);
   color: var(--text-color);
+  font: inherit;
+  font-size: var(--font-size-base);
   outline: none;
-  transition:
-    border-color 0.2s,
-    background 0.2s;
+  transition: border-color var(--duration-fast) ease;
+
+  &::placeholder {
+    color: var(--text-tertiary);
+  }
+
   &:focus {
-    border-color: var(--primary-color);
+    border-color: var(--focus-ring);
   }
 }
 
 .prompt-footer {
-  display: flex;
-  border-top: 1px solid var(--setting-border);
+  @include dialog-footer;
+
   .prompt-btn {
-    flex: 1;
-    padding: 12px;
-    background: none;
-    border: none;
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: background 0.2s;
-    &.cancel {
-      color: var(--text-secondary);
-      &:hover {
-        background: var(--header-back-hover);
-      }
-    }
-    &.confirm {
-      color: var(--primary-color);
-      &:hover {
-        background: rgba(var(--primary-color-rgb, 0, 122, 255), 0.05);
-      }
-    }
+    @include dialog-btn;
   }
 }
 
 .fade-enter-active,
 .fade-leave-active {
-  transition: opacity 0.2s;
+  transition: opacity var(--duration-fast) ease;
 }
 .fade-enter-from,
 .fade-leave-to {

@@ -19,21 +19,11 @@ const props = withDefaults(defineProps<Props>(), {
   <button class="setting-item clickable" type="button" @click="props.click">
     <div class="setting-row">
       <div class="item-left">
-        <Icon
-          :icon="props.icon"
-          :width="props.icon_width"
-          class="item-icon"
-          color="var(--primary-color)"
-        />
+        <Icon :icon="props.icon" :width="props.icon_width" class="item-icon" />
         <span class="item-label">{{ props.title }}</span>
       </div>
       <div class="item-right">
-        <Icon
-          v-if="props.isLink"
-          icon="mdi:chevron-right"
-          :width="20"
-          color="var(--primary-color)"
-        />
+        <Icon v-if="props.isLink" icon="mdi:chevron-right" :width="20" />
       </div>
     </div>
     <div class="setting-desc">{{ props.desc }}</div>

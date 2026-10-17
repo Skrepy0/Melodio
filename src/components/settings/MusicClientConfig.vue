@@ -15,12 +15,7 @@ const props = defineProps<Props>()
   <div class="setting-item">
     <div class="setting-row">
       <div class="item-left">
-        <Icon
-          :icon="props.icon"
-          :width="props.icon_width ?? 22"
-          class="item-icon"
-          color="var(--primary-color)"
-        />
+        <Icon :icon="props.icon" :width="props.icon_width ?? 22" class="item-icon" />
         <span class="item-label">{{ props.title }}</span>
       </div>
       <label class="switch">

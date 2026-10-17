@@ -136,7 +136,7 @@ onUnmounted(() => {
             :src="coverSrc"
             @error="onCoverError"
           />
-          <Icon v-else :width="40" color="var(--primary-color)" icon="mdi:music" />
+          <Icon v-else :width="20" class="cover-placeholder" icon="mdi:music-note" />
         </div>
         <div class="details">
           <div class="name">{{ currentSong.title }}</div>
@@ -166,17 +166,16 @@ onUnmounted(() => {
 </template>
 
 <style lang="scss" scoped>
+// The mini player is a strip of the page, not a floating object: same ground
+// as the app, a hairline above, and a progress rule that spans the full width.
 .now-playing-bar {
   position: fixed;
   bottom: 0;
   left: 0;
   right: 0;
-  background: var(--glass-bg);
-  backdrop-filter: blur(var(--glass-blur));
-  -webkit-backdrop-filter: blur(var(--glass-blur));
-  border-top: 1px solid var(--glass-border);
+  background: var(--bg-color);
+  border-top: 1px solid var(--hairline);
   z-index: 100;
-  box-shadow: var(--elevation-3);
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
@@ -190,30 +189,18 @@ onUnmounted(() => {
 
 .progress-fill-line {
   height: 100%;
-  background: linear-gradient(90deg, var(--primary-color), var(--primary-color-dark));
+  background: var(--primary-color);
   width: 0;
-  transition: width 0.15s linear;
-  border-radius: 0 2px 2px 0;
-
-  &::after {
-    content: '';
-    position: absolute;
-    right: -2px;
-    top: -2px;
-    width: 6px;
-    height: 6px;
-    background: var(--primary-color);
-    border-radius: 50%;
-    opacity: 0.6;
-  }
+  transition: width 0.2s linear;
 }
 
 .bar-content {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--space-4);
+  gap: var(--space-3);
   padding: var(--space-2) var(--space-4);
+  height: 60px;
 }
 
 .song-info {
@@ -223,50 +210,60 @@ onUnmounted(() => {
   cursor: pointer;
   flex: 1;
   min-width: 0;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-sm);
   padding: var(--space-1);
-  margin: -4px;
-  transition: background var(--duration-fast) ease;
+  margin: calc(var(--space-1) * -1);
+  transition: background-color var(--duration-fast) ease;
 
   &:hover {
     background: var(--setting-hover-bg);
   }
 
   &:active {
-    transform: scale(0.98);
+    background: var(--hairline);
   }
 }
 
 .cover {
-  width: 48px;
-  height: 48px;
-  border-radius: var(--radius-md);
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-sm);
   background: var(--bg-placeholder);
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
   flex-shrink: 0;
-  box-shadow: var(--elevation-1);
+  box-shadow: inset 0 0 0 1px var(--hairline);
 
   img {
     width: 100%;
     height: 100%;
     object-fit: cover;
   }
+
+  .cover-placeholder {
+    color: var(--text-tertiary);
+  }
 }
 
 .details {
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+
   .name {
-    font-weight: 600;
-    font-size: 14px;
+    font-weight: var(--font-weight-medium);
+    font-size: var(--font-size-base);
+    letter-spacing: -0.005em;
     color: var(--text-color);
     @include text-ellipsis;
   }
+
   .artist {
-    font-size: 12px;
+    font-size: var(--font-size-xs);
     color: var(--text-secondary);
     @include text-ellipsis;
   }
@@ -275,63 +272,46 @@ onUnmounted(() => {
 .player-controls {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: var(--space-2);
 }
 
 .time-info {
   display: flex;
-  gap: 4px;
-  font-size: 12px;
+  gap: 3px;
+  font-size: var(--font-size-xs);
+  font-variant-numeric: tabular-nums;
   font-feature-settings: 'tnum';
-  color: var(--text-secondary);
+  color: var(--text-tertiary);
 }
 
 .action-buttons {
   flex-shrink: 0;
+
   .play-pause-btn {
-    background: none;
-    border: none;
-    cursor: pointer;
-    color: var(--text-color);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 8px;
-    border-radius: var(--radius-full);
-    transition:
-      transform var(--duration-fast) var(--ease-out-back),
-      background var(--duration-fast) ease,
-      color var(--duration-fast) ease;
+    @include icon-button(44px);
+    // The transport control is the strip's one action, so it carries the
+    // accent; the progress rule above already ties the bar to the theme.
+    color: var(--primary-color);
 
     &:hover {
-      transform: scale(1.15);
       color: var(--primary-color);
-    }
-
-    &:active {
-      animation: scale-bounce 0.35s var(--ease-out-back);
+      background: var(--primary-color-light);
     }
   }
 }
 
-/* 响应式样式保持不变 */
 @media (max-width: 640px) {
   .bar-content {
-    padding: 8px 12px;
-    gap: 12px;
+    padding: var(--space-2) var(--space-3);
   }
+
   .cover {
     width: 40px;
     height: 40px;
   }
-  .details .name {
-    font-size: 13px;
-  }
-  .details .artist {
-    font-size: 11px;
-  }
+
   .time-info {
-    font-size: 10px;
+    display: none;
   }
 }
 </style>

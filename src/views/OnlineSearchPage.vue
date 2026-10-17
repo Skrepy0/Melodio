@@ -6,7 +6,6 @@ import { DropdownItem, OnlineSong, Song } from '@/utils/interface'
 import { useDropdownManager } from '@/composables/useDropdownManager'
 import OnlineSongItemSelectable from '@/components/song/OnlineSongItemSelectable.vue'
 import SearchBox from '@/components/SearchBox.vue'
-import PageTitle from '@/components/PageTitle.vue'
 import router from '@/router'
 import toast from '@/utils/createToast'
 import { MusicSigner, useAppStore } from '@/stores/app'
@@ -368,27 +367,25 @@ onBeforeUnmount(() => {
 <template>
   <ion-page>
     <div class="search-page">
-      <div class="header">
-        <PageTitle :go-back="goBack" :title="$t('search.title')" />
-        <Transition appear name="fade-slide">
-          <div class="search-wrapper">
-            <SearchBox
-              v-model="keyword"
-              :clearable="true"
-              :placeholder="$t('search.searchPlaceholder')"
-              :real-time-search="false"
-              :show-button="true"
-              autofocus
-              size="small"
-              @search="onSearch"
-            />
-          </div>
-        </Transition>
+      <div class="search-header">
+        <button :aria-label="$t('common.back')" class="header-back" type="button" @click="goBack">
+          <Icon :width="24" icon="mdi:chevron-left" />
+        </button>
+        <SearchBox
+          v-model="keyword"
+          :clearable="true"
+          :placeholder="$t('search.searchPlaceholder')"
+          :real-time-search="false"
+          :show-button="true"
+          autofocus
+          size="small"
+          @search="onSearch"
+        />
       </div>
 
       <div v-if="showHistory && searchHistory.length > 0" class="history-panel">
         <div class="history-header">
-          <span>{{ $t('search.history.title') }}</span>
+          <span class="history-title">{{ $t('search.history.title') }}</span>
           <button class="history-clear" @click="appStore.clearSearchHistory()">
             {{ $t('search.history.clear') }}
           </button>
@@ -396,7 +393,7 @@ onBeforeUnmount(() => {
         <div class="history-list">
           <div v-for="item in searchHistory" :key="item" class="history-item">
             <button class="history-main" type="button" @click="onHistoryClick(item)">
-              <Icon icon="mdi:history" width="16" />
+              <Icon icon="mdi:history" width="15" />
               <span>{{ item }}</span>
             </button>
             <button
@@ -414,7 +411,7 @@ onBeforeUnmount(() => {
       <div class="song-list">
         <!-- 错误状态（优先显示） -->
         <div v-if="searchError" class="status-placeholder error">
-          <Icon color="#ff6b6b" height="36" icon="mdi:alert-circle-outline" width="36" />
+          <Icon :width="32" icon="mdi:alert-circle-outline" />
           <span class="status-text" style="white-space: pre-wrap">{{ searchError }}</span>
         </div>
 
@@ -423,13 +420,13 @@ onBeforeUnmount(() => {
           v-else-if="hasSearched && searchResults.length === 0 && !isLoading"
           class="status-placeholder"
         >
-          <Icon color="var(--text-secondary)" height="36" icon="mdi:music-off" width="36" />
+          <Icon :width="32" icon="mdi:music-off" />
           <span class="status-text">{{ $t('search.noResults') }}</span>
         </div>
 
         <!-- 初始提示（未搜索） -->
         <div v-else-if="!hasSearched && searchResults.length === 0" class="status-placeholder">
-          <Icon color="var(--text-secondary)" height="36" icon="mdi:music-search" width="36" />
+          <Icon :width="32" icon="mdi:music-search" />
           <span class="status-text">{{ $t('search.initialHint') }}</span>
         </div>
 
@@ -454,7 +451,7 @@ onBeforeUnmount(() => {
 
           <!-- 加载指示器（置于列表底部） -->
           <div v-if="isLoading" class="loading-indicator">
-            <Icon color="var(--primary-color)" height="24" icon="eos-icons:loading" width="24" />
+            <Icon :width="20" icon="eos-icons:loading" />
             <span class="loading-text">{{ $t('search.loading') }}</span>
           </div>
         </template>
@@ -464,11 +461,11 @@ onBeforeUnmount(() => {
         <div v-if="isSelectMode" class="bottom-actions">
           <div class="actions-container">
             <button :disabled="searchResults.length === 0" class="action-btn" @click="selectAll">
-              <Icon :width="20" color="var(--primary-color)" icon="mdi:select-all" />
+              <Icon :width="20" icon="mdi:select-all" />
               <span>{{ $t('search.operations.selectAll') }}</span>
             </button>
             <button class="action-btn" @click="clearSelection">
-              <Icon :width="20" color="var(--primary-color)" icon="mdi:select-off" />
+              <Icon :width="20" icon="mdi:select-off" />
               <span>{{ $t('search.operations.clear') }}</span>
             </button>
             <button
@@ -476,21 +473,21 @@ onBeforeUnmount(() => {
               class="action-btn"
               @click="downloadSelectedMusics"
             >
-              <Icon :width="20" color="var(--primary-color)" icon="material-symbols:download" />
+              <Icon :width="20" icon="material-symbols:download" />
               <span>{{
                 isDownloadingBatch ? $t('common.downloading') : $t('search.operations.download')
               }}</span>
             </button>
             <button class="action-btn" @click="addSelectedToQueue">
-              <Icon :width="20" color="var(--primary-color)" icon="ic:baseline-queue" />
+              <Icon :width="20" icon="ic:baseline-queue" />
               <span>{{ $t('playList.addToQueue') }}</span>
             </button>
             <button class="action-btn" @click="addSelectedToSongList">
-              <Icon :width="20" color="var(--primary-color)" icon="mdi:heart-outline" />
+              <Icon :width="20" icon="mdi:heart-outline" />
               <span>{{ $t('playList.addToPlaylist') }}</span>
             </button>
             <button class="action-btn" @click="exitSelectMode">
-              <Icon :width="20" color="var(--primary-color)" icon="mdi:close" />
+              <Icon :width="20" icon="mdi:close" />
               <span>{{ $t('search.operations.cancel') }}</span>
             </button>
           </div>
@@ -506,78 +503,76 @@ onBeforeUnmount(() => {
   position: relative;
   height: 100%;
   overflow-y: auto;
-  padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
+  background-color: var(--bg-color);
+  padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+  @include custom-scrollbar(3px);
 }
 
-.header {
-  background: transparent;
-  border-bottom: none;
-}
+.search-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: calc(var(--space-2) + env(safe-area-inset-top, 0px)) var(--space-3) var(--space-2);
 
-.search-wrapper {
-  margin-top: 4px;
+  .header-back {
+    @include header-back;
+    background: transparent;
+    border: none;
+    padding: 0;
+  }
+
   :deep(.search-box) {
-    input {
-      padding: 6px 14px;
-      border-radius: 20px;
-      transition:
-        border-color 0.2s,
-        background 0.2s;
-    }
-    .search-btn {
-      border-radius: 20px;
-      padding: 0 16px;
-    }
+    flex: 1;
+    min-width: 0;
   }
 }
 
-.fade-slide-enter-active {
-  transition:
-    opacity 0.4s ease,
-    transform 0.4s ease;
-}
-.fade-slide-enter-from {
-  opacity: 0;
-  transform: translateY(-12px);
-}
-
 .history-panel {
-  margin: 12px;
-  padding: 12px;
-  border-radius: 14px;
-  background: var(--bg-card);
-  border: 1px solid var(--border-color);
+  padding: var(--space-2) var(--space-4) var(--space-4);
 }
 
 .history-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 10px;
-  gap: 12px;
-  font-weight: 600;
+  gap: var(--space-3);
+  padding: var(--space-2) 0 var(--space-3);
+}
+
+.history-title {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-color);
 }
 
 .history-clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 40px;
+  min-height: 36px;
+  padding: 0 var(--space-1);
   border: none;
   background: transparent;
-  color: var(--primary-color);
-  font-size: 14px;
+  color: var(--text-tertiary);
+  font-size: var(--font-size-sm);
   cursor: pointer;
-  padding: 0;
+
+  &:hover {
+    color: var(--text-color);
+  }
 }
 
 .history-list {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .history-item {
   display: inline-flex;
   align-items: center;
-  border-radius: 999px;
-  border: 1px solid var(--border-color);
+  border-radius: var(--radius-pill);
   background: var(--chip-bg);
   color: var(--text-color);
   overflow: hidden;
@@ -586,59 +581,60 @@ onBeforeUnmount(() => {
 .history-main {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 10px 4px 10px 12px;
+  gap: var(--space-2);
+  min-height: 40px;
+  padding: 0 4px 0 14px;
   border: none;
   background: transparent;
   color: inherit;
   font: inherit;
+  font-size: var(--font-size-sm);
   cursor: pointer;
-}
 
-.history-main span {
-  max-width: 180px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  span {
+    max-width: 180px;
+    @include text-ellipsis;
+  }
 }
 
 .history-remove {
-  border: none;
-  background: transparent;
-  color: inherit;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
-  margin-right: 4px;
-  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  margin-right: 2px;
+  border: none;
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: var(--text-tertiary);
   cursor: pointer;
 
   &:hover {
-    background: var(--header-back-hover);
+    color: var(--text-color);
+    background: var(--bg-secondary);
   }
 }
 
-.status-placeholder {
+.song-list {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 60px 20px;
-  color: var(--text-secondary, #8b949e);
-  gap: 12px;
-  text-align: center;
+}
 
-  &.error {
-    color: var(--danger-color-hover);
-  }
+.status-placeholder {
+  @include empty-state;
 
   .status-text {
-    font-size: 16px;
-    font-weight: 400;
-    line-height: 1.5;
-    max-width: 300px;
+    line-height: var(--line-height-normal);
+    max-width: 320px;
+  }
+
+  &.error {
+    color: var(--danger-color);
+
+    :deep(svg) {
+      color: var(--danger-color);
+    }
   }
 }
 
@@ -647,68 +643,59 @@ onBeforeUnmount(() => {
   bottom: 0;
   left: 0;
   right: 0;
-  background: var(--bottom-actions-bg, #ffffff);
-  border-top: 1px solid var(--bottom-actions-border, rgba(0, 0, 0, 0.1));
-  box-shadow: 0 -2px 10px var(--bottom-actions-shadow, rgba(0, 0, 0, 0.1));
+  background: var(--bottom-actions-bg);
+  border-top: 1px solid var(--bottom-actions-border);
   z-index: 200;
-  backdrop-filter: blur(10px);
-  background-color: rgba(var(--bottom-actions-bg-rgb, 255, 255, 255), 0.9);
   padding-bottom: env(safe-area-inset-bottom, 0px);
+  animation: sheetIn var(--duration-normal) var(--ease-out-expo);
 }
 
 .actions-container {
   display: flex;
-  justify-content: space-around;
-  align-items: center;
-  padding: 12px 16px;
-  gap: 16px;
+  justify-content: flex-start;
+  align-items: stretch;
+  padding: var(--space-2) var(--space-3);
+  gap: var(--space-1);
   overflow-x: auto;
   overflow-y: hidden;
   flex-wrap: nowrap;
-  white-space: nowrap;
-  scrollbar-width: thin;
+  scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
 
   &::-webkit-scrollbar {
-    height: 4px;
-  }
-  &::-webkit-scrollbar-track {
-    background: var(--scrollbar-track);
-    border-radius: 4px;
-  }
-  &::-webkit-scrollbar-thumb {
-    background: var(--scrollbar-thumb);
-    border-radius: 4px;
-    &:hover {
-      background: var(--scrollbar-thumb-hover);
-    }
+    display: none;
   }
 }
 
 .action-btn {
+  flex: 1 0 auto;
+  min-width: 64px;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 4px;
-  background: transparent;
+  padding: var(--space-2) var(--space-3);
   border: none;
-  font-size: 12px;
+  border-radius: var(--radius-md);
+  background: transparent;
   color: var(--text-color);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  white-space: nowrap;
   cursor: pointer;
-  transition: opacity 0.2s;
-  padding: 8px;
+  transition: background-color var(--duration-fast) ease;
 
   &:hover {
-    opacity: 0.7;
+    background: var(--setting-hover-bg);
   }
 
-  &.danger {
-    color: var(--danger-color, #ff4444);
+  &:active {
+    background: var(--hairline);
   }
 
   &:disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
+    color: var(--text-disabled);
+    pointer-events: none;
   }
 }
 
@@ -716,11 +703,12 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  padding: 16px 0;
-  color: var(--text-secondary);
+  gap: var(--space-2);
+  padding: var(--space-4) 0;
+  color: var(--text-tertiary);
+
   .loading-text {
-    font-size: 14px;
+    font-size: var(--font-size-sm);
   }
 }
 </style>

@@ -40,50 +40,52 @@ defineExpose({ show })
 </template>
 
 <style lang="scss" scoped>
+// A toast is a quiet report, not a banner. It sits in a solid dark pill so it
+// reads over any page, and only the icon carries the outcome colour.
 .toast {
   position: fixed;
-  bottom: calc(env(safe-area-inset-bottom, 0px) + 72px);
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 80px);
   left: 50%;
   transform: translateX(-50%);
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   max-width: min(88vw, 420px);
-  padding: 10px 20px;
-  background: var(--toast-bg, rgba(0, 0, 0, 0.8));
-  backdrop-filter: blur(10px);
-  color: var(--toast-text, #ffffff);
-  border-radius: 24px;
-  font-size: 14px;
-  line-height: 1.4;
+  padding: 10px 16px;
+  background: var(--toast-bg);
+  color: var(--toast-text);
+  border-radius: var(--radius-pill);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
   text-align: center;
   word-break: break-word;
   z-index: 10001;
-  box-shadow: var(--toast-shadow, 0 4px 12px rgba(0, 0, 0, 0.15));
+  box-shadow: var(--elevation-3);
 }
 
 .toast-icon {
+  flex-shrink: 0;
   width: 18px;
   height: 18px;
 }
 
-.success {
-  background: var(--success-bg, rgba(46, 125, 50, 0.9));
+.success .toast-icon {
+  color: #57d98a;
 }
-.error {
-  background: var(--error-bg, rgba(211, 47, 47, 0.9));
+.error .toast-icon {
+  color: #ff7b7b;
 }
-.warning {
-  background: var(--warning-bg, rgba(237, 108, 2, 0.9));
+.warning .toast-icon {
+  color: #ffc46b;
 }
-.info {
-  background: var(--info-bg, rgba(25, 118, 210, 0.9));
+.info .toast-icon {
+  color: #8bb4ff;
 }
 
 .toast-enter-active {
   transition:
-    opacity var(--duration-normal) var(--ease-out-back),
-    transform var(--duration-normal) var(--ease-out-back);
+    opacity var(--duration-normal) var(--ease-out-expo),
+    transform var(--duration-normal) var(--ease-out-expo);
 }
 .toast-leave-active {
   transition:
@@ -92,10 +94,10 @@ defineExpose({ show })
 }
 .toast-enter-from {
   opacity: 0;
-  transform: translateY(-16px) scale(0.92);
+  transform: translate(-50%, 8px);
 }
 .toast-leave-to {
   opacity: 0;
-  transform: translateY(-8px) scale(0.96);
+  transform: translate(-50%, 4px);
 }
 </style>

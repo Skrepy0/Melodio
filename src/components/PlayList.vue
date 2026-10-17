@@ -209,31 +209,31 @@ const handleSongClick = (song: Song) => {
       <div v-if="isSelectMode" class="bottom-actions">
         <div class="actions-container">
           <button v-if="props.visibility.selectAll" class="action-btn" @click="selectAll">
-            <Icon :width="20" color="var(--primary-color)" icon="mdi:select-all" />
+            <Icon :width="20" icon="mdi:select-all" />
             <span>{{ $t('playList.selectAll') }}</span>
           </button>
           <button v-if="props.visibility.clear" class="action-btn" @click="clearSelection">
-            <Icon :width="20" color="var(--primary-color)" icon="mdi:select-off" />
+            <Icon :width="20" icon="mdi:select-off" />
             <span>{{ $t('playList.clear') }}</span>
           </button>
           <button v-if="props.visibility.addToQueue" class="action-btn" @click="addToQueue">
-            <Icon :width="20" color="var(--primary-color)" icon="ic:baseline-queue" />
+            <Icon :width="20" icon="ic:baseline-queue" />
             <span>{{ $t('playList.addToQueue') }}</span>
           </button>
           <button v-if="props.visibility.addToPlaylist" class="action-btn" @click="addToSongList">
-            <Icon :width="20" color="var(--primary-color)" icon="mdi:heart-outline" />
+            <Icon :width="20" icon="mdi:heart-outline" />
             <span>{{ $t('playList.addToPlaylist') }}</span>
           </button>
           <button v-if="props.visibility.delete" class="action-btn danger" @click="batchDelete">
-            <Icon :width="20" color="var(--primary-color)" icon="mdi:delete" />
+            <Icon :width="20" icon="mdi:delete" />
             <span>{{ $t('playList.delete', { count: selectedIds.size }) }}</span>
           </button>
           <button v-if="props.visibility.ban" class="action-btn" @click="addToBlacklist">
-            <Icon :width="20" color="var(--primary-color)" icon="tabler:ban" />
+            <Icon :width="20" icon="tabler:ban" />
             <span>{{ $t('playList.addToBlacklist', { count: selectedIds.size }) }}</span>
           </button>
           <button v-if="props.visibility.close" class="action-btn" @click="exitSelectMode">
-            <Icon :width="20" color="var(--primary-color)" icon="mdi:close" />
+            <Icon :width="20" icon="mdi:close" />
             <span>{{ $t('playList.cancel') }}</span>
           </button>
         </div>
@@ -247,14 +247,14 @@ const handleSongClick = (song: Song) => {
   position: relative;
   height: 100%;
   overflow-y: auto;
-  padding-bottom: 80px;
+  padding-bottom: 96px;
+  @include custom-scrollbar(3px);
 }
 
 .song-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 12px;
+  padding: 0;
 }
 
 .bottom-actions {
@@ -262,82 +262,58 @@ const handleSongClick = (song: Song) => {
   bottom: 0;
   left: 0;
   right: 0;
-  background: var(--bottom-actions-bg, #ffffff);
-  border-top: 1px solid var(--bottom-actions-border, rgba(0, 0, 0, 0.1));
-  box-shadow: 0 -2px 10px var(--bottom-actions-shadow, rgba(0, 0, 0, 0.1));
+  background: var(--bottom-actions-bg);
+  border-top: 1px solid var(--bottom-actions-border);
   z-index: 200;
-  backdrop-filter: blur(10px);
-  background-color: rgba(var(--bottom-actions-bg-rgb, 255, 255, 255), 0.9);
   padding-bottom: env(safe-area-inset-bottom, 0px);
+  animation: sheetIn var(--duration-normal) var(--ease-out-expo);
 }
 
 .actions-container {
   display: flex;
-  justify-content: space-around;
-  align-items: center;
-  padding: 12px 16px;
-  gap: 16px;
+  justify-content: flex-start;
+  align-items: stretch;
+  padding: var(--space-2) var(--space-3);
+  gap: var(--space-1);
   overflow-x: auto;
   overflow-y: hidden;
   flex-wrap: nowrap;
-  white-space: nowrap;
-  scrollbar-width: thin;
+  scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
 
   &::-webkit-scrollbar {
-    height: 4px;
-  }
-  &::-webkit-scrollbar-track {
-    background: var(--scrollbar-track);
-    border-radius: 4px;
-  }
-  &::-webkit-scrollbar-thumb {
-    background: var(--scrollbar-thumb);
-    border-radius: 4px;
-    &:hover {
-      background: var(--scrollbar-thumb-hover);
-    }
+    display: none;
   }
 }
 
 .action-btn {
+  flex: 1 0 auto;
+  min-width: 64px;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 4px;
   background: transparent;
   border: none;
-  font-size: 12px;
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
   color: var(--text-color);
   cursor: pointer;
-  transition: opacity 0.2s;
-  padding: 8px;
+  padding: var(--space-2) var(--space-3);
+  white-space: nowrap;
+  transition: background-color var(--duration-fast) ease;
 
   &:hover {
-    opacity: 0.7;
+    background: var(--setting-hover-bg);
+  }
+
+  &:active {
+    background: var(--hairline);
   }
 
   &.danger {
-    color: var(--danger-color, #ff4444);
+    color: var(--danger-color);
   }
-}
-
-// 暗色模式专用（全局 .dark 类下覆盖）
-.dark .bottom-actions {
-  background: var(--bottom-actions-bg);
-  background-color: rgba(var(--bottom-actions-bg-rgb, 30, 30, 35), 0.9);
-  border-top-color: var(--bottom-actions-border);
-}
-
-.dark .action-btn {
-  color: var(--text-color);
-}
-
-.dark .action-btn.danger {
-  color: var(--danger-color-hover, #ff6b6b);
-}
-
-.dark .action-btn:hover {
-  opacity: 0.8;
 }
 </style>

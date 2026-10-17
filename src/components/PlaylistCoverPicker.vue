@@ -445,69 +445,39 @@ const onFileChange = async (event: Event) => {
 
 <style lang="scss" scoped>
 .cover-picker-overlay {
-  position: fixed;
-  inset: 0;
-  background-color: var(--overlay-color);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 24px;
-  z-index: 20000;
-  backdrop-filter: blur(4px);
+  @include dialog-overlay(20000);
+  padding: var(--space-5);
 }
 
 .cover-picker-container {
-  width: 340px;
+  @include dialog-container(360px);
   max-width: 100%;
   max-height: 85vh;
   display: flex;
   flex-direction: column;
-  background: var(--bg-color);
-  border-radius: var(--radius-2xl);
-  overflow: hidden;
-  box-shadow: var(--shadow-md);
-  animation: scaleIn 0.2s ease;
 }
 
 .cover-picker-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 18px 20px;
-  background: var(--bg-header);
-  border-bottom: 1px solid var(--header-border-bottom);
+  gap: var(--space-3);
+  padding: var(--space-5) var(--space-4) var(--space-3) var(--space-5);
+  border-bottom: 1px solid var(--hairline);
+  flex-shrink: 0;
 
   h3 {
     margin: 0;
-    font-size: 17px;
-    font-weight: 600;
+    @include text-ellipsis;
+    font-size: var(--font-size-lg);
+    font-weight: var(--font-weight-semibold);
+    letter-spacing: -0.01em;
     color: var(--text-color);
-    letter-spacing: -0.3px;
   }
 
   .close-btn {
+    @include icon-button(32px);
     flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 32px;
-    height: 32px;
-    border: none;
-    border-radius: var(--radius-full);
-    background: transparent;
-    color: var(--text-secondary);
-    cursor: pointer;
-    transition: background 0.2s;
-
-    &:hover {
-      background: var(--header-back-hover);
-    }
-
-    &:focus-visible {
-      outline: 2px solid var(--primary-color);
-      outline-offset: 2px;
-    }
   }
 }
 
@@ -515,50 +485,47 @@ const onFileChange = async (event: Event) => {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: 16px 20px;
-  scrollbar-width: thin;
-
-  &::-webkit-scrollbar {
-    width: 4px;
-  }
-  &::-webkit-scrollbar-thumb {
-    background: var(--scrollbar-thumb);
-    border-radius: 4px;
-  }
+  padding: var(--space-4) var(--space-4) var(--space-2);
+  @include custom-scrollbar(3px);
 }
 
 .current-cover {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 20px;
+  gap: var(--space-2);
+  padding-bottom: var(--space-4);
 
   img {
-    width: 96px;
-    height: 96px;
+    width: 112px;
+    height: 112px;
     object-fit: cover;
-    border-radius: var(--radius-lg);
+    border-radius: var(--radius-md);
     background: var(--bg-placeholder);
-    box-shadow: var(--elevation-1, 0 2px 8px rgba(0, 0, 0, 0.08));
+    box-shadow: inset 0 0 0 1px var(--hairline);
   }
 
   span {
-    font-size: 12px;
-    color: var(--text-secondary);
+    font-size: var(--font-size-xs);
+    color: var(--text-tertiary);
   }
 }
 
 .cover-section {
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--hairline);
+
   & + & {
-    margin-top: 20px;
+    margin-top: var(--space-4);
   }
 
   h4 {
-    margin: 0 0 10px;
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--text-secondary);
+    margin: 0 0 var(--space-2);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-tertiary);
   }
 }
 
@@ -566,38 +533,27 @@ const onFileChange = async (event: Event) => {
   margin: 0;
   padding: 0;
   list-style: none;
-  max-height: 240px;
+  max-height: 260px;
   overflow-y: auto;
-  scrollbar-width: thin;
-
-  &::-webkit-scrollbar {
-    width: 4px;
-  }
-  &::-webkit-scrollbar-thumb {
-    background: var(--scrollbar-thumb);
-    border-radius: 4px;
-  }
+  @include custom-scrollbar(3px);
 
   li + li {
-    margin-top: 4px;
+    border-top: 1px solid var(--hairline);
   }
 }
 
 .song-cover-row {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-3);
   width: 100%;
-  padding: 6px;
-  border: 1px solid transparent;
-  border-radius: var(--radius-md);
+  padding: var(--space-2) 0;
+  border: none;
   background: transparent;
   color: var(--text-color);
   text-align: left;
   cursor: pointer;
-  transition:
-    background 0.2s,
-    border-color 0.2s;
+  transition: opacity var(--duration-fast) ease;
 
   img {
     flex-shrink: 0;
@@ -606,20 +562,21 @@ const onFileChange = async (event: Event) => {
     object-fit: cover;
     border-radius: var(--radius-sm);
     background: var(--bg-placeholder);
+    box-shadow: inset 0 0 0 1px var(--hairline);
   }
 
   &:hover:not(:disabled) {
-    background: var(--setting-hover-bg);
+    opacity: 0.72;
   }
 
   &:focus-visible {
-    border-color: var(--primary-color);
-    outline: none;
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
   }
 
   &:disabled {
     cursor: default;
-    opacity: 0.65;
+    opacity: 0.55;
   }
 }
 
@@ -628,39 +585,41 @@ const onFileChange = async (event: Event) => {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 1px;
 }
 
 .song-cover-title {
-  font-size: 13px;
-  font-weight: 500;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
   @include text-ellipsis;
 }
 
 .song-cover-artist {
-  font-size: 11px;
-  color: var(--text-secondary);
+  font-size: var(--font-size-xs);
+  color: var(--text-tertiary);
   @include text-ellipsis;
 }
 
 .song-cover-pick {
   flex-shrink: 0;
-  color: var(--primary-color);
+  color: var(--text-tertiary);
 }
 
 .empty-hint,
 .upload-hint,
 .lookup-hint {
   margin: 0;
-  font-size: 12px;
-  color: var(--text-secondary);
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-normal);
+  color: var(--text-tertiary);
 }
 
 .empty-cover {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
+  padding: var(--space-4) 0;
 
   img {
     width: 64px;
@@ -673,30 +632,28 @@ const onFileChange = async (event: Event) => {
 }
 
 .lookup-hint {
-  margin-top: 8px;
+  margin-top: var(--space-2);
 }
 
 .upload-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: var(--space-2);
   width: 100%;
   min-height: 44px;
-  padding: 10px 16px;
-  border: 1px dashed var(--input-border);
+  padding: var(--space-2) var(--space-4);
+  border: none;
   border-radius: var(--radius-md);
   background: var(--bg-input);
-  color: var(--primary-color);
-  font-size: 14px;
-  font-weight: 500;
+  color: var(--text-color);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
   cursor: pointer;
-  transition:
-    border-color 0.2s,
-    background 0.2s;
+  transition: background-color var(--duration-fast) ease;
 
   &:hover {
-    border-color: var(--primary-color);
+    background: var(--bg-secondary);
   }
 
   &:focus-visible {
@@ -711,7 +668,7 @@ const onFileChange = async (event: Event) => {
 }
 
 .upload-hint {
-  margin-top: 8px;
+  margin-top: var(--space-2);
 }
 
 .file-input {
@@ -719,19 +676,11 @@ const onFileChange = async (event: Event) => {
 }
 
 .cover-picker-footer {
-  display: flex;
-  border-top: 1px solid var(--setting-border);
+  @include dialog-footer;
 
   .footer-btn {
-    flex: 1;
+    @include dialog-btn;
     min-height: 48px;
-    padding: 12px;
-    border: none;
-    background: none;
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: background 0.2s;
 
     &.reset {
       color: var(--danger-color);
@@ -739,22 +688,14 @@ const onFileChange = async (event: Event) => {
 
     &.cancel {
       color: var(--text-secondary);
-    }
-
-    &:hover {
-      background: var(--header-back-hover);
-    }
-
-    &:focus-visible {
-      outline: 2px solid var(--primary-color);
-      outline-offset: -2px;
+      border-right: 1px solid var(--hairline);
     }
   }
 }
 
 .fade-enter-active,
 .fade-leave-active {
-  transition: opacity 0.2s ease;
+  transition: opacity var(--duration-fast) ease;
 }
 .fade-enter-from,
 .fade-leave-to {

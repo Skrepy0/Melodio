@@ -8,8 +8,8 @@ const props = withDefaults(defineProps<DropdownButtonProps>(), {
   visible: false,
   buttonIcon: 'mdi:dots-horizontal',
   size: 48,
-  bgColor: 'var(--bg-color, #e0e0e0)',
-  iconColor: 'var(--text-color, #333)',
+  bgColor: 'transparent',
+  iconColor: 'var(--text-secondary)',
   disabled: false,
   placement: 'bottom-start',
   maxHeight: '240px',
@@ -198,13 +198,7 @@ watch(showDropdown, (val) => {
               type="button"
               @click="selectItem(item)"
             >
-              <Icon
-                v-if="item.icon"
-                :icon="item.icon"
-                :width="itemIconSize"
-                class="item-icon"
-                color="var(--primary-color)"
-              />
+              <Icon v-if="item.icon" :icon="item.icon" :width="itemIconSize" class="item-icon" />
               <span class="item-description">{{ item.description }}</span>
             </button>
           </div>
@@ -224,38 +218,38 @@ watch(showDropdown, (val) => {
   position: fixed;
   z-index: 2000;
   min-width: 180px;
-  background-color: var(--bg-color);
-  border: 1px solid var(--dropdown-border, rgba(0, 0, 0, 0.1));
-  border-radius: 12px;
-  box-shadow: var(--dropdown-shadow, 0 4px 16px rgba(0, 0, 0, 0.12));
+  background-color: var(--bg-elevated);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--elevation-3);
   overflow-y: auto;
   max-height: v-bind(maxHeight);
+  padding: var(--space-1) 0;
 }
 
 .dropdown-list {
   display: flex;
   flex-direction: column;
-  padding: 8px 0;
 }
 
 .dropdown-item {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--space-3);
   width: 100%;
-  padding: 12px 16px;
-  min-height: 48px;
+  padding: var(--space-3) var(--space-4);
+  min-height: 44px;
   border: none;
   background: transparent;
   text-align: left;
   font: inherit;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: background-color var(--duration-fast) ease;
   color: var(--text-color);
 
   &:hover:not(.disabled),
   &:focus-visible {
-    background-color: var(--header-back-hover);
+    background-color: var(--bg-card-dimmed);
     outline: none;
   }
 
@@ -271,23 +265,20 @@ watch(showDropdown, (val) => {
 }
 
 .item-description {
-  font-size: 14px;
-  line-height: 1.4;
+  font-size: var(--font-size-base);
+  line-height: var(--line-height-normal);
   word-break: break-word;
 }
 
 .dropdown-fade-enter-active,
 .dropdown-fade-leave-active {
   transition:
-    opacity 0.2s,
-    transform 0.2s;
+    opacity var(--duration-fast) ease,
+    transform var(--duration-fast) ease;
 }
-.dropdown-fade-enter-from {
-  opacity: 0;
-  transform: translateY(-8px);
-}
+.dropdown-fade-enter-from,
 .dropdown-fade-leave-to {
   opacity: 0;
-  transform: translateY(-8px);
+  transform: translateY(-4px);
 }
 </style>

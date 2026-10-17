@@ -2,7 +2,6 @@
 import { Icon } from '@iconify/vue'
 import { IonPage } from '@ionic/vue'
 import SearchBox from '@/components/SearchBox.vue'
-import CircleButton from '@/components/button/CircleButton.vue'
 import DropdownButton from '@/components/button/DropdownButton.vue'
 import HorizontalSelect from '@/components/HorizontalSelect.vue'
 import PlayList from '@/components/PlayList.vue'
@@ -310,47 +309,61 @@ watch(selectedCategory, () => {
 
 <template>
   <ion-page v-if="appStore.isI18nReady">
-    <div class="header">
-      <div class="search-box-container">
+    <div class="top">
+      <div class="title-row">
+        <h1 class="title">{{ $t('home.libraryTitle') }}</h1>
+        <div class="title-actions">
+          <button
+            :aria-label="$t('home.a11y.playAll')"
+            class="icon-action"
+            type="button"
+            @click="playShownSongs"
+          >
+            <Icon :icon="'mdi:play'" :width="24" />
+          </button>
+          <DropdownButton
+            :dx="-100"
+            :label="$t('common.more')"
+            :options="operations"
+            :size="40"
+            button-icon="mdi:dots-horizontal"
+            @select="onSelectOperation"
+          />
+        </div>
+      </div>
+
+      <div class="search-row">
         <SearchBox
           v-model="keyword"
           :clearable="true"
           :placeholder="$t('home.searchPlaceholder')"
-          autofocus
-          size="small"
+          size="medium"
           @search="onSearch"
         />
       </div>
-      <div class="button-container">
-        <CircleButton
-          :label="$t('home.a11y.playAll')"
-          :size="36"
-          icon="stash:play-duotone"
-          @click="playShownSongs"
-        />
-        <DropdownButton
-          :dx="-100"
-          :label="$t('common.more')"
-          :options="operations"
-          :size="36"
-          button-icon="mingcute:more-2-line"
-          @select="onSelectOperation"
-        />
+
+      <div class="tabs-row">
+        <HorizontalSelect v-model="selectedCategory" :options="categoryOptions" icon-size="16" />
+        <span class="count">
+          {{
+            selectedCategory === 'tracks'
+              ? $t('playlist.songCount', { count: showSongsList.length })
+              : $t('home.categories.playlists')
+          }}
+        </span>
       </div>
     </div>
+
     <div class="body">
-      <div class="select-container">
-        <HorizontalSelect v-model="selectedCategory" :options="categoryOptions" icon-size="18" />
-      </div>
       <div v-if="selectedCategory === 'tracks' && songsList.length === 0" class="empty-state">
-        <Icon :width="48" color="var(--text-secondary)" icon="mdi:music-off" />
+        <Icon :width="32" class="empty-icon" icon="mdi:music-note-off-outline" />
         <p>{{ $t('songList.empty') }}</p>
       </div>
       <div
         v-else-if="selectedCategory === 'tracks' && showSongsList.length === 0"
         class="empty-state"
       >
-        <Icon :width="48" color="var(--text-secondary)" icon="mdi:music-off" />
+        <Icon :width="32" class="empty-icon" icon="mdi:magnify-close" />
         <p>{{ $t('songList.notFound') }}</p>
       </div>
       <PlayList
@@ -367,69 +380,107 @@ watch(selectedCategory, () => {
         @batch-delete="handleBatchDeletePlaylists"
         @playlist-click="onPlaylistClick"
       />
-      <NowPlayingBar auto-play @expand="() => router.push('/player-view')" />
+      <NowPlayingBar @expand="() => router.push('/player-view')" />
     </div>
   </ion-page>
 </template>
 
 <style lang="scss" scoped>
-.header {
-  height: 64px;
-  width: 100%;
-  background: rgba(var(--bg-header-rgb), 0.8);
-  backdrop-filter: blur(20px);
+// The library opens like a native music app: a large title, then the one
+// control that matters (search), then the view switch. The page ground runs
+// behind all of it — no bar, no blur.
+.top {
+  flex-shrink: 0;
+  background-color: var(--bg-color);
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: var(--space-2);
+}
+
+.title-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 20px;
-  gap: 16px;
-  border-bottom: 1px solid var(--header-border-bottom);
-  box-sizing: border-box;
-  position: sticky;
-  top: 0;
-  z-index: 100;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-4) var(--space-2);
 }
 
-.search-box-container {
-  flex: 1;
-  max-width: 500px;
-  min-width: 200px;
+.title {
+  margin: 0;
+  font-size: var(--font-size-title);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: -0.035em;
+  line-height: var(--line-height-tight);
+  color: var(--text-color);
 }
 
-.button-container {
+.title-actions {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--space-1);
   flex-shrink: 0;
 }
-.empty-state {
+
+.icon-action {
+  @include icon-button(40px);
+  // Play is the page's primary action; everything else in the header stays
+  // graphite so the accent still reads as a signal.
+  color: var(--primary-color);
+
+  &:hover {
+    color: var(--primary-color);
+    background-color: var(--primary-color-light);
+  }
+}
+
+.search-row {
+  padding: 0 var(--space-4) var(--space-3);
+}
+
+.tabs-row {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 12px;
-  padding: 48px 20px;
-  color: var(--text-secondary);
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: 0 var(--space-4);
 }
-@media (max-width: 640px) {
-  .header {
-    padding: 0 12px;
-    gap: 12px;
-  }
-  .search-box-container {
-    flex: 1;
-  }
-  .button-container {
-    gap: 8px;
-  }
+
+.count {
+  font-size: var(--font-size-xs);
+  color: var(--text-tertiary);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
+
 .body {
   flex: 1;
-  height: 100%;
+  min-height: 0;
   width: 100%;
   overflow-y: auto;
   background-color: var(--bg-color);
   -webkit-overflow-scrolling: touch;
-  @include custom-scrollbar(4px);
+  @include custom-scrollbar(3px);
+}
+
+.empty-state {
+  @include empty-state;
+
+  .empty-icon {
+    color: var(--text-tertiary);
+    opacity: 0.7;
+  }
+
+  p {
+    margin: 0;
+  }
+}
+
+@media (max-width: 640px) {
+  .title-row {
+    padding: var(--space-3) var(--space-4) var(--space-1);
+  }
+
+  .title {
+    font-size: 28px;
+  }
 }
 </style>

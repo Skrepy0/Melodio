@@ -31,30 +31,32 @@ const openUrl = async (url: string) => {
       <PageTitle :go-back="goBack" :title="$t('about.title')" />
 
       <div class="about-content">
-        <div class="app-name">Melodio</div>
-        <div class="app-version">v{{ version }}</div>
+        <div class="identity">
+          <div class="app-name">Melodio</div>
+          <div class="app-version tabular">v{{ version }}</div>
+        </div>
 
-        <div class="info-section">
+        <div class="settings-group">
           <button class="info-item" type="button" @click="openUrl(repoUrl)">
-            <Icon :width="24" class="info-icon" icon="mdi:github" />
+            <Icon :width="22" class="info-icon" icon="mdi:github" />
             <div class="info-text">
               <div class="info-label">{{ $t('about.repository') }}</div>
               <div class="info-value">GitHub / Skrepy0/Melodio</div>
             </div>
-            <Icon :width="20" class="external-icon" icon="mdi:open-in-new" />
+            <Icon :width="18" class="external-icon" icon="mdi:open-in-new" />
           </button>
 
           <button class="info-item" type="button" @click="openUrl(issuesUrl)">
-            <Icon :width="24" class="info-icon" icon="mdi:bug-outline" />
+            <Icon :width="22" class="info-icon" icon="mdi:bug-outline" />
             <div class="info-text">
               <div class="info-label">{{ $t('about.feedback') }}</div>
               <div class="info-value">{{ $t('about.reportIssue') }}</div>
             </div>
-            <Icon :width="20" class="external-icon" icon="mdi:open-in-new" />
+            <Icon :width="18" class="external-icon" icon="mdi:open-in-new" />
           </button>
 
           <div class="info-item">
-            <Icon :width="24" class="info-icon" icon="mdi:account-circle-outline" />
+            <Icon :width="22" class="info-icon" icon="mdi:account-circle-outline" />
             <div class="info-text">
               <div class="info-label">{{ $t('about.author') }}</div>
               <div class="info-value">Skrepy</div>
@@ -62,7 +64,7 @@ const openUrl = async (url: string) => {
           </div>
 
           <div class="info-item">
-            <Icon :width="24" class="info-icon" icon="mdi:license" />
+            <Icon :width="22" class="info-icon" icon="mdi:license" />
             <div class="info-text">
               <div class="info-label">{{ $t('about.license') }}</div>
               <div class="info-value">Apache License 2.0</div>
@@ -91,6 +93,8 @@ const openUrl = async (url: string) => {
 </template>
 
 <style lang="scss" scoped>
+@use '../theme/settings.scss';
+
 .about-page {
   display: flex;
   flex-direction: column;
@@ -101,63 +105,76 @@ const openUrl = async (url: string) => {
 .about-content {
   flex: 1;
   overflow-y: auto;
-  padding: 24px 20px 40px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+  padding: 0 0 calc(40px + env(safe-area-inset-bottom, 0px));
+  @include custom-scrollbar(3px);
+}
+
+// The app signs the page like a title page: name, version, then the facts.
+.identity {
+  padding: var(--space-8) var(--space-4) var(--space-6);
 }
 
 .app-name {
-  font-size: 24px;
-  font-weight: 700;
+  font-size: var(--font-size-title);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: -0.03em;
+  line-height: var(--line-height-tight);
   color: var(--text-color);
-  margin-bottom: 6px;
 }
 
 .app-version {
-  font-size: 14px;
-  color: var(--text-secondary);
-  margin-bottom: 32px;
-}
-
-.info-section {
-  width: 100%;
-  background: var(--bg-card);
-  border-radius: 20px;
-  margin-bottom: 24px;
-  box-shadow: var(--shadow-sm);
+  margin-top: var(--space-1);
+  font-size: var(--font-size-sm);
+  color: var(--text-tertiary);
+  font-variant-numeric: tabular-nums;
 }
 
 .info-item {
   display: flex;
   align-items: center;
+  gap: var(--space-3);
   width: 100%;
-  padding: 16px;
-  gap: 15px;
+  min-height: 56px;
+  padding: var(--space-2) var(--space-4);
   border: none;
-  border-bottom: 1px solid var(--setting-border);
   background: transparent;
+  color: var(--text-color);
   font: inherit;
   text-align: left;
-  color: var(--text-color);
-  transition: background 0.2s;
+  position: relative;
 
-  &:last-child {
-    border-bottom: none;
+  &::after {
+    content: '';
+    position: absolute;
+    left: calc(var(--space-4) + 34px);
+    right: 0;
+    bottom: 0;
+    height: 1px;
+    background-color: var(--hairline);
+    transform: scaleY(0.5);
+    transform-origin: bottom;
+  }
+
+  &:last-child::after {
+    display: none;
   }
 
   &[type='button'] {
     cursor: pointer;
 
     &:hover {
-      background-color: var(--setting-hover-bg);
+      background-color: var(--bg-card-dimmed);
+    }
+
+    &:active {
+      background-color: var(--bg-secondary);
     }
   }
 }
 
 .info-icon {
   flex-shrink: 0;
-  color: var(--primary-color);
+  color: var(--text-secondary);
 }
 
 .info-text {
@@ -166,46 +183,44 @@ const openUrl = async (url: string) => {
 }
 
 .info-label {
-  font-size: 14px;
-  color: var(--text-secondary);
-  margin-bottom: 4px;
+  font-size: var(--font-size-xs);
+  color: var(--text-tertiary);
+  margin-bottom: 2px;
 }
 
 .info-value {
-  font-size: 15px;
-  font-weight: 500;
+  font-size: var(--font-size-base);
   color: var(--text-color);
   word-break: break-all;
 }
 
 .external-icon {
   flex-shrink: 0;
-  color: var(--text-secondary);
-  opacity: 0.6;
+  color: var(--text-tertiary);
 }
 
 .license-text {
-  width: 100%;
-  background: var(--bg-card);
-  border-radius: 20px;
-  padding: 16px;
-  box-shadow: var(--shadow-sm);
+  padding: var(--space-6) var(--space-4) var(--space-4);
+  border-top: 1px solid var(--hairline);
+  margin-top: var(--space-6);
 }
 
 .license-title {
-  font-size: 14px;
-  font-weight: 600;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
   color: var(--text-color);
-  margin-bottom: 8px;
+  margin-bottom: var(--space-2);
 }
 
 .license-summary {
-  font-size: 12px;
-  color: var(--text-secondary);
-  line-height: 1.5;
+  font-size: var(--font-size-xs);
+  color: var(--text-tertiary);
+  line-height: var(--line-height-relaxed);
+
   a {
     color: var(--primary-color);
-    text-decoration: none;
+    text-decoration: underline;
+    text-underline-offset: 2px;
   }
 }
 </style>

@@ -23,7 +23,7 @@ import { i18n } from '@/i18n'
 import { registerPlugin } from '@capacitor/core'
 import { App } from '@capacitor/app'
 import type { SystemBarPlugin } from '@/plugins/system-bar/definitions'
-import { hexToRgb, mixColors } from '@/utils/color'
+import { getContrastText, hexToRgb, mixColors } from '@/utils/color'
 import { musicClients } from '@/config'
 import { MusicSignerPlugin } from '@/plugins/music-signer/definitions'
 import { requestMediaPermissions } from '@/utils/permission'
@@ -52,7 +52,9 @@ export const useAppStore = defineStore('app', () => {
   const audioFocusPause = ref(true)
   const blacklist = ref<Song[]>([])
   const firstPlayFlag = ref(false)
-  const themeColor = ref<string>('#007aff')
+  // Matches the default accent in theme.scss: a muted cobalt that reads as
+  // part of the neutral shell rather than as a system-blue leftover.
+  const themeColor = ref<string>('#3d63dd')
   const musicClientStatus = ref<MusicClientStatus>()
   const musicClientLimitation = ref<number>(5)
   const fetchTimeOut = ref<number>(30)
@@ -284,6 +286,9 @@ export const useAppStore = defineStore('app', () => {
       darkMode.value ? mixColors(color, '#fff', 0.2) : mixColors(color, '#000', 0.2)
     )
     document.documentElement.style.setProperty('--primary-color-rgb', `${r}, ${g}, ${b}`)
+    // Type sitting on a filled accent surface has to follow the accent's own
+    // lightness, or a pale user colour would leave white text unreadable.
+    document.documentElement.style.setProperty('--on-primary-color', getContrastText(color))
   }
   function getThemeColor() {
     return themeColor.value

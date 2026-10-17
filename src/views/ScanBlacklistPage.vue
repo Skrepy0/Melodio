@@ -11,7 +11,6 @@ import { showConfirm } from '@/utils/createConfirm'
 import { useI18n } from 'vue-i18n'
 import SearchBox from '@/components/SearchBox.vue'
 import DropdownButton from '@/components/button/DropdownButton.vue'
-import CircleButton from '@/components/button/CircleButton.vue'
 import { useSongSearch } from '@/utils/search'
 
 const { t } = useI18n()
@@ -105,67 +104,69 @@ const onSearch = () => {
 <template>
   <ion-page>
     <div class="blacklist-page">
-      <div class="blacklist-header">
-        <button :aria-label="$t('common.back')" class="header-back" type="button" @click="goBack">
-          <Icon :width="24" color="var(--primary-color)" icon="material-symbols:arrow-back" />
-        </button>
+      <div class="page-top">
+        <div class="nav-row">
+          <button :aria-label="$t('common.back')" class="nav-back" type="button" @click="goBack">
+            <Icon :width="24" icon="mdi:chevron-left" />
+          </button>
 
-        <Transition mode="out-in" name="fade">
-          <div v-if="!isSearchMode" key="normal" class="normal-mode">
-            <div class="header-title">{{ t('blacklist.title') }}</div>
-            <div class="button-container">
-              <CircleButton
-                :label="$t('common.search')"
-                :size="36"
-                icon="mdi:magnify"
-                @click="enterSearchMode"
-              />
-              <DropdownButton
-                :dx="-100"
-                :label="$t('common.more')"
-                :options="operations"
-                :size="36"
-                button-icon="mingcute:more-2-line"
-                @select="onSelectOperation"
-              />
+          <Transition mode="out-in" name="fade">
+            <div v-if="!isSearchMode" key="normal" class="normal-mode">
+              <h1 class="header-title">{{ t('blacklist.title') }}</h1>
+              <div class="nav-actions">
+                <button
+                  :aria-label="$t('common.search')"
+                  class="nav-action"
+                  type="button"
+                  @click="enterSearchMode"
+                >
+                  <Icon :width="22" icon="mdi:magnify" />
+                </button>
+                <DropdownButton
+                  :dx="-100"
+                  :label="$t('common.more')"
+                  :options="operations"
+                  :size="40"
+                  button-icon="mdi:dots-horizontal"
+                  @select="onSelectOperation"
+                />
+              </div>
             </div>
-          </div>
 
-          <div v-else key="search" class="search-mode">
-            <div class="search-wrapper">
+            <div v-else key="search" class="search-mode">
               <SearchBox
                 v-model="keyword"
                 :clearable="true"
                 :placeholder="$t('home.searchPlaceholder')"
                 autofocus
                 class="search-input-field"
-                size="medium"
+                size="small"
                 @search="onSearch"
               />
-              <CircleButton
-                :label="$t('common.close')"
-                :size="36"
-                bg-color="transparent"
-                icon="mdi:close"
-                icon-color="var(--text-color)"
+              <button
+                :aria-label="$t('common.close')"
+                class="nav-action"
+                type="button"
                 @click="exitSearchMode"
-              />
+              >
+                <Icon :width="22" icon="mdi:close" />
+              </button>
             </div>
-          </div>
-        </Transition>
+          </Transition>
+        </div>
       </div>
 
       <div class="content-body">
         <div v-if="isLoading" class="loading-state">
-          <Icon :width="32" class="loading-icon" icon="mdi:loading" />
+          <Icon :width="24" class="loading-icon" icon="mdi:loading" />
           <span>{{ $t('songList.loading') }}</span>
         </div>
         <div v-else-if="songsList.length === 0" class="empty-state">
-          <Icon :width="48" color="var(--text-secondary)" icon="mdi:music-off" />
+          <Icon :width="32" class="empty-icon" icon="mdi:music-note-off-outline" />
           <p>{{ $t('songList.empty') }}</p>
         </div>
         <div v-else-if="showSongsList.length === 0" class="empty-state">
-          <Icon :width="48" color="var(--text-secondary)" icon="mdi:music-off" />
+          <Icon :width="32" class="empty-icon" icon="mdi:magnify-close" />
           <p>{{ $t('songList.notFound') }}</p>
         </div>
         <PlayList
@@ -196,125 +197,102 @@ const onSearch = () => {
   background-color: var(--bg-color);
 }
 
-.blacklist-header {
+.page-top {
+  flex-shrink: 0;
+  padding-top: env(safe-area-inset-top, 0px);
+  background-color: var(--bg-color);
+}
+
+.nav-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 0 16px;
-  height: 60px;
-  background-color: var(--bg-header);
-  border-bottom: 1px solid var(--header-border-bottom);
+  gap: var(--space-2);
+  min-height: 52px;
+  padding: 0 var(--space-2);
+}
+
+.nav-back {
+  @include icon-button(40px);
+  color: var(--text-color);
+}
+
+.nav-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
   flex-shrink: 0;
 }
 
-.header-back {
-  flex-shrink: 0;
+.nav-action {
+  @include icon-button(40px);
+}
+
+.normal-mode {
+  flex: 1;
+  min-width: 0;
   display: flex;
   align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  padding: 0;
-  border: none;
-  background: transparent;
-  cursor: pointer;
-  border-radius: 50%;
-  transition: background 0.2s;
-  &:hover {
-    background-color: var(--header-back-hover);
-  }
-  &:focus-visible {
-    outline: 2px solid var(--primary-color);
-    outline-offset: 2px;
-  }
+  justify-content: space-between;
+  gap: var(--space-2);
 }
 
 .header-title {
   flex: 1;
   min-width: 0;
-  font-size: 18px;
-  font-weight: 600;
+  margin: 0;
+  @include text-ellipsis;
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: -0.01em;
   color: var(--text-color);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
-.button-container {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-shrink: 0;
-}
-
-.search-wrapper {
+.search-mode {
   flex: 1;
+  min-width: 0;
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-left: 12px;
+  gap: var(--space-1);
 }
 
 .search-input-field {
   flex: 1;
+  min-width: 0;
 }
 
 .content-body {
   flex: 1;
   overflow-y: auto;
-  padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
+  padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+  @include custom-scrollbar(3px);
 }
 
 .loading-state,
 .empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  padding: 48px 20px;
-  color: var(--text-secondary);
+  @include empty-state;
+
+  p {
+    margin: 0;
+  }
+}
+
+.empty-icon {
+  color: var(--text-tertiary);
+  opacity: 0.7;
 }
 
 .loading-icon {
   animation: spin 1s linear infinite;
+  color: var(--text-tertiary);
 }
 
-@keyframes spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity var(--duration-fast) ease;
 }
 
-.header-title,
-.button-container,
-.search-wrapper {
-  transition: all 0.25s ease;
-}
-.normal-mode {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-.fade-leave-active,
-.slide-leave-active {
-  transition: all 0.2s ease;
-}
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
-  transform: scale(0.95);
-}
-
-.fade-enter-active {
-  transition: all 0.25s cubic-bezier(0.2, 0.9, 0.4, 1.1);
-}
-.fade-enter-from {
-  opacity: 0;
-  transform: translateX(-10px);
 }
 </style>

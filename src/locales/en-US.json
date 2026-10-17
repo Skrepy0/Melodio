@@ -1,5 +1,6 @@
 {
   "home": {
+    "libraryTitle": "Library",
     "searchPlaceholder": "Search",
     "categories": {
       "tracks": "Tracks",
@@ -50,6 +51,8 @@
   "player": {
     "unknownTitle": "Not playing",
     "unknownArtist": "Unknown Artist",
+    "nowPlaying": "Now playing",
+    "speed": "Playback speed",
     "playMode": {
       "sequential": "Sequential",
       "repeatOne": "Repeat One"
@@ -209,6 +212,12 @@
   },
   "settings": {
     "title": "Settings",
+    "groups": {
+      "appearance": "Appearance",
+      "playback": "Playback",
+      "data": "Data",
+      "about": "About"
+    },
     "blacklist": "Blacklist",
     "blacklistDesc": "View blacklisted songs. Songs added to the blacklist will be excluded when scanning the library.",
     "languageSelectorHeader": "Select Language",

@@ -2,8 +2,8 @@
 defineOptions({ name: 'PlayerView' })
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { Icon } from '@iconify/vue'
-import CircleButton from '@/components/button/CircleButton.vue'
 import DropdownButton from '@/components/button/DropdownButton.vue'
+import { useCoverColor } from '@/composables/useCoverColor'
 import { type DropdownItem, PlayMode, type Song } from '@/utils/interface'
 import { useAppStore } from '@/stores/app'
 import toast from '@/utils/createToast'
@@ -44,6 +44,11 @@ watch(
   () => appStore.getPlayQueue(),
   (newQueue) => {
     localQueue.value = [...newQueue]
+    // An emptied queue cannot scroll, so the header must come back on its own.
+    if (newQueue.length === 0) {
+      lastScrollTop = 0
+      setProgress(0)
+    }
   },
   { deep: true }
 )
@@ -59,12 +64,20 @@ onMounted(() => {
     }
   }
   audio.addEventListener('timeupdate', timeUpdateHandler)
+  // Wait a frame so the header has its real height before it is measured.
+  requestAnimationFrame(() => {
+    measureCollapse()
+    lastScrollTop = getQueueList()?.scrollTop ?? 0
+  })
+  window.addEventListener('resize', measureCollapse)
 })
 
 onUnmounted(() => {
   if (timeUpdateHandler) {
     audio.removeEventListener('timeupdate', timeUpdateHandler)
   }
+  window.removeEventListener('resize', measureCollapse)
+  stopAutoScroll()
 })
 const RATES = [0.5, 0.65, 0.8, 1.0, 1.25, 1.5, 2.0]
 
@@ -258,8 +271,37 @@ let isDraggingQueue = false
 let pointerId: number | null = null
 let wasPlaying = false
 let currentPlayingSongId: string | null = null
-let autoScrollInterval: number | null = null
+let autoScrollSpeed = 0
+let autoScrollFrame: number | null = null
 let scrollContainer: HTMLElement | null = null
+
+// How close to the list's edge the finger must be before the queue scrolls on
+// its own. It has to stay well under half the list's height: the queue is often
+// only ~240px tall, so a generous band would auto-scroll from anywhere inside
+// it and the list would fight the reorder instead of following it.
+const AUTO_SCROLL_BAND = 56
+const AUTO_SCROLL_MAX_SPEED = 8
+
+const stopAutoScroll = () => {
+  if (autoScrollFrame !== null) cancelAnimationFrame(autoScrollFrame)
+  autoScrollFrame = null
+  autoScrollSpeed = 0
+}
+
+const runAutoScroll = () => {
+  autoScrollFrame = null
+  const container = scrollContainer
+  if (!container || autoScrollSpeed === 0) return
+  const before = container.scrollTop
+  container.scrollTop += autoScrollSpeed
+  // Stop at the ends instead of looping a frame loop that writes the same
+  // scrollTop forever.
+  if (container.scrollTop === before) {
+    stopAutoScroll()
+    return
+  }
+  autoScrollFrame = requestAnimationFrame(runAutoScroll)
+}
 const currentSongOverride = ref<Song | null>(null)
 const dragCurrentIndex = ref<number | null>(null)
 
@@ -268,10 +310,7 @@ const startDrag = (e: PointerEvent, idx: number) => {
   e.preventDefault()
 
   // 清理之前的自动滚动
-  if (autoScrollInterval) {
-    clearInterval(autoScrollInterval)
-    autoScrollInterval = null
-  }
+  stopAutoScroll()
 
   wasPlaying = isPlaying.value
   currentPlayingSongId = appStore.currentSong?.id ?? null
@@ -325,29 +364,24 @@ const onDragMove = (e: PointerEvent) => {
     }
   }
   if (scrollContainer) {
-    const container = scrollContainer
-    const rect = container.getBoundingClientRect()
-    const threshold = 300
-    const maxSpeed = 12
+    const rect = scrollContainer.getBoundingClientRect()
     const distToTop = e.clientY - rect.top
     const distToBottom = rect.bottom - e.clientY
+    let speed = 0
 
-    // 清除旧定时器
-    if (autoScrollInterval) {
-      clearInterval(autoScrollInterval)
-      autoScrollInterval = null
+    if (distToTop < AUTO_SCROLL_BAND) {
+      const strength = 1 - Math.max(0, distToTop) / AUTO_SCROLL_BAND
+      speed = -Math.max(1, Math.round(AUTO_SCROLL_MAX_SPEED * strength))
+    } else if (distToBottom < AUTO_SCROLL_BAND) {
+      const strength = 1 - Math.max(0, distToBottom) / AUTO_SCROLL_BAND
+      speed = Math.max(1, Math.round(AUTO_SCROLL_MAX_SPEED * strength))
     }
 
-    if (distToTop >= 0 && distToTop < threshold) {
-      const speed = Math.max(1, Math.round(maxSpeed * (1 - distToTop / threshold)))
-      autoScrollInterval = window.setInterval(() => {
-        container.scrollTop -= speed
-      }, 16)
-    } else if (distToBottom >= 0 && distToBottom < threshold) {
-      const speed = Math.max(1, Math.round(maxSpeed * (1 - distToBottom / threshold)))
-      autoScrollInterval = window.setInterval(() => {
-        container.scrollTop += speed
-      }, 16)
+    if (speed === 0) {
+      stopAutoScroll()
+    } else if (speed !== autoScrollSpeed || autoScrollFrame === null) {
+      autoScrollSpeed = speed
+      if (autoScrollFrame === null) autoScrollFrame = requestAnimationFrame(runAutoScroll)
     }
   }
 }
@@ -356,21 +390,28 @@ const stopDrag = async (e: PointerEvent) => {
   if (!isDraggingQueue) return
   if (e.pointerId !== pointerId) return
   // 停止自动滚动
-  if (autoScrollInterval) {
-    clearInterval(autoScrollInterval)
-    autoScrollInterval = null
-  }
+  stopAutoScroll()
 
+  dragStartIndex.value = null
+  dragOverIndex.value = null
   if (dragItem) {
     dragItem.classList.remove('dragging-source')
     if (dragItem.hasPointerCapture?.(pointerId)) dragItem.releasePointerCapture(pointerId)
   }
-  dragStartIndex.value = null
-  dragOverIndex.value = null
+  // Every row passed over was marked as the drag source; the list is re-rendered
+  // in place while dragging, so those marks outlive the one on dragItem.
+  document
+    .querySelectorAll('.queue-item.dragging-source')
+    .forEach((el) => el.classList.remove('dragging-source'))
   dragItem = null
   isDraggingQueue = false
   pointerId = null
   scrollContainer = null
+  // The collapse handler ignored scrollTop while dragging. Resync so the next
+  // scroll gesture starts from a zero delta instead of jumping by the drag's
+  // auto-scroll distance. The header itself is deliberately left where it was:
+  // auto-scrolling to reach a row is not the user browsing the queue.
+  lastScrollTop = getQueueList()?.scrollTop ?? 0
 
   const newIdx = currentPlayingSongId
     ? localQueue.value.findIndex((s) => s.id === currentPlayingSongId)
@@ -403,22 +444,63 @@ const getRelativeIndex = (idx: number) => {
   return diff === 0 ? '0' : diff > 0 ? `+${diff}` : `${diff}`
 }
 
-const queueListRef = ref<HTMLElement | null>(null)
-const isHeaderCollapsed = ref(false)
-const COLLAPSE_THRESHOLD = 50
-let scrollTimer: ReturnType<typeof setTimeout> | null = null
+const rootEl = ref<HTMLElement | null>(null)
 
-const handleScroll = () => {
-  if (scrollTimer) clearTimeout(scrollTimer)
-  scrollTimer = setTimeout(() => {
-    if (!queueListRef.value) return
-    const scrollTop = queueListRef.value.scrollTop
-    if (scrollTop > COLLAPSE_THRESHOLD && !isHeaderCollapsed.value) {
-      isHeaderCollapsed.value = true
-    } else if (scrollTop <= 5 && isHeaderCollapsed.value) {
-      isHeaderCollapsed.value = false
-    }
-  }, 50)
+// A template ref on TransitionGroup resolves to the component instance, not to
+// the div it renders, so scrollTop has to be read from the DOM. Reading it off
+// the ref silently yields undefined and the resync below would zero out the
+// drag's scroll distance.
+const getQueueList = () => rootEl.value?.querySelector<HTMLElement>('.queue-list') ?? null
+
+// How far the header shrinks between its full and simplified states. Measured
+// from the real layout so the compensation below matches the CSS exactly.
+const collapseDistance = ref(0)
+// Scroll progress, 0 at rest and 1 when the header is fully simplified. Kept
+// out of the reactive graph: it is written straight to the element.
+let progress = 0
+let lastScrollTop = 0
+
+const setProgress = (next: number) => {
+  progress = next
+  rootEl.value?.style.setProperty('--p', next.toFixed(4))
+}
+
+const measureCollapse = () => {
+  const root = rootEl.value
+  const header = root?.querySelector<HTMLElement>('.player-header')
+  if (!root || !header) return
+  root.style.setProperty('--p', '0')
+  const full = header.getBoundingClientRect().height
+  root.style.setProperty('--p', '1')
+  const collapsed = header.getBoundingClientRect().height
+  root.style.setProperty('--p', progress.toFixed(4))
+  collapseDistance.value = Math.max(1, full - collapsed)
+}
+
+// The queue's box grows upward as the header yields. Without a correction the
+// rows would travel twice as fast as the finger (once from the scroll, once
+// from the box growing under them) and short queues would run out of scroll
+// before the header finished. Taking the growth back out of scrollTop keeps
+// the row under the finger still and makes progress track the gesture
+// one-to-one. The corrected value is written back to lastScrollTop, so the
+// scroll event it fires reads as a zero delta instead of feeding back.
+const onQueueScroll = (e: Event) => {
+  const list = e.currentTarget as HTMLElement
+  const top = list.scrollTop
+  const delta = top - lastScrollTop
+  lastScrollTop = top
+  // While a row is being dragged the auto-scroll owns scrollTop. Taking the
+  // header's growth back out here would cancel that auto-scroll every frame and
+  // resize the list under the finger, so the reorder drag must be left alone.
+  // stopDrag resyncs lastScrollTop so the next gesture starts from zero delta.
+  if (isDraggingQueue || delta === 0 || collapseDistance.value <= 0) return
+
+  const next = Math.min(1, Math.max(0, progress + delta / collapseDistance.value))
+  if (next === progress) return
+  const step = next - progress
+  setProgress(next)
+  list.scrollTop = top - collapseDistance.value * step
+  lastScrollTop = list.scrollTop
 }
 
 const formatTime = (seconds: number): string => {
@@ -484,53 +566,66 @@ const onCoverError = () => {
 
 watch(currentSong, (s) => resolveCover(s), { immediate: true })
 
+// The player's background is drawn from the artwork, so the screen changes
+// colour with the music. Null while a cover is unavailable (falls back to the
+// theme accent).
+const { rgb: coverRgb } = useCoverColor(coverSrc)
+
 onUnmounted(() => {
   coverAbort?.abort()
 })
 </script>
 
 <template>
-  <div class="player-view">
-    <div class="back-button">
-      <CircleButton
-        :label="t('common.back')"
-        :size="40"
-        icon="mdi:arrow-left"
-        icon-color="var(--text-color)"
-        @click="router.back()"
-      />
-    </div>
+  <div
+    ref="rootEl"
+    class="player-view"
+    :style="{
+      '--wash-rgb': coverRgb ? coverRgb.join(', ') : 'var(--primary-color-rgb)',
+    }"
+  >
+    <!-- The wash is the only colour the player draws itself: a soft field
+         sampled from the current cover, fading into the page ground. -->
+    <div class="wash" aria-hidden="true"></div>
 
-    <div class="rate-button-top-right">
+    <div class="top-bar">
+      <button :aria-label="t('common.back')" class="bar-btn" type="button" @click="router.back()">
+        <Icon :width="24" icon="mdi:chevron-down" />
+      </button>
+      <span class="top-context">{{ $t('player.nowPlaying') }}</span>
       <button
         :aria-label="t('player.a11y.rate')"
+        :class="{ active: currentRate !== 1 }"
         :title="t('player.speed')"
-        class="rate-fab"
+        class="rate-btn"
         type="button"
         @click="cyclePlaybackRate"
       >
-        <span class="rate-text">{{ currentRate }}x</span>
+        {{ currentRate }}×
       </button>
     </div>
 
-    <div :class="{ collapsed: isHeaderCollapsed }" class="player-header">
+    <div class="player-header">
       <div class="album-cover">
         <img
           v-if="coverSrc && coverSrc !== DEFAULT_COVER"
           :alt="currentSong?.title"
-          :class="{ playing: isPlaying }"
           :src="coverSrc"
           @error="onCoverError"
         />
-        <Icon v-else :width="120" color="var(--text-secondary)" icon="mdi:music" />
+        <Icon v-else :width="64" class="cover-placeholder" icon="mdi:music-note" />
       </div>
+
       <div class="song-info">
         <div class="song-name">{{ currentSong?.title || $t('player.unknownTitle') }}</div>
         <div class="song-artist">{{ currentSong?.artist || $t('player.unknownArtist') }}</div>
       </div>
 
       <div class="progress-section">
-        <div class="time-current">{{ formatTime(mockCurrentTime) }}</div>
+        <div class="time-row">
+          <span class="time tabular">{{ formatTime(mockCurrentTime) }}</span>
+          <span class="time tabular">{{ formatTime(mockDuration) }}</span>
+        </div>
         <div
           :aria-label="t('player.a11y.seek')"
           :aria-valuemax="Math.round(mockDuration)"
@@ -545,21 +640,20 @@ onUnmounted(() => {
         >
           <div ref="progressBarRef" class="progress-bar">
             <div :style="{ width: progressPercent + '%' }" class="progress-fill"></div>
-            <div :style="{ left: progressPercent + '%' }" class="progress-handle"></div>
           </div>
         </div>
-        <div class="time-duration">{{ formatTime(mockDuration) }}</div>
       </div>
 
       <div class="controls">
         <button
           :aria-label="t('player.a11y.playMode')"
           :title="playModeText"
-          class="control-btn"
+          :class="{ active: playMode === 'repeatOne' }"
+          class="control-btn small"
           type="button"
           @click="togglePlayMode"
         >
-          <Icon :icon="playModeIcon" :width="24" color="var(--text-color)" />
+          <Icon :icon="playModeIcon" :width="22" />
         </button>
         <button
           :aria-label="t('player.a11y.previous')"
@@ -567,19 +661,15 @@ onUnmounted(() => {
           type="button"
           @click="prevSong"
         >
-          <Icon :width="32" color="var(--text-color)" icon="mdi:skip-previous" />
+          <Icon :width="34" icon="mdi:skip-previous" />
         </button>
         <button
           :aria-label="t('player.a11y.playPause')"
-          class="control-btn play-pause"
+          class="play-pause"
           type="button"
           @click="togglePlay"
         >
-          <Icon
-            :icon="isPlaying ? 'mdi:pause-circle' : 'mdi:play-circle'"
-            :width="48"
-            color="var(--primary-color, #007aff)"
-          />
+          <Icon :icon="isPlaying ? 'mdi:pause' : 'mdi:play'" :width="30" />
         </button>
         <button
           :aria-label="t('player.a11y.next')"
@@ -587,31 +677,37 @@ onUnmounted(() => {
           type="button"
           @click="nextSong"
         >
-          <Icon :width="32" color="var(--text-color)" icon="mdi:skip-next" />
+          <Icon :width="34" icon="mdi:skip-next" />
         </button>
         <button
           :aria-label="t('player.a11y.shuffle')"
-          class="control-btn"
+          class="control-btn small"
           type="button"
           @click="shuffleQueue"
         >
-          <Icon :width="24" color="var(--text-color)" icon="mdi:shuffle-variant" />
+          <Icon :width="22" icon="mdi:shuffle-variant" />
         </button>
       </div>
     </div>
 
     <div class="queue-container">
       <div class="queue-header">
-        <span>{{ $t('player.queueHeader', { count: localQueue.length }) }}</span>
+        <span class="queue-title">{{
+          $t('player.queueHeader', { count: localQueue.length })
+        }}</span>
         <div class="queue-actions">
-          <span class="drag-hint">{{ $t('player.dragHint') }}</span>
           <button v-if="localQueue.length > 0" class="clear-queue-btn" @click="clearQueue">
             {{ $t('player.clearQueue') }}
           </button>
         </div>
       </div>
 
-      <TransitionGroup class="queue-list" name="queue-list" tag="div" @scroll="handleScroll">
+      <TransitionGroup
+        class="queue-list"
+        name="queue-list"
+        tag="div"
+        @scroll.passive="onQueueScroll"
+      >
         <div
           v-for="(song, idx) in localQueue"
           :key="song.id"
@@ -619,15 +715,16 @@ onUnmounted(() => {
             'drag-over': dragOverIndex === idx,
             'dragging-source': dragStartIndex === idx,
             'past-song': getRelativeIndex(idx).startsWith('-'),
+            current: getRelativeIndex(idx) === '0',
           }"
           :data-index="idx"
           class="queue-item"
           @click="playSong(song)"
         >
           <div class="drag-handle" style="touch-action: none" @pointerdown="startDrag($event, idx)">
-            <Icon :width="20" color="var(--text-color)" icon="mdi:drag-vertical" />
+            <Icon :width="18" icon="mdi:drag-vertical" />
           </div>
-          <div class="queue-index">{{ getRelativeIndex(idx) }}</div>
+          <div class="queue-index tabular">{{ getRelativeIndex(idx) }}</div>
           <div class="queue-song-info">
             <div class="queue-song-name">{{ song.title }}</div>
             <div class="queue-song-artist">{{ song.artist }}</div>
@@ -651,117 +748,179 @@ onUnmounted(() => {
 </template>
 
 <style lang="scss" scoped>
+// The player is the one screen where the interface takes its colour from the
+// music: a wash sampled from the artwork sits behind everything, and the rest
+// of the page is neutral so the cover and the wash are the only saturated
+// things on screen.
 .player-view {
+  // Scroll progress of the queue, 0 at rest and 1 when the header is fully
+  // simplified. Set inline from the scroll handler; every collapsing value
+  // below is a function of it, so the header and the queue move together.
+  --p: 0;
+  --cover-size: min(72vw, 300px);
+
   display: flex;
   flex-direction: column;
   height: 100%;
   background-color: var(--bg-color);
+  position: relative;
+  isolation: isolate;
+  padding-top: env(safe-area-inset-top, 0px);
 }
 
-.back-button {
-  position: fixed;
-  top: 16px;
-  left: 16px;
-  z-index: 200;
+.wash {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      120% 70% at 50% 0%,
+      rgba(var(--wash-rgb), var(--wash-strength)) 0%,
+      rgba(var(--wash-rgb), calc(var(--wash-strength) * 0.45)) 42%,
+      transparent 78%
+    ),
+    var(--bg-color);
+  transition: background var(--duration-slower) ease;
+}
 
-  :deep(.circle-button) {
-    background: var(--glass-bg);
-    backdrop-filter: blur(var(--glass-blur));
-    -webkit-backdrop-filter: blur(var(--glass-blur));
-    box-shadow: var(--elevation-1);
+.top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 52px;
+  padding: 0 var(--space-3);
+  flex-shrink: 0;
+}
+
+.bar-btn {
+  @include icon-button(40px);
+  color: var(--text-color);
+
+  &:hover {
+    color: var(--text-color);
   }
 }
 
-.player-header {
-  background: var(--glass-bg);
-  backdrop-filter: blur(var(--glass-blur));
-  -webkit-backdrop-filter: blur(var(--glass-blur));
-  padding: var(--space-5);
+.top-context {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+.rate-btn {
+  min-width: 48px;
+  height: 36px;
+  padding: 0 var(--space-3);
+  border: none;
+  border-radius: var(--radius-pill);
+  background: var(--chip-bg);
+  color: var(--text-secondary);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
   transition:
-    padding var(--duration-normal) var(--ease-out-expo),
-    min-height var(--duration-normal) var(--ease-out-expo);
+    background-color var(--duration-fast) ease,
+    color var(--duration-fast) ease;
+
+  &:hover {
+    background: var(--bg-secondary);
+    color: var(--text-color);
+  }
+
+  // A rate other than 1× is a state the listener chose, so it takes the accent.
+  &.active {
+    background: var(--primary-color-light);
+    color: var(--primary-color);
+  }
+}
+
+// Scrolling the queue gives the list room by taking it from the header: the
+// cover shrinks away, the type steps down, the transport tightens. Everything
+// is a function of --p, so the queue grows exactly as fast as the header
+// yields and nothing under the finger ever jumps.
+.player-header {
+  padding: calc(var(--space-3) * (1 - var(--p))) var(--space-5)
+    calc(var(--space-4) - (var(--space-4) - var(--space-2)) * var(--p));
   flex-shrink: 0;
   overflow: hidden;
-
-  &.collapsed {
-    padding: 10px var(--space-5);
-    .album-cover img,
-    .album-cover svg {
-      width: 60px;
-      height: 60px;
-    }
-    .song-name {
-      font-size: var(--font-size-base);
-    }
-    .song-artist {
-      font-size: var(--font-size-sm);
-    }
-    .progress-section {
-      margin: var(--space-2) 0;
-    }
-    .control-btn.play-pause :deep(svg) {
-      width: 32px;
-      height: 32px;
-    }
-  }
 }
 
 .album-cover {
-  text-align: center;
-  margin-bottom: var(--space-4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: calc(var(--space-5) * (1 - var(--p)));
+  overflow: hidden;
+  height: calc(var(--cover-size) * (1 - var(--p)));
 
   img,
-  svg {
-    width: 180px;
-    height: 180px;
-    border-radius: var(--radius-md);
+  .cover-placeholder {
+    width: calc(var(--cover-size) * (1 - var(--p)));
+    height: calc(var(--cover-size) * (1 - var(--p)));
+    border-radius: var(--radius-lg);
     object-fit: cover;
-    box-shadow:
-      0 8px 30px rgba(0, 0, 0, 0.12),
-      0 2px 8px rgba(0, 0, 0, 0.06);
-    transition:
-      width var(--duration-normal) var(--ease-out-expo),
-      height var(--duration-normal) var(--ease-out-expo),
-      border-radius var(--duration-normal) var(--ease-out-expo);
+    box-shadow: 0 16px 40px rgba(0, 0, 0, calc(0.18 * (1 - var(--p))));
+    animation: coverIn var(--duration-slow) var(--ease-out-expo);
+  }
 
-    &.playing {
-      animation: float 4s var(--ease-in-out) infinite;
-    }
+  .cover-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-placeholder);
+    color: var(--text-tertiary);
+    box-shadow: inset 0 0 0 1px var(--hairline);
+    animation: none;
   }
 }
 
 .song-info {
   text-align: center;
-  margin-bottom: var(--space-5);
+  margin-bottom: calc(var(--space-4) - (var(--space-4) - var(--space-2)) * var(--p));
 
   .song-name {
-    font-size: var(--font-size-xl);
-    font-weight: var(--font-weight-bold);
+    font-size: calc(var(--font-size-xl) - (var(--font-size-xl) - var(--font-size-base)) * var(--p));
+    font-weight: var(--font-weight-semibold);
+    letter-spacing: -0.02em;
+    line-height: var(--line-height-tight);
     color: var(--text-color);
+    @include text-ellipsis;
   }
+
   .song-artist {
-    font-size: var(--font-size-base);
+    margin-top: 2px;
+    font-size: calc(
+      var(--font-size-base) - (var(--font-size-base) - var(--font-size-sm)) * var(--p)
+    );
     color: var(--text-secondary);
+    @include text-ellipsis;
   }
 }
 
 .progress-section {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  margin-bottom: var(--space-5);
+  margin-bottom: calc(var(--space-4) - (var(--space-4) - var(--space-2)) * var(--p));
+  padding: 0 var(--space-1);
 
-  .time-current,
-  .time-duration {
-    font-size: var(--font-size-xs);
-    color: var(--text-secondary);
-    font-feature-settings: 'tnum';
-    min-width: 36px;
+  .time-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: var(--space-1);
   }
+
+  .time {
+    font-size: var(--font-size-xs);
+    color: var(--text-tertiary);
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum';
+  }
+
   .progress-bar-container {
-    flex: 1;
     cursor: pointer;
-    padding: 6px 0;
+    padding: calc(var(--space-2) - var(--space-1) * var(--p)) 0;
     touch-action: none;
     border-radius: var(--radius-xs);
 
@@ -770,98 +929,132 @@ onUnmounted(() => {
       outline-offset: 4px;
     }
   }
+
   .progress-bar {
     position: relative;
-    height: 4px;
+    height: 3px;
     background: var(--progress-track);
-    border-radius: var(--radius-xs);
+    border-radius: var(--radius-pill);
     transition: height var(--duration-fast) ease;
-
-    &:hover {
-      height: 6px;
-    }
   }
+
   .progress-fill {
     position: absolute;
-    height: 100%;
-    background: linear-gradient(90deg, var(--primary-color), var(--primary-color-dark));
-    border-radius: var(--radius-xs);
-    transition: width 0.3s var(--ease-out-expo);
+    inset: 0 auto 0 0;
+    background: var(--primary-color);
+    border-radius: var(--radius-pill);
+    transition: width 0.25s linear;
+  }
+}
 
-    &::after {
-      content: '';
-      position: absolute;
-      right: 0;
-      top: 50%;
-      transform: translate(50%, -50%);
-      width: 12px;
-      height: 12px;
-      background: var(--primary-color);
-      border-radius: var(--radius-full);
-      opacity: 0;
-      transition: opacity var(--duration-fast) ease;
+.controls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: calc(var(--space-6) - var(--space-2) * var(--p));
+}
+
+.control-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-sm);
+  transition:
+    background-color var(--duration-fast) ease,
+    opacity var(--duration-fast) ease;
+
+  &:hover {
+    background: var(--header-back-hover);
+  }
+
+  &:active {
+    background: var(--hairline-strong);
+  }
+
+  &.small {
+    color: var(--text-secondary);
+    width: 40px;
+    height: 40px;
+
+    &.active {
+      color: var(--primary-color);
     }
   }
-  .progress-bar:hover .progress-fill::after {
-    opacity: 1;
+}
+
+// The primary transport control is the one solid accent on the screen.
+.play-pause {
+  width: 64px;
+  height: 64px;
+  border: none;
+  border-radius: var(--radius-full);
+  background: var(--primary-color);
+  color: var(--on-primary-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition:
+    transform var(--duration-fast) var(--ease-out-expo),
+    opacity var(--duration-fast) ease;
+
+  &:hover {
+    opacity: 0.9;
   }
-  .progress-handle {
-    // kept for JS interaction but visually replaced by ::after pseudo-element above
-    position: absolute;
-    top: 50%;
-    width: 12px;
-    height: 12px;
-    background: transparent;
-    border-radius: 50%;
-    transform: translate(-50%, -50%);
-    opacity: 0;
-    pointer-events: none;
+
+  &:active {
+    transform: scale(0.94);
   }
 }
 
 .queue-container {
   flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background: var(--bg-color);
-  border-top: 1px solid rgba(0, 0, 0, 0.05);
+  border-top: 1px solid var(--hairline);
+  background: color-mix(in srgb, var(--bg-color) 82%, transparent);
 }
 
 .queue-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px 16px;
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--text-secondary);
-  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  padding: var(--space-3) var(--space-4) var(--space-2);
+  flex-shrink: 0;
+}
+
+.queue-title {
+  @include section-label;
+  padding: 0;
 }
 
 .queue-actions {
   display: flex;
   align-items: center;
-  gap: 12px;
-}
-
-.drag-hint {
-  font-size: 12px;
-  color: var(--text-secondary);
+  gap: var(--space-3);
 }
 
 .clear-queue-btn {
   background: none;
   border: none;
-  font-size: 12px;
-  color: var(--danger-color);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-tertiary);
   cursor: pointer;
-  padding: 4px 8px;
-  border-radius: 4px;
-  transition: background 0.2s;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-xs);
+  transition: color var(--duration-fast) ease;
 
   &:hover {
-    background: rgba(255, 77, 79, 0.1);
+    color: var(--danger-color);
   }
 }
 
@@ -869,7 +1062,8 @@ onUnmounted(() => {
   flex: 1 1 0;
   min-height: 0;
   overflow-y: auto;
-  padding: 8px 0;
+  padding: 0 0 var(--space-4);
+  @include custom-scrollbar(3px);
 }
 
 // TransitionGroup animations for queue reordering
@@ -881,11 +1075,11 @@ onUnmounted(() => {
 }
 .queue-list-enter-from {
   opacity: 0;
-  transform: translateX(-20px);
+  transform: translateX(-12px);
 }
 .queue-list-leave-to {
   opacity: 0;
-  transform: translateX(20px);
+  transform: translateX(12px);
 }
 .queue-list-move {
   transition: transform var(--duration-normal) var(--ease-out-expo);
@@ -894,62 +1088,104 @@ onUnmounted(() => {
 .queue-item {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 8px 12px;
-  margin-bottom: 4px;
-  background: var(--bg-card, transparent);
-  border-radius: 8px;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3) var(--space-2) var(--space-1);
+  margin: 0 var(--space-2);
+  min-height: 52px;
+  border-radius: var(--radius-sm);
   user-select: none;
+  -webkit-user-select: none;
   transition:
-    transform 0.2s ease,
-    background 0.2s,
-    opacity 0.2s;
+    background-color var(--duration-fast) ease,
+    opacity var(--duration-fast) ease;
   cursor: pointer;
+  position: relative;
+
+  &::after {
+    content: '';
+    position: absolute;
+    left: 52px;
+    right: 0;
+    bottom: 0;
+    height: 1px;
+    background-color: var(--hairline);
+    transform: scaleY(0.5);
+    transform-origin: bottom;
+  }
+
+  &:last-child::after {
+    display: none;
+  }
 
   &:hover {
-    background: var(--bg-card-hover);
+    background: var(--bg-card-dimmed);
+  }
+
+  &.current {
+    // Same treatment as the song rows: a faint accent wash plus the accent
+    // name, so "where am I" is legible without reading.
+    background: var(--selection-bg);
+
+    .queue-song-name {
+      color: var(--primary-color);
+      font-weight: var(--font-weight-semibold);
+    }
   }
 
   &.dragging-source {
-    transform: scale(1.02);
-    opacity: 0.6;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    opacity: 0.55;
+    background: var(--bg-secondary);
     cursor: grabbing;
   }
 
-  &.drag-over {
-    border-top: 2px solid var(--primary-color);
+  &.drag-over::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: -1px;
+    height: 2px;
+    background: var(--primary-color);
+    border-radius: 2px;
   }
 
   .drag-handle {
     cursor: grab;
     display: flex;
     align-items: center;
+    color: var(--text-disabled);
+    padding: var(--space-2) var(--space-1);
     touch-action: none;
+    flex-shrink: 0;
+
     &:active {
       cursor: grabbing;
+      color: var(--text-secondary);
     }
   }
 
   .queue-index {
-    width: 40px;
-    font-size: 13px;
-    font-family: monospace;
-    color: var(--text-color);
+    width: 26px;
+    flex-shrink: 0;
+    font-size: var(--font-size-xs);
+    color: var(--text-tertiary);
     text-align: center;
+    font-variant-numeric: tabular-nums;
   }
 
   .queue-song-info {
     flex: 1;
     min-width: 0;
+
     .queue-song-name {
-      font-size: 14px;
-      font-weight: 500;
+      font-size: var(--font-size-sm);
+      font-weight: var(--font-weight-medium);
       color: var(--text-color);
       @include text-ellipsis;
     }
+
     .queue-song-artist {
-      font-size: 12px;
+      font-size: var(--font-size-xs);
       color: var(--text-secondary);
       @include text-ellipsis;
     }
@@ -957,87 +1193,11 @@ onUnmounted(() => {
 }
 
 .past-song {
-  background: var(--bg-card-dimmed, rgba(0, 0, 0, 0.02));
-  opacity: 0.7;
+  opacity: 0.45;
+
   .queue-index,
   .queue-song-name {
-    color: var(--text-disabled, #aaa);
-  }
-}
-.controls {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: var(--space-5);
-}
-
-.control-btn {
-  background: none;
-  border: none;
-  cursor: pointer;
-  transition: transform var(--duration-fast) ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  &:hover {
-    transform: scale(1.1);
-  }
-
-  &:active {
-    transform: scale(0.92);
-  }
-
-  &.play-pause {
-    &:hover {
-      transform: scale(1.08);
-    }
-    &:active {
-      animation: scale-bounce 0.35s var(--ease-out-back);
-    }
-  }
-}
-.rate-button-top-right {
-  position: fixed;
-  top: 16px;
-  right: 16px;
-  z-index: 200;
-}
-
-.rate-fab {
-  min-width: 48px;
-  height: 40px;
-  border-radius: var(--radius-xl);
-  background: var(--glass-bg);
-  backdrop-filter: blur(var(--glass-blur));
-  -webkit-backdrop-filter: blur(var(--glass-blur));
-  border: 1px solid var(--glass-border);
-  box-shadow: var(--elevation-1);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition:
-    transform var(--duration-fast) ease,
-    background var(--duration-fast) ease;
-  padding: 0 var(--space-3);
-
-  &:hover {
-    background: var(--bg-card-hover);
-    transform: scale(1.05);
-  }
-
-  &:active {
-    transform: scale(0.95);
-  }
-
-  .rate-text {
-    font-size: 14px;
-    font-weight: 500;
-    color: var(--primary-color);
-    font-feature-settings: 'tnum';
-    font-variant-numeric: tabular-nums;
-    white-space: nowrap;
+    color: var(--text-tertiary);
   }
 }
 </style>

@@ -92,19 +92,19 @@ const onMenuSelect = (action: string, playlist: Playlist) => {
       <div v-if="isSelectMode" class="bottom-actions">
         <div class="actions-container">
           <button class="action-btn" type="button" @click="selectAll">
-            <Icon :width="20" color="var(--primary-color)" icon="mdi:select-all" />
+            <Icon :width="20" icon="mdi:select-all" />
             <span>{{ $t('playList.selectAll') }}</span>
           </button>
           <button class="action-btn" type="button" @click="clearSelection">
-            <Icon :width="20" color="var(--primary-color)" icon="mdi:select-off" />
+            <Icon :width="20" icon="mdi:select-off" />
             <span>{{ $t('playList.clear') }}</span>
           </button>
           <button class="action-btn danger" type="button" @click="batchDelete">
-            <Icon :width="20" color="var(--primary-color)" icon="mdi:delete" />
+            <Icon :width="20" icon="mdi:delete" />
             <span>{{ $t('playList.delete', { count: selectedIds.size }) }}</span>
           </button>
           <button class="action-btn" type="button" @click="exitSelectMode">
-            <Icon :width="20" color="var(--primary-color)" icon="mdi:close" />
+            <Icon :width="20" icon="mdi:close" />
             <span>{{ $t('playList.cancel') }}</span>
           </button>
         </div>
@@ -118,14 +118,14 @@ const onMenuSelect = (action: string, playlist: Playlist) => {
   position: relative;
   height: 100%;
   overflow-y: auto;
-  padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
+  padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+  @include custom-scrollbar(3px);
 }
 
 .list-container {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 12px;
+  padding: 0;
 }
 
 .bottom-actions {
@@ -135,57 +135,52 @@ const onMenuSelect = (action: string, playlist: Playlist) => {
   right: 0;
   background: var(--bottom-actions-bg);
   border-top: 1px solid var(--bottom-actions-border);
-  box-shadow: var(--shadow-bottom);
   z-index: 200;
-  backdrop-filter: blur(10px);
-  background-color: rgba(var(--bottom-actions-bg-rgb), 0.9);
   padding-bottom: env(safe-area-inset-bottom, 0px);
+  animation: sheetIn var(--duration-normal) var(--ease-out-expo);
 }
 
 .actions-container {
   display: flex;
-  justify-content: space-around;
-  align-items: center;
-  padding: 12px 16px;
-  gap: 16px;
+  justify-content: flex-start;
+  align-items: stretch;
+  padding: var(--space-2) var(--space-3);
+  gap: var(--space-1);
   overflow-x: auto;
   overflow-y: hidden;
   flex-wrap: nowrap;
-  white-space: nowrap;
-  scrollbar-width: thin;
+  scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
 
   &::-webkit-scrollbar {
-    height: 4px;
-  }
-  &::-webkit-scrollbar-track {
-    background: var(--scrollbar-track);
-    border-radius: 4px;
-  }
-  &::-webkit-scrollbar-thumb {
-    background: var(--scrollbar-thumb);
-    border-radius: 4px;
-    &:hover {
-      background: var(--scrollbar-thumb-hover);
-    }
+    display: none;
   }
 }
 
 .action-btn {
+  flex: 1 0 auto;
+  min-width: 64px;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 4px;
   background: transparent;
   border: none;
-  font-size: 12px;
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
   color: var(--text-color);
   cursor: pointer;
-  transition: opacity 0.2s;
-  padding: 8px;
+  padding: var(--space-2) var(--space-3);
+  white-space: nowrap;
+  transition: background-color var(--duration-fast) ease;
 
   &:hover {
-    opacity: 0.7;
+    background: var(--setting-hover-bg);
+  }
+
+  &:active {
+    background: var(--hairline);
   }
 
   &.danger {

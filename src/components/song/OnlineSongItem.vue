@@ -99,13 +99,7 @@ const onMenuItemSelect = computed(() => {
         :src="coverSrc"
         @error="coverSrc = DEFAULT_COVER"
       />
-      <Icon
-        v-else
-        :width="36"
-        class="default-cover"
-        color="var(--primary-color)"
-        icon="mdi:music"
-      />
+      <Icon v-else :width="20" class="default-cover" icon="mdi:music-note" />
     </div>
 
     <div class="song-info">
@@ -134,35 +128,32 @@ const onMenuItemSelect = computed(() => {
 
 <style lang="scss" scoped>
 .song-item {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  gap: var(--space-4);
-  padding: var(--space-3) var(--space-4);
-  @include card-base;
+  @include list-row;
   cursor: pointer;
-  animation: slideInUp 0.35s var(--ease-out-expo) both;
+  -webkit-user-select: none;
+  user-select: none;
 
   .song-cover {
-    @include cover-thumbnail(var(--radius-md), 56px);
+    @include cover-thumbnail(var(--radius-sm), 44px);
+
+    .default-cover {
+      color: var(--text-tertiary);
+    }
   }
 
   .song-info {
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
+    @include media-info;
 
     .song-name {
-      font-size: 16px;
-      font-weight: 600;
+      font-size: var(--font-size-base);
+      font-weight: var(--font-weight-medium);
+      letter-spacing: -0.005em;
       color: var(--text-color);
       @include text-ellipsis;
     }
 
     .song-artist {
-      font-size: 13px;
+      font-size: var(--font-size-sm);
       color: var(--text-secondary);
       @include text-ellipsis;
     }
@@ -172,13 +163,14 @@ const onMenuItemSelect = computed(() => {
     flex-shrink: 0;
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: var(--space-1);
 
     .song-duration {
-      font-size: 13px;
-      color: var(--text-secondary);
-      font-feature-settings: 'tnum';
+      font-size: var(--font-size-sm);
+      color: var(--text-tertiary);
       font-variant-numeric: tabular-nums;
+      font-feature-settings: 'tnum';
+      margin-right: var(--space-1);
     }
   }
 }

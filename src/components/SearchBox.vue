@@ -91,7 +91,7 @@ defineExpose({
         type="button"
         @click="handleSearch"
       >
-        <Icon :width="iconSize" color="var(--primary-color)" icon="mdi:magnify" />
+        <Icon :width="iconSize" icon="mdi:magnify" />
       </button>
       <input
         ref="inputRef"
@@ -112,7 +112,7 @@ defineExpose({
         type="button"
         @click="clearInput"
       >
-        <Icon :width="iconSize" color="var(--primary-color)" icon="mdi:close-circle" />
+        <Icon :width="iconSize" icon="mdi:close-circle" />
       </button>
 
       <button
@@ -131,68 +131,74 @@ defineExpose({
 <style lang="scss" scoped>
 .search-container {
   width: 100%;
+  // As a flex item in a page header this box would otherwise refuse to shrink
+  // below its min-content width, so the clear button appearing after the first
+  // character would push the search button off-screen on narrow phones.
+  min-width: 0;
+  flex: 1 1 auto;
   box-sizing: border-box;
 }
 
 .size-small {
   .search-box {
-    padding: 2px 8px;
-    border-radius: 20px;
+    padding: 0 2px 0 6px;
+    border-radius: var(--radius-sm);
+    height: 40px;
   }
   .search-input {
-    font-size: 13px;
-    padding: 4px 0;
+    font-size: var(--font-size-sm);
+    padding: 0;
   }
   .search-button {
-    padding: 4px 12px;
-    font-size: 12px;
+    padding: 0 12px;
+    font-size: var(--font-size-xs);
   }
 }
 
 .size-medium {
   .search-box {
-    padding: 4px 12px;
-    border-radius: 24px;
+    padding: 0 6px 0 10px;
+    border-radius: var(--radius-md);
+    height: 42px;
   }
   .search-input {
-    font-size: 15px;
-    padding: 6px 0;
+    font-size: var(--font-size-base);
+    padding: 0;
   }
   .search-button {
-    padding: 6px 16px;
-    font-size: 14px;
+    padding: 6px 14px;
+    font-size: var(--font-size-sm);
   }
 }
 
 .size-large {
   .search-box {
-    padding: 6px 16px;
-    border-radius: 32px;
+    padding: 0 8px 0 12px;
+    border-radius: var(--radius-md);
+    height: 48px;
   }
   .search-input {
-    font-size: 16px;
-    padding: 8px 0;
+    font-size: var(--font-size-lg);
+    padding: 0;
   }
   .search-button {
-    padding: 8px 20px;
-    font-size: 15px;
+    padding: 8px 18px;
+    font-size: var(--font-size-base);
   }
 }
 
+// A filled field on the page ground: no border, no shadow, no focus glow.
+// Focus is shown by the caret and a hairline that takes the accent.
 .search-box {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 4px;
   background-color: var(--bg-input);
-  border: 1px solid var(--input-border);
-  transition:
-    border-color var(--duration-normal) ease,
-    box-shadow var(--duration-normal) ease;
-  box-shadow: var(--elevation-1);
+  border: 1px solid transparent;
+  transition: border-color var(--duration-normal) ease;
 
   &:focus-within {
-    box-shadow: 0 0 0 3px rgba(var(--primary-color-rgb), 0.25);
-    border-color: var(--primary-color);
+    border-color: var(--focus-ring);
   }
 }
 
@@ -200,24 +206,22 @@ defineExpose({
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 40px;
-  min-height: 40px;
+  min-width: 36px;
+  min-height: 36px;
   padding: 0;
   border: none;
   background: transparent;
   cursor: pointer;
-  color: var(--text-color);
-  opacity: 0.6;
-  transition: opacity 0.2s;
-  border-radius: 50%;
+  color: var(--text-tertiary);
+  transition: color var(--duration-fast) ease;
+  border-radius: var(--radius-xs);
   flex-shrink: 0;
 
   &:hover {
-    opacity: 1;
+    color: var(--text-color);
   }
 
   &:focus-visible {
-    opacity: 1;
     outline: 2px solid var(--primary-color);
     outline-offset: -2px;
   }
@@ -236,8 +240,7 @@ defineExpose({
   font-family: inherit;
 
   &::placeholder {
-    color: var(--text-color);
-    opacity: 0.5;
+    color: var(--text-tertiary);
   }
 
   &:disabled {
@@ -247,17 +250,24 @@ defineExpose({
 }
 
 .search-button {
-  background-color: var(--text-color);
-  color: var(--bg-color);
+  display: inline-flex;
+  align-items: center;
+  align-self: stretch;
+  margin: 1px 0;
+  // The one committed action on the page, so it takes the accent instead of
+  // the graphite used for everything else.
+  background-color: var(--primary-color);
+  color: var(--on-primary-color);
   border: none;
-  border-radius: 20px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
-  transition: opacity 0.2s;
+  transition: opacity var(--duration-fast) ease;
   white-space: nowrap;
-  font-weight: 500;
+  font-weight: var(--font-weight-medium);
+  flex-shrink: 0;
 
   &:hover:not(:disabled) {
-    opacity: 0.85;
+    opacity: 0.82;
   }
 
   &:disabled {

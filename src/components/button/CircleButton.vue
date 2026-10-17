@@ -4,8 +4,8 @@ import type { CircleButtonProps } from '@/utils/interface.ts'
 
 const props = withDefaults(defineProps<CircleButtonProps>(), {
   size: 48,
-  bgColor: 'var(--bg-color, #e0e0e0)',
-  iconColor: 'var(--primary-color)',
+  bgColor: 'transparent',
+  iconColor: 'var(--text-secondary)',
   disabled: false,
   label: '',
 })
@@ -52,14 +52,13 @@ const expandHitArea = typeof props.size !== 'number' || props.size >= 40
   align-items: center;
   justify-content: center;
   border: none;
-  border-radius: 50%;
+  border-radius: var(--radius-full);
   cursor: pointer;
-  transition: all 0.2s ease;
   outline: none;
   padding: 0;
-  background-color: var(--bg-color);
-  color: var(--text-color);
-  box-shadow: var(--shadow-sm);
+  background-color: transparent;
+  color: var(--text-secondary);
+  transition: background-color var(--duration-fast) ease;
   // Keep the visual size configurable while guaranteeing a 48px hit area.
   position: relative;
 
@@ -71,25 +70,24 @@ const expandHitArea = typeof props.size !== 'number' || props.size >= 40
     width: max(100%, 48px);
     height: max(100%, 48px);
     transform: translate(-50%, -50%);
-    border-radius: 50%;
+    border-radius: var(--radius-full);
   }
 
   &:hover:not(:disabled) {
-    transform: scale(1.05);
-    opacity: 0.9;
-    box-shadow: var(--shadow-md);
+    background-color: var(--header-back-hover);
   }
 
   &:active:not(:disabled) {
-    transform: scale(0.98);
+    background-color: var(--hairline-strong);
   }
 
   &:focus-visible {
-    box-shadow: 0 0 0 3px rgba(var(--primary-color-rgb), 0.4);
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
   }
 
   &:disabled {
-    opacity: 0.5;
+    opacity: 0.4;
     cursor: not-allowed;
   }
 }

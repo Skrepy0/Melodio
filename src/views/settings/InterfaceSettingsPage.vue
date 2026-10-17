@@ -19,7 +19,7 @@ const toggleDarkMode = () => {
   isDarkMode.value = appStore.darkMode
 }
 
-const presetColors = ['#1677ff', '#eb5da2', '#fa8c16', '#52c41a', '#722ed1', '#13c2c2']
+const presetColors = ['#3d63dd', '#d93a3a', '#c2571a', '#2f8f5b', '#7a4fd1', '#0f8f8f']
 
 const currentColor = ref(appStore.getThemeColor())
 
@@ -66,12 +66,7 @@ onMounted(() => {
         <div class="setting-item theme-color-item">
           <div class="setting-row">
             <div class="item-left">
-              <Icon
-                :width="22"
-                class="item-icon"
-                color="var(--primary-color)"
-                icon="material-symbols:palette-outline"
-              />
+              <Icon :width="22" class="item-icon" icon="mdi:palette-outline" />
               <span class="item-label">{{ $t('settings.interface.themeColor') }}</span>
             </div>
             <div class="color-picker-wrapper">
@@ -98,18 +93,15 @@ onMounted(() => {
               :key="color"
               :aria-checked="currentColor === color"
               :aria-label="color"
-              :style="{ backgroundColor: color }"
+              :style="{ '--swatch': color }"
               class="preset-color-item"
               role="radio"
               type="button"
               @click="selectPresetColor(color)"
             >
-              <Icon
-                v-if="currentColor === color"
-                color="#fff"
-                icon="material-symbols:check-small"
-                width="18"
-              />
+              <span class="preset-color-dot">
+                <Icon v-if="currentColor === color" color="#fff" icon="mdi:check" width="16" />
+              </span>
             </button>
           </div>
         </div>
@@ -124,16 +116,18 @@ onMounted(() => {
   .color-picker-wrapper {
     display: flex;
     align-items: center;
+
     .color-picker-trigger {
       display: inline-block;
-      width: 32px;
-      height: 32px;
-      border-radius: 50%;
-      border: 2px solid var(--border-color, #ddd);
+      width: 28px;
+      height: 28px;
+      border-radius: var(--radius-full);
+      border: 1px solid var(--hairline-strong);
       cursor: pointer;
       position: relative;
       overflow: hidden;
       flex-shrink: 0;
+
       .color-picker-input {
         position: absolute;
         top: -4px;
@@ -151,38 +145,48 @@ onMounted(() => {
 
   .preset-colors {
     display: flex;
-    gap: 12px;
-    margin-top: 12px;
+    gap: var(--space-3);
+    margin-top: var(--space-3);
+    padding: 0 var(--space-4) var(--space-2) calc(var(--space-4) + 34px);
     flex-wrap: wrap;
-    justify-content: center;
 
     .preset-color-item {
-      width: 28px;
-      height: 28px;
+      width: 40px;
+      height: 40px;
       padding: 0;
-      border-radius: 50%;
+      border-radius: var(--radius-full);
       cursor: pointer;
-      border: 2px solid transparent;
-      transition: all 0.2s;
+      background: transparent;
+      border: none;
       display: flex;
       align-items: center;
       justify-content: center;
+      flex-shrink: 0;
 
-      &:hover {
-        transform: scale(1.1);
-        border-color: var(--text-color, #333);
+      .preset-color-dot {
+        width: 26px;
+        height: 26px;
+        border-radius: var(--radius-full);
+        background-color: var(--swatch);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: transform var(--duration-fast) ease;
       }
 
-      &[aria-checked='true'] {
-        border-color: var(--text-color, #333);
+      &:hover .preset-color-dot {
+        transform: scale(1.08);
+      }
+
+      &[aria-checked='true'] .preset-color-dot {
         box-shadow:
-          0 0 0 2px var(--bg-color, #fff),
-          0 0 0 4px var(--primary, #1677ff);
+          0 0 0 2px var(--bg-color),
+          0 0 0 4px var(--swatch);
       }
 
       &:focus-visible {
         outline: 2px solid var(--primary-color);
-        outline-offset: 3px;
+        outline-offset: -2px;
       }
     }
   }

@@ -116,129 +116,80 @@ defineExpose({ show })
 
 <style lang="scss" scoped>
 .playlist-selector-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 20000;
-  backdrop-filter: blur(4px);
+  @include dialog-overlay(20000);
 }
 
 .playlist-selector-container {
-  width: 320px;
-  max-height: 80%;
-  background: var(--bg-color);
-  border-radius: 24px;
-  overflow: hidden;
+  @include dialog-container(340px);
+  max-width: calc(100vw - 48px);
+  max-height: 72vh;
   display: flex;
   flex-direction: column;
-  box-shadow:
-    0 20px 35px -8px rgba(0, 0, 0, 0.2),
-    0 0 0 1px rgba(0, 0, 0, 0.02);
 }
 
 .playlist-selector-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 18px 20px;
-  background: var(--bg-header);
-  border-bottom: 1px solid var(--header-border-bottom);
+  gap: var(--space-3);
+  padding: var(--space-5) var(--space-4) var(--space-3) var(--space-5);
+  border-bottom: 1px solid var(--hairline);
+  flex-shrink: 0;
+
   h3 {
     margin: 0;
-    font-size: 18px;
-    font-weight: 600;
+    @include text-ellipsis;
+    font-size: var(--font-size-lg);
+    font-weight: var(--font-weight-semibold);
+    letter-spacing: -0.01em;
     color: var(--text-color);
-    letter-spacing: -0.3px;
   }
+
   .close-btn {
-    background: rgba(0, 0, 0, 0.05);
-    border: none;
-    font-size: 18px;
-    cursor: pointer;
-    color: var(--text-secondary);
-    width: 32px;
-    height: 32px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 50%;
-    transition: all 0.2s;
-    &:hover {
-      background: rgba(0, 0, 0, 0.1);
-      transform: scale(1.02);
-    }
+    @include icon-button(32px);
+    flex-shrink: 0;
   }
 }
 
 .playlist-selector-list {
   flex: 1;
   overflow-y: auto;
-  padding: 8px 0;
-  scrollbar-width: thin;
-  &::-webkit-scrollbar {
-    width: 4px;
-  }
-  &::-webkit-scrollbar-track {
-    background: var(--scrollbar-track);
-    border-radius: 4px;
-  }
-  &::-webkit-scrollbar-thumb {
-    background: var(--scrollbar-thumb);
-    border-radius: 4px;
-  }
+  padding: var(--space-1) 0 var(--space-2);
+  @include custom-scrollbar(3px);
 }
 
 .playlist-selector-item {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  width: 100%;
-  padding: 12px 16px;
-  border: none;
-  background: transparent;
-  font: inherit;
-  text-align: left;
-  color: var(--text-color);
-  cursor: pointer;
-  transition: all 0.2s;
-  &:hover,
+  @include list-row;
+  min-height: 60px;
+
   &:focus-visible {
-    background: var(--setting-hover-bg);
-    transform: translateX(4px);
-    outline: none;
+    outline: 2px solid var(--primary-color);
+    outline-offset: -2px;
   }
 }
 
 .playlist-info {
   flex: 1;
   min-width: 0;
+
   .playlist-name {
-    font-size: 15px;
-    font-weight: 500;
+    font-size: var(--font-size-base);
+    font-weight: var(--font-weight-medium);
     color: var(--text-color);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    margin-bottom: 4px;
+    @include text-ellipsis;
   }
+
   .playlist-desc {
-    font-size: 12px;
+    margin-top: 1px;
+    font-size: var(--font-size-sm);
     color: var(--text-secondary);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    @include text-ellipsis;
   }
 }
 
 .fade-enter-active,
 .fade-leave-active {
-  transition: opacity 0.2s ease;
+  transition: opacity var(--duration-fast) ease;
 }
 .fade-enter-from,
 .fade-leave-to {

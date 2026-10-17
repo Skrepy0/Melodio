@@ -132,6 +132,11 @@ const { dropdownVisible } = useDropdownControl(props, emit)
 // can be stale), retry via the web providers before showing the default icon.
 const { coverSrc, isCoverLoading, onCoverError } = useCoverSrc(() => props.song)
 
+// The row that owns the current track is marked so the user can find their
+// place in a long list without opening the player.
+const isCurrent = computed(() => appStore.currentSong?.id === props.song.id)
+const isPlaying = computed(() => appStore.getPlayData().isPlaying)
+
 const menuOptions = computed<DropdownItem[]>(() => {
   if (props.operations) {
     return props.operations
@@ -173,7 +178,7 @@ const onMenuItemSelect = computed(() => {
 </script>
 
 <template>
-  <div class="song-item" @click="onCardClick">
+  <div :class="{ current: isCurrent }" class="song-item" @click="onCardClick">
     <div class="song-cover">
       <img
         v-if="coverSrc && coverSrc !== DEFAULT_COVER && !isCoverLoading"
@@ -181,13 +186,7 @@ const onMenuItemSelect = computed(() => {
         :src="coverSrc"
         @error="onCoverError"
       />
-      <Icon
-        v-else
-        :width="36"
-        class="default-cover"
-        color="var(--primary-color)"
-        icon="mdi:music"
-      />
+      <Icon v-else :width="20" class="default-cover" icon="mdi:music-note" />
     </div>
 
     <div class="song-info">
@@ -196,7 +195,10 @@ const onMenuItemSelect = computed(() => {
     </div>
 
     <div class="song-actions">
-      <span class="song-duration">{{ formatDuration(song.duration) }}</span>
+      <span v-if="isCurrent" :class="{ paused: !isPlaying }" class="equalizer" aria-hidden="true">
+        <i></i><i></i><i></i>
+      </span>
+      <span v-else class="song-duration">{{ formatDuration(song.duration) }}</span>
       <DropdownButton
         v-if="props.showOperations"
         v-model:visible="dropdownVisible"
@@ -216,35 +218,32 @@ const onMenuItemSelect = computed(() => {
 
 <style lang="scss" scoped>
 .song-item {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  gap: var(--space-4);
-  padding: var(--space-3) var(--space-4);
-  @include card-base;
+  @include list-row;
   cursor: pointer;
-  animation: slideInUp 0.35s var(--ease-out-expo) both;
+  -webkit-user-select: none;
+  user-select: none;
 
   .song-cover {
-    @include cover-thumbnail(var(--radius-md), 56px);
+    @include cover-thumbnail(var(--radius-sm), 44px);
+
+    .default-cover {
+      color: var(--text-tertiary);
+    }
   }
 
   .song-info {
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
+    @include media-info;
 
     .song-name {
-      font-size: 16px;
-      font-weight: 600;
+      font-size: var(--font-size-base);
+      font-weight: var(--font-weight-medium);
+      letter-spacing: -0.005em;
       color: var(--text-color);
       @include text-ellipsis;
     }
 
     .song-artist {
-      font-size: 13px;
+      font-size: var(--font-size-sm);
       color: var(--text-secondary);
       @include text-ellipsis;
     }
@@ -254,13 +253,60 @@ const onMenuItemSelect = computed(() => {
     flex-shrink: 0;
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: var(--space-1);
 
     .song-duration {
-      font-size: 13px;
-      color: var(--text-secondary);
-      font-feature-settings: 'tnum';
+      font-size: var(--font-size-sm);
+      color: var(--text-tertiary);
       font-variant-numeric: tabular-nums;
+      font-feature-settings: 'tnum';
+      margin-right: var(--space-1);
+    }
+  }
+
+  // Playing state is the only colour a row is allowed to carry: the name takes
+  // the accent and the row gets a faint tint of it so the current track reads
+  // even when the list is scrolled quickly.
+  &.current {
+    background-color: var(--selection-bg);
+
+    .song-name {
+      color: var(--primary-color);
+    }
+
+    .song-artist {
+      color: var(--text-secondary);
+    }
+  }
+
+  .equalizer {
+    display: flex;
+    align-items: flex-end;
+    gap: 2px;
+    height: 14px;
+    margin-right: 10px;
+
+    i {
+      display: block;
+      width: 2px;
+      height: 100%;
+      border-radius: 1px;
+      background-color: var(--primary-color);
+      transform-origin: bottom;
+      animation: equalizer 0.9s var(--ease-in-out) infinite;
+
+      &:nth-child(2) {
+        animation-delay: 0.18s;
+      }
+
+      &:nth-child(3) {
+        animation-delay: 0.36s;
+      }
+    }
+
+    &.paused i {
+      animation-play-state: paused;
+      transform: scaleY(0.35);
     }
   }
 }

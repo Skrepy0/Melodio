@@ -206,193 +206,126 @@ const infoFields = computed<InfoField[]>(() => {
   </Transition>
 </template>
 
-<style scoped>
-/* ---------- 覆盖层 ---------- */
+<style lang="scss" scoped>
 .info-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: var(--overlay-color, rgba(0, 0, 0, 0.55));
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 10000;
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  @include dialog-overlay;
 }
 
-/* ---------- 卡片 ---------- */
 .info-card {
-  width: 380px;
-  max-width: 92vw;
+  @include dialog-container(380px);
+  max-width: calc(100vw - 48px);
   max-height: 80vh;
-  background: var(--bg-color, #ffffff);
-  border-radius: 20px;
-  box-shadow: var(--shadow-md, 0 20px 60px rgba(0, 0, 0, 0.3));
-  overflow: hidden;
-  animation: scaleIn 0.25s cubic-bezier(0.21, 1.02, 0.35, 1);
   display: flex;
   flex-direction: column;
 }
 
-/* ---------- 头部 ---------- */
 .info-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 18px 20px 12px 20px;
-  border-bottom: 1px solid var(--setting-border, #f0f0f0);
+  gap: var(--space-3);
+  padding: var(--space-5) var(--space-5) var(--space-3);
+  border-bottom: 1px solid var(--hairline);
   flex-shrink: 0;
 }
 
 .info-title {
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--text-color, #1a1a1a);
-  letter-spacing: 0.3px;
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: -0.01em;
+  color: var(--text-color);
 }
 
 .close-btn {
-  width: 32px;
-  height: 32px;
+  padding: 4px 10px;
   border: none;
+  border-radius: var(--radius-sm);
   background: transparent;
-  font-size: 20px;
-  line-height: 1;
-  color: var(--text-secondary, #999);
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: var(--font-size-sm);
   cursor: pointer;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition:
-    background 0.2s,
-    color 0.2s;
-}
-.close-btn:hover {
-  background: var(--header-back-hover, #f5f5f5);
-  color: var(--text-color, #1a1a1a);
+  transition: background-color var(--duration-fast) ease;
+
+  &:hover {
+    background: var(--header-back-hover);
+    color: var(--text-color);
+  }
 }
 
-/* ---------- 信息主体 ---------- */
 .info-body {
-  padding: 14px 20px 10px 20px;
-  overflow-y: auto;
   flex: 1;
+  overflow-y: auto;
+  padding: var(--space-2) var(--space-5);
+  @include custom-scrollbar(3px);
 }
 
 .info-row {
   display: flex;
   align-items: flex-start;
-  padding: 6px 0;
-  border-bottom: 1px solid var(--setting-border, #f5f5f5);
-  gap: 16px;
-}
-.info-row:last-child {
-  border-bottom: none;
+  gap: var(--space-4);
+  padding: var(--space-3) 0;
+  position: relative;
+
+  & + &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background-color: var(--hairline);
+    transform: scaleY(0.5);
+  }
 }
 
 .info-label {
   flex: 0 0 68px;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text-secondary, #888);
-  letter-spacing: 0.3px;
+  font-size: var(--font-size-sm);
+  color: var(--text-tertiary);
   padding-top: 1px;
 }
 
 .info-value {
   flex: 1;
-  font-size: 14px;
-  color: var(--text-color, #1a1a1a);
+  min-width: 0;
+  font-size: var(--font-size-base);
+  color: var(--text-color);
   word-break: break-word;
-  line-height: 1.5;
+  line-height: var(--line-height-normal);
 }
 
-/* ---------- 底部 ---------- */
 .info-footer {
-  padding: 12px 20px 18px 20px;
-  border-top: 1px solid var(--setting-border, #f0f0f0);
   display: flex;
   justify-content: flex-end;
+  padding: var(--space-3) var(--space-5) var(--space-4);
+  border-top: 1px solid var(--hairline);
   flex-shrink: 0;
 }
 
 .footer-btn {
-  padding: 8px 28px;
+  padding: 8px 24px;
   border: none;
-  border-radius: 20px;
-  background: var(--primary-color, #3498db);
-  color: #fff;
-  font-size: 14px;
-  font-weight: 500;
+  border-radius: var(--radius-pill);
+  background: var(--primary-color);
+  color: var(--on-primary-color);
+  font: inherit;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
   cursor: pointer;
-  transition:
-    background 0.2s,
-    transform 0.15s;
-}
-.footer-btn:hover {
-  background: var(--primary-color-dark, #2980b9);
-  transform: scale(1.02);
-}
-.footer-btn:active {
-  transform: scale(0.97);
+  transition: opacity var(--duration-fast) ease;
+
+  &:active {
+    opacity: 0.82;
+  }
 }
 
-/* ---------- 动画 ---------- */
 .fade-enter-active,
 .fade-leave-active {
-  transition: opacity 0.25s ease;
+  transition: opacity var(--duration-fast) ease;
 }
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
-}
-
-@keyframes scaleIn {
-  0% {
-    opacity: 0;
-    transform: scale(0.92) translateY(12px);
-  }
-  100% {
-    opacity: 1;
-    transform: scale(1) translateY(0);
-  }
-}
-
-/* ---------- 暗色适配 ---------- */
-@media (prefers-color-scheme: dark) {
-  .info-card {
-    background: var(--bg-color, #1e1e1e);
-  }
-  .info-header {
-    border-bottom-color: var(--setting-border, #333);
-  }
-  .info-row {
-    border-bottom-color: var(--setting-border, #2a2a2a);
-  }
-  .info-footer {
-    border-top-color: var(--setting-border, #333);
-  }
-  .close-btn:hover {
-    background: var(--header-back-hover, #2a2a2a);
-  }
-}
-
-/* ---------- 滚动条 ---------- */
-.info-body::-webkit-scrollbar {
-  width: 4px;
-}
-.info-body::-webkit-scrollbar-track {
-  background: transparent;
-}
-.info-body::-webkit-scrollbar-thumb {
-  background: var(--setting-border, #ddd);
-  border-radius: 4px;
-}
-.info-body::-webkit-scrollbar-thumb:hover {
-  background: var(--text-secondary, #aaa);
 }
 </style>

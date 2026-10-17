@@ -8,7 +8,6 @@ import toast from '@/utils/createToast'
 import { useI18n } from 'vue-i18n'
 import router from '@/router'
 import { showConfirm } from '@/utils/createConfirm'
-import CircleButton from '@/components/button/CircleButton.vue'
 import { onBeforeRouteLeave } from 'vue-router'
 
 onBeforeRouteLeave(async (to, from, next) => {
@@ -260,16 +259,13 @@ const backWithoutSave = () => {
           type="button"
           @click="backWithoutSave"
         >
-          <Icon :width="24" color="var(--primary-color)" icon="mdi:arrow-left" />
+          <Icon :width="24" icon="mdi:chevron-left" />
         </button>
         <h2>{{ $t('editor.title') }}</h2>
       </div>
-      <CircleButton
-        :icon-color="'#1bd96a'"
-        :label="t('editor.a11y.save')"
-        icon="ic:twotone-save"
-        @click="saveOrder"
-      />
+      <button class="save-btn" type="button" @click="saveOrder">
+        {{ $t('editor.save') }}
+      </button>
     </div>
 
     <div class="sort-controls">
@@ -283,7 +279,7 @@ const backWithoutSave = () => {
         </select>
 
         <button class="sort-btn" @click="handleOrderToggle">
-          <Icon :icon="orderIcon" :width="20" color="var(--primary-color)" />
+          <Icon :icon="orderIcon" :width="18" />
           <span>{{ orderText }}</span>
         </button>
       </div>
@@ -307,7 +303,7 @@ const backWithoutSave = () => {
           @pointerdown.prevent="onDragStart($event, idx)"
           @touchstart.prevent
         >
-          <Icon :width="24" color="var(--text-secondary)" icon="mdi:drag-vertical" />
+          <Icon :width="20" icon="mdi:drag-vertical" />
         </div>
         <div class="song-item-wrapper">
           <SongItem
@@ -331,7 +327,7 @@ const backWithoutSave = () => {
   display: flex;
   flex-direction: column;
   height: 100dvh;
-  padding: 16px 16px 0;
+  padding-top: env(safe-area-inset-top, 0px);
   background-color: var(--bg-color);
 }
 
@@ -339,37 +335,49 @@ const backWithoutSave = () => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 12px;
+  gap: var(--space-3);
+  min-height: 52px;
+  padding: 0 var(--space-2) 0 var(--space-2);
   flex-shrink: 0;
 
   .header-left {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: var(--space-2);
+    min-width: 0;
   }
 
   .back-btn {
-    background: none;
-    border: none;
-    padding: 6px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 50%;
-    transition: background-color 0.2s;
-    min-width: 36px;
-    min-height: 36px;
-    &:hover {
-      background-color: var(--bg-card-hover);
-    }
+    @include icon-button(40px);
+    color: var(--text-color);
   }
 
   h2 {
-    font-size: 20px;
-    font-weight: 600;
-    color: var(--text-color);
     margin: 0;
+    @include text-ellipsis;
+    font-size: var(--font-size-lg);
+    font-weight: var(--font-weight-semibold);
+    letter-spacing: -0.01em;
+    color: var(--text-color);
+  }
+}
+
+.save-btn {
+  flex-shrink: 0;
+  margin-right: var(--space-2);
+  min-height: 36px;
+  padding: 0 18px;
+  border: none;
+  border-radius: var(--radius-pill);
+  background: var(--primary-color);
+  color: var(--on-primary-color);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  transition: opacity var(--duration-fast) ease;
+
+  &:active {
+    opacity: 0.8;
   }
 }
 
@@ -377,71 +385,61 @@ const backWithoutSave = () => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 12px;
-  gap: 8px;
+  gap: var(--space-3);
+  padding: var(--space-1) var(--space-4) var(--space-3);
   flex-wrap: nowrap;
   flex-shrink: 0;
 
   .sort-left {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--space-2);
     flex-wrap: nowrap;
+    min-width: 0;
   }
 
   .sort-btn {
     display: flex;
     align-items: center;
-    gap: 4px;
-    padding: 8px 12px;
-    background: var(--bg-card);
-    border: 1px solid var(--border-color, rgba(128, 128, 128, 0.2));
-    border-radius: 10px;
-    color: var(--text-color);
-    cursor: pointer;
-    font-size: 13px;
-    white-space: nowrap;
-    transition: background-color 0.2s;
+    gap: var(--space-1);
     min-height: 36px;
-    &:hover {
-      background: var(--bg-card-hover);
+    padding: 0 12px;
+    background: var(--bg-input);
+    border: none;
+    border-radius: var(--radius-sm);
+    color: var(--text-color);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+    white-space: nowrap;
+    cursor: pointer;
+
+    &:active {
+      background: var(--bg-secondary);
     }
   }
 
   .sort-select {
-    background: var(--bg-card);
-    border: 1px solid var(--border-color, rgba(128, 128, 128, 0.2));
-    border-radius: 10px;
-    color: var(--text-color);
-    font-size: 13px;
-    cursor: pointer;
     min-height: 36px;
-    appearance: none;
+    max-width: 150px;
+    padding: 0 28px 0 12px;
+    border: none;
+    border-radius: var(--radius-sm);
+    background-color: var(--bg-input);
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24'%3E%3Cpath fill='%23888' d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
-    background-position: right 10px center;
-    padding: 8px 30px 8px 10px;
-  }
-
-  .mode-select {
-    background-color: var(--primary-color-light, rgba(0, 122, 255, 0.1));
-    border-color: var(--primary-color);
+    background-position: right 8px center;
+    color: var(--text-color);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+    cursor: pointer;
+    appearance: none;
   }
 
   .song-count {
-    font-size: 13px;
-    color: var(--text-secondary);
+    font-size: var(--font-size-xs);
+    color: var(--text-tertiary);
     white-space: nowrap;
-  }
-
-  @media (max-width: 480px) {
-    .sort-select {
-      min-width: 120px;
-    }
-    .sort-btn {
-      padding: 6px 10px;
-      font-size: 12px;
-    }
+    flex-shrink: 0;
   }
 }
 
@@ -451,46 +449,45 @@ const backWithoutSave = () => {
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
-  &::-webkit-scrollbar {
-    width: 4px;
-  }
-  &::-webkit-scrollbar-thumb {
-    background: var(--border-color, #ccc);
-    border-radius: 4px;
-  }
+  padding-bottom: calc(var(--space-6) + env(safe-area-inset-bottom, 0px));
+  @include custom-scrollbar(3px);
 }
 
 .song-row {
   display: flex;
   align-items: center;
-  border-radius: 12px;
-  background-color: var(--bg-card);
-  transition:
-    transform 0.2s,
-    box-shadow 0.2s,
-    opacity 0.2s;
-  overflow: hidden;
-  margin: 0;
-  flex-shrink: 0; // 防止被压缩
+  position: relative;
+  flex-shrink: 0;
+  transition: opacity var(--duration-fast) ease;
+
+  // A single 2px rule at the drop edge marks the insertion point; nothing
+  // lifts or outlines the row itself.
+  &.drag-over::before {
+    content: '';
+    position: absolute;
+    left: var(--space-4);
+    right: 0;
+    top: 0;
+    height: 2px;
+    background-color: var(--primary-color);
+    z-index: 1;
+  }
 
   &.dragging-source {
     opacity: 0.4;
   }
-  &.drag-over {
-    box-shadow: 0 0 0 2px var(--primary-color);
-  }
 
   .drag-handle {
     flex-shrink: 0;
-    padding: 14px 8px;
-    cursor: grab;
-    touch-action: none;
     display: flex;
     align-items: center;
-    min-width: 40px;
     justify-content: center;
+    width: 36px;
+    align-self: stretch;
+    color: var(--text-tertiary);
+    cursor: grab;
+    touch-action: none;
+
     &:active {
       cursor: grabbing;
     }
@@ -504,9 +501,6 @@ const backWithoutSave = () => {
 }
 
 .empty-hint {
-  text-align: center;
-  padding: 60px 20px;
-  color: var(--text-secondary);
-  font-size: 15px;
+  @include empty-state;
 }
 </style>

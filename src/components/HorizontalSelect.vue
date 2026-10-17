@@ -30,7 +30,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div ref="scrollContainer" class="horizontal-select">
+  <div class="horizontal-select">
     <div
       v-for="(item, index) in options"
       :key="index"
@@ -48,31 +48,22 @@ onMounted(() => {
 </template>
 
 <style lang="scss" scoped>
+// A segmented control: one quiet track, one raised chip for the active view.
+// No gradient, no glow — the selected chip reads through contrast alone.
 .horizontal-select {
-  display: flex;
+  display: inline-flex;
   flex-direction: row;
   align-items: center;
-  gap: 12px;
+  gap: 2px;
+  padding: 3px;
+  background-color: var(--bg-input);
+  border-radius: var(--radius-md);
+  max-width: 100%;
   overflow-x: auto;
-  overflow-y: hidden;
-  white-space: nowrap;
-  padding: 8px 4px 12px;
-  cursor: default;
-  scroll-behavior: smooth;
-  scrollbar-width: thin;
+  scrollbar-width: none;
+
   &::-webkit-scrollbar {
-    height: 4px;
-  }
-  &::-webkit-scrollbar-track {
-    background: var(--scrollbar-track);
-    border-radius: 4px;
-  }
-  &::-webkit-scrollbar-thumb {
-    background: var(--scrollbar-thumb);
-    border-radius: 4px;
-    &:hover {
-      background: var(--scrollbar-thumb-hover);
-    }
+    display: none;
   }
 }
 
@@ -80,54 +71,47 @@ onMounted(() => {
   flex-shrink: 0;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 20px;
-  background-color: var(--bg-card);
-  border-radius: 40px;
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--text-color);
+  gap: 6px;
+  padding: 7px 14px;
+  background-color: transparent;
+  border-radius: calc(var(--radius-md) - 3px);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-secondary);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition:
+    background-color var(--duration-fast) ease,
+    color var(--duration-fast) ease,
+    box-shadow var(--duration-fast) ease;
   user-select: none;
-  box-shadow: var(--shadow-sm);
-  border: 1px solid var(--border-light);
+  -webkit-user-select: none;
 
-  &:hover:not(.disabled) {
-    background-color: var(--bg-card-hover);
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-md);
-    border-color: var(--border-light-hover);
+  &:hover:not(.selected):not(.disabled) {
+    color: var(--text-color);
   }
 
+  // The active view is state, so it is the one place in the control that takes
+  // the accent. The raised chip stays neutral so the track keeps its weight.
   &.selected {
-    background: linear-gradient(135deg, var(--primary-color), var(--primary-color-dark));
-    color: white;
-    border: none;
-    box-shadow: var(--selected-shadow);
+    background-color: var(--bg-elevated);
+    color: var(--primary-color);
+    box-shadow: var(--elevation-1);
+
     .item-icon {
-      color: white;
+      opacity: 1;
     }
   }
 
   &.disabled {
-    opacity: 0.5;
+    opacity: 0.45;
     cursor: not-allowed;
-    box-shadow: none;
-    &:hover {
-      transform: none;
-    }
   }
 }
 
 .item-icon {
   flex-shrink: 0;
-  color: inherit;
-  transition: transform 0.1s ease;
-}
-
-.select-item:active:not(.disabled) .item-icon {
-  transform: scale(0.95);
+  color: currentColor;
+  opacity: 0.85;
 }
 
 .item-label {

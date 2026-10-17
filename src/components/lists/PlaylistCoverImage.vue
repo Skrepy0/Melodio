@@ -30,7 +30,7 @@ const { coverSrc } = usePlaylistCover(toRef(props, 'playlist'), props.allowWebCo
     :style="{ width: `${size}px`, height: `${size}px`, borderRadius: radius }"
   >
     <template v-if="playlist.id === 0">
-      <Icon :width="iconSize" color="red" icon="si:heart-duotone" />
+      <Icon :width="iconSize" class="like-icon" icon="mdi:heart" />
     </template>
     <template v-else>
       <img
@@ -39,13 +39,7 @@ const { coverSrc } = usePlaylistCover(toRef(props, 'playlist'), props.allowWebCo
         :src="coverSrc"
         @error="coverSrc = DEFAULT_COVER"
       />
-      <Icon
-        v-else
-        :width="iconSize"
-        class="default-cover"
-        color="var(--primary-color)"
-        icon="mdi:playlist-music"
-      />
+      <Icon v-else :width="iconSize" class="default-cover" icon="mdi:playlist-music" />
     </template>
   </div>
 </template>
@@ -66,8 +60,11 @@ const { coverSrc } = usePlaylistCover(toRef(props, 'playlist'), props.allowWebCo
   }
 
   .default-cover {
-    color: var(--text-secondary);
-    opacity: 0.7;
+    color: var(--text-tertiary);
+  }
+
+  .like-icon {
+    color: var(--danger-color);
   }
 }
 </style>

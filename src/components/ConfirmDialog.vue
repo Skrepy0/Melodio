@@ -76,76 +76,29 @@ defineExpose({ show })
   </Transition>
 </template>
 
-<style scoped>
+<style lang="scss" scoped>
 .confirm-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: var(--overlay-color);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 10000;
-  backdrop-filter: blur(4px);
+  @include dialog-overlay;
 }
 
 .confirm-container {
-  width: 280px;
-  background: var(--bg-color);
-  border-radius: 16px;
-  box-shadow: var(--shadow-md);
-  overflow: hidden;
-  animation: scaleIn 0.2s ease;
+  @include dialog-container(300px);
+  max-width: calc(100vw - 48px);
 }
 
 .confirm-header {
-  padding: 16px 16px 0;
-  h3 {
-    margin: 0;
-    font-size: 18px;
-    font-weight: 600;
-    color: var(--text-color);
-  }
+  @include dialog-header;
 }
 
 .confirm-body {
-  padding: 16px;
-  p {
-    margin: 0;
-    font-size: 14px;
-    color: var(--text-secondary);
-  }
+  @include dialog-body;
 }
 
 .confirm-footer {
-  display: flex;
-  border-top: 1px solid var(--setting-border);
+  @include dialog-footer;
 }
 
 .confirm-btn {
-  flex: 1;
-  padding: 12px;
-  background: none;
-  border: none;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background 0.2s;
-
-  &.cancel {
-    color: var(--text-secondary);
-    &:hover {
-      background: var(--header-back-hover);
-    }
-  }
-
-  &.confirm {
-    color: var(--primary-color);
-    &:hover {
-      background: rgba(var(--primary-color-rgb), 0.05);
-    }
-  }
+  @include dialog-btn;
 }
 </style>

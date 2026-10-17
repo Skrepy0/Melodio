@@ -88,6 +88,7 @@ const toggleSelect = () => {
 
 <template>
   <div
+    :class="{ selected: selectable && selected }"
     class="song-item-wrapper"
     @click="onClick"
     @mousedown="onMouseDown"
@@ -98,10 +99,9 @@ const toggleSelect = () => {
   >
     <div v-show="selectable" class="checkbox-area">
       <Icon
-        :icon="selected ? 'mdi:checkbox-marked' : 'mdi:checkbox-blank-outline'"
+        :icon="selected ? 'mdi:check-circle' : 'mdi:circle-outline'"
         :width="22"
         class="checkbox"
-        color="var(--primary-color)"
         @click.stop="toggleSelect"
       />
     </div>
@@ -111,7 +111,7 @@ const toggleSelect = () => {
       :on-delete="handleDeleteSong"
       :onMenuItemSelect="props.onMenuItemSelect"
       :operations="props.operations"
-      :showOperations="props.showOperations"
+      :showOperations="props.showOperations && !selectable"
       :song="song"
       @click="onSongClick"
       @menu-select="onMenuSelect"
@@ -124,26 +124,41 @@ const toggleSelect = () => {
 .song-item-wrapper {
   display: flex;
   align-items: center;
-  gap: 8px;
-  transition: background 0.2s;
-  animation: slideInUp 0.3s ease both;
   min-width: 0;
   width: 100%;
+  transition: background-color var(--duration-fast) ease;
+
+  &.selected {
+    background-color: var(--selection-bg);
+  }
 }
 
 .checkbox-area {
   flex-shrink: 0;
   cursor: pointer;
-  padding: 8px;
+  padding: var(--space-3) 0 var(--space-3) var(--space-4);
+  display: flex;
+  align-items: center;
 }
 
 .checkbox {
   color: var(--primary-color);
+  transition: color var(--duration-fast) ease;
 }
 
 .select-mode-offset {
   flex: 1;
   min-width: 0;
+
+  // In select mode the checkbox owns the leading edge, so the row loses its
+  // own left padding and its divider starts at the row edge.
+  &.song-item {
+    padding-left: 0;
+
+    &::after {
+      left: 0;
+    }
+  }
 }
 
 .select-mode-offset :deep(.song-name),
