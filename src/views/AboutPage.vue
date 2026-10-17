@@ -35,23 +35,23 @@ const openUrl = async (url: string) => {
         <div class="app-version">v{{ version }}</div>
 
         <div class="info-section">
-          <div class="info-item" @click="openUrl(repoUrl)">
+          <button class="info-item" type="button" @click="openUrl(repoUrl)">
             <Icon :width="24" class="info-icon" icon="mdi:github" />
             <div class="info-text">
               <div class="info-label">{{ $t('about.repository') }}</div>
               <div class="info-value">GitHub / Skrepy0/Melodio</div>
             </div>
             <Icon :width="20" class="external-icon" icon="mdi:open-in-new" />
-          </div>
+          </button>
 
-          <div class="info-item" @click="openUrl(issuesUrl)">
+          <button class="info-item" type="button" @click="openUrl(issuesUrl)">
             <Icon :width="24" class="info-icon" icon="mdi:bug-outline" />
             <div class="info-text">
               <div class="info-label">{{ $t('about.feedback') }}</div>
               <div class="info-value">{{ $t('about.reportIssue') }}</div>
             </div>
             <Icon :width="20" class="external-icon" icon="mdi:open-in-new" />
-          </div>
+          </button>
 
           <div class="info-item">
             <Icon :width="24" class="info-icon" icon="mdi:account-circle-outline" />
@@ -98,37 +98,6 @@ const openUrl = async (url: string) => {
   background-color: var(--bg-color);
 }
 
-.about-header {
-  display: flex;
-  align-items: center;
-  padding: 0 16px;
-  height: 60px;
-  background-color: var(--bg-header);
-  border-bottom: 1px solid var(--header-border-bottom);
-  flex-shrink: 0;
-}
-
-.header-back {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  cursor: pointer;
-  border-radius: 50%;
-  transition: background 0.2s;
-  &:hover {
-    background-color: var(--header-back-hover);
-  }
-}
-
-.header-title {
-  margin-left: 12px;
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--text-color);
-}
-
 .about-content {
   flex: 1;
   overflow-y: auto;
@@ -136,18 +105,6 @@ const openUrl = async (url: string) => {
   display: flex;
   flex-direction: column;
   align-items: center;
-}
-
-.app-icon {
-  margin-bottom: 16px;
-  width: 100px;
-  height: 100px;
-  background: linear-gradient(135deg, var(--primary-color), var(--primary-color-dark));
-  border-radius: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: var(--shadow-md);
 }
 
 .app-name {
@@ -174,18 +131,27 @@ const openUrl = async (url: string) => {
 .info-item {
   display: flex;
   align-items: center;
+  width: 100%;
   padding: 16px;
   gap: 15px;
+  border: none;
   border-bottom: 1px solid var(--setting-border);
-  cursor: pointer;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  color: var(--text-color);
   transition: background 0.2s;
 
   &:last-child {
     border-bottom: none;
   }
 
-  &:hover {
-    background-color: var(--setting-hover-bg);
+  &[type='button'] {
+    cursor: pointer;
+
+    &:hover {
+      background-color: var(--setting-hover-bg);
+    }
   }
 }
 

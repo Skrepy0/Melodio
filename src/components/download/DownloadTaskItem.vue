@@ -199,7 +199,7 @@ function formatBytes(bytes: number) {
 }
 
 .error-text {
-  color: #ff6b6b;
+  color: var(--danger-color);
 }
 
 .actions {

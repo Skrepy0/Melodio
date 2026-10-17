@@ -1,9 +1,6 @@
 import { createVNode, render } from 'vue'
 import PromptComponent from '@/components/PromptDialog.vue'
 
-let container: HTMLDivElement | null = null
-let currentInstance: any = null
-
 export interface PromptOptions {
   title?: string
   message?: string
@@ -14,16 +11,7 @@ export interface PromptOptions {
 }
 
 export function showPrompt(options: PromptOptions = {}): Promise<string | null> {
-  if (currentInstance) {
-    currentInstance.unmount?.()
-    if (container?.parentNode) {
-      container.parentNode.removeChild(container)
-    }
-    container = null
-    currentInstance = null
-  }
-
-  container = document.createElement('div')
+  const container = document.createElement('div')
   document.body.appendChild(container)
 
   const vnode = createVNode(PromptComponent, {
@@ -37,10 +25,18 @@ export function showPrompt(options: PromptOptions = {}): Promise<string | null> 
 
   render(vnode, container)
 
-  currentInstance = vnode.component
-
-  if (currentInstance?.exposed?.show) {
-    return currentInstance.exposed.show() as Promise<string | null>
+  const cleanup = () => {
+    render(null, container)
+    if (container.parentNode) {
+      container.parentNode.removeChild(container)
+    }
   }
+
+  const instance = vnode.component
+
+  if (instance?.exposed?.show) {
+    return (instance.exposed.show() as Promise<string | null>).finally(cleanup)
+  }
+  cleanup()
   return Promise.resolve(null)
 }

@@ -5,8 +5,9 @@ import type { CircleButtonProps } from '@/utils/interface.ts'
 const props = withDefaults(defineProps<CircleButtonProps>(), {
   size: 48,
   bgColor: 'var(--bg-color, #e0e0e0)',
-  iconColor: 'var(--text-color, #333)',
+  iconColor: 'var(--primary-color)',
   disabled: false,
+  label: '',
 })
 
 const emit = defineEmits<{
@@ -21,10 +22,15 @@ const handleClick = (event: MouseEvent) => {
 
 const buttonSize = typeof props.size === 'number' ? `${props.size}px` : props.size
 const iconSize = typeof props.size === 'number' ? props.size * 0.55 : '24px'
+// Expand the tap target to 48px only for buttons that already read as standalone
+// controls. Compact row buttons (e.g. 32px) must not steal taps from their row.
+const expandHitArea = typeof props.size !== 'number' || props.size >= 40
 </script>
 
 <template>
   <button
+    :aria-label="label || undefined"
+    :class="['circle-button', { 'expand-hit-area': expandHitArea }]"
     :disabled="disabled"
     :style="{
       width: buttonSize,
@@ -33,9 +39,10 @@ const iconSize = typeof props.size === 'number' ? props.size * 0.55 : '24px'
       color: iconColor,
     }"
     class="circle-button"
+    type="button"
     @click="handleClick"
   >
-    <Icon :icon="icon" :width="iconSize" color="var(--primary-color)" />
+    <Icon :icon="icon" :width="iconSize" :color="iconColor" />
   </button>
 </template>
 
@@ -53,6 +60,19 @@ const iconSize = typeof props.size === 'number' ? props.size * 0.55 : '24px'
   background-color: var(--bg-color);
   color: var(--text-color);
   box-shadow: var(--shadow-sm);
+  // Keep the visual size configurable while guaranteeing a 48px hit area.
+  position: relative;
+
+  &.expand-hit-area::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: max(100%, 48px);
+    height: max(100%, 48px);
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+  }
 
   &:hover:not(:disabled) {
     transform: scale(1.05);
@@ -62,6 +82,10 @@ const iconSize = typeof props.size === 'number' ? props.size * 0.55 : '24px'
 
   &:active:not(:disabled) {
     transform: scale(0.98);
+  }
+
+  &:focus-visible {
+    box-shadow: 0 0 0 3px rgba(var(--primary-color-rgb), 0.4);
   }
 
   &:disabled {

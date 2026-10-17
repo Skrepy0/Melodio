@@ -91,21 +91,21 @@ const onMenuSelect = (action: string, playlist: Playlist) => {
     <Transition name="slide-up">
       <div v-if="isSelectMode" class="bottom-actions">
         <div class="actions-container">
-          <button class="action-btn" @click="selectAll">
+          <button class="action-btn" type="button" @click="selectAll">
             <Icon :width="20" color="var(--primary-color)" icon="mdi:select-all" />
-            <span>全选</span>
+            <span>{{ $t('playList.selectAll') }}</span>
           </button>
-          <button class="action-btn" @click="clearSelection">
+          <button class="action-btn" type="button" @click="clearSelection">
             <Icon :width="20" color="var(--primary-color)" icon="mdi:select-off" />
-            <span>清空</span>
+            <span>{{ $t('playList.clear') }}</span>
           </button>
-          <button class="action-btn danger" @click="batchDelete">
+          <button class="action-btn danger" type="button" @click="batchDelete">
             <Icon :width="20" color="var(--primary-color)" icon="mdi:delete" />
-            <span>删除({{ selectedIds.size }})</span>
+            <span>{{ $t('playList.delete', { count: selectedIds.size }) }}</span>
           </button>
-          <button class="action-btn" @click="exitSelectMode">
+          <button class="action-btn" type="button" @click="exitSelectMode">
             <Icon :width="20" color="var(--primary-color)" icon="mdi:close" />
-            <span>取消</span>
+            <span>{{ $t('playList.cancel') }}</span>
           </button>
         </div>
       </div>
@@ -118,7 +118,7 @@ const onMenuSelect = (action: string, playlist: Playlist) => {
   position: relative;
   height: 100%;
   overflow-y: auto;
-  padding-bottom: 80px;
+  padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
 }
 
 .list-container {
@@ -139,6 +139,7 @@ const onMenuSelect = (action: string, playlist: Playlist) => {
   z-index: 200;
   backdrop-filter: blur(10px);
   background-color: rgba(var(--bottom-actions-bg-rgb), 0.9);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 .actions-container {
@@ -190,17 +191,5 @@ const onMenuSelect = (action: string, playlist: Playlist) => {
   &.danger {
     color: var(--danger-color);
   }
-}
-
-.slide-up-enter-active,
-.slide-up-leave-active {
-  transition:
-    transform 0.3s ease,
-    opacity 0.3s ease;
-}
-.slide-up-enter-from,
-.slide-up-leave-to {
-  transform: translateY(100%);
-  opacity: 0;
 }
 </style>

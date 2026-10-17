@@ -69,11 +69,6 @@ const categoryOptions = computed<HorizontalSelectOption[]>(() => [
   { value: 'play-lists', label: t('home.categories.playlists'), icon: 'tabler:playlist' },
 ])
 
-const onCategorySelect = (option: HorizontalSelectOption) => {
-  console.log('选中选项:', option)
-}
-console.log('AllSongs:' + appStore.getAllSongs().length)
-
 onMounted(async () => {
   if (!appStore.getAutoDelInvalidSongs()) return
   const result = await Promise.all(
@@ -244,7 +239,6 @@ const synchroShowPlaylists = () => {
 }
 
 const onSelectOperation = async (item: DropdownItem) => {
-  console.log('选中:', item.description, item.value)
   if (item.value === 'settings') await router.push('/settings')
   else if (item.value === 'search') await router.push('/search')
   else if (item.value === 'downloads') await router.push('/downloads')
@@ -259,8 +253,9 @@ const onSelectOperation = async (item: DropdownItem) => {
       cancelContent: t('common.cancel'),
     })
     if (name) {
+      const existingIds = appStore.getSongLists().map((list) => list.id)
       const data = {
-        id: appStore.getSongLists().length + 1,
+        id: existingIds.length > 0 ? Math.max(...existingIds) + 1 : 1,
         name: name,
         description: '',
         coverUrl: '',
@@ -272,8 +267,6 @@ const onSelectOperation = async (item: DropdownItem) => {
       synchroShowPlaylists()
       selectedCategory.value = 'play-lists'
       appStore.setSelectedCategory('play-lists')
-    } else {
-      console.log('用户取消')
     }
   } else if (item.value === 'blacklist') {
     await router.push('/blacklist')
@@ -281,7 +274,6 @@ const onSelectOperation = async (item: DropdownItem) => {
 }
 
 const handleBatchDeletePlaylists = async (ids: number[]) => {
-  console.log('删除播放列表IDs:', ids)
   if (ids.includes(0)) {
     toast.warning(t('home.playlistDefault.cannotDeleteDefault'))
     return
@@ -298,13 +290,8 @@ const handleBatchDeletePlaylists = async (ids: number[]) => {
 }
 
 const onPlaylistClick = (playlist: Playlist) => {
-  console.log('点击播放列表:', playlist)
   appStore.setCurrentPlayListIndex(playlist.id)
   router.push('/song-list')
-}
-
-const onPlaylistMenuSelect = (action: any, playlist: Playlist) => {
-  console.log('对播放列表操作:', action, playlist)
 }
 
 watch(
@@ -335,9 +322,15 @@ watch(selectedCategory, () => {
         />
       </div>
       <div class="button-container">
-        <CircleButton :size="36" icon="stash:play-duotone" @click="playShownSongs" />
+        <CircleButton
+          :label="$t('home.a11y.playAll')"
+          :size="36"
+          icon="stash:play-duotone"
+          @click="playShownSongs"
+        />
         <DropdownButton
           :dx="-100"
+          :label="$t('common.more')"
           :options="operations"
           :size="36"
           button-icon="mingcute:more-2-line"
@@ -347,26 +340,21 @@ watch(selectedCategory, () => {
     </div>
     <div class="body">
       <div class="select-container">
-        <HorizontalSelect
-          v-model="selectedCategory"
-          :options="categoryOptions"
-          icon-size="18"
-          @select="onCategorySelect"
-        />
+        <HorizontalSelect v-model="selectedCategory" :options="categoryOptions" icon-size="18" />
       </div>
       <div v-if="selectedCategory === 'tracks' && songsList.length === 0" class="empty-state">
         <Icon :width="48" color="var(--text-secondary)" icon="mdi:music-off" />
         <p>{{ $t('songList.empty') }}</p>
       </div>
       <div
-        v-if="selectedCategory === 'tracks' && songsList.length !== 0 && showSongsList.length === 0"
+        v-else-if="selectedCategory === 'tracks' && showSongsList.length === 0"
         class="empty-state"
       >
         <Icon :width="48" color="var(--text-secondary)" icon="mdi:music-off" />
         <p>{{ $t('songList.notFound') }}</p>
       </div>
       <PlayList
-        v-if="selectedCategory === 'tracks'"
+        v-else-if="selectedCategory === 'tracks'"
         :songs="showSongsList"
         @batch-delete="handleBatchDelete"
         @song-click="playSong"
@@ -378,7 +366,6 @@ watch(selectedCategory, () => {
         :playlists="showPlaylists"
         @batch-delete="handleBatchDeletePlaylists"
         @playlist-click="onPlaylistClick"
-        @menu-select="onPlaylistMenuSelect"
       />
       <NowPlayingBar auto-play @expand="() => router.push('/player-view')" />
     </div>
@@ -443,22 +430,6 @@ watch(selectedCategory, () => {
   overflow-y: auto;
   background-color: var(--bg-color);
   -webkit-overflow-scrolling: touch;
-  scrollbar-width: thin;
-  scrollbar-color: var(--scrollbar-color) transparent;
-
-  &::-webkit-scrollbar {
-    width: 4px;
-    height: 4px;
-  }
-  &::-webkit-scrollbar-track {
-    background: transparent;
-  }
-  &::-webkit-scrollbar-thumb {
-    background: var(--webkit-scrollbar-thumb);
-    border-radius: 4px;
-  }
-  &::-webkit-scrollbar-thumb:hover {
-    background: var(--webkit-scrollbar-thumb-hover);
-  }
+  @include custom-scrollbar(4px);
 }
 </style>

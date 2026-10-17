@@ -16,7 +16,7 @@ const props = withDefaults(defineProps<Props>(), {
 </script>
 
 <template>
-  <div class="setting-item clickable" @click="props.click">
+  <button class="setting-item clickable" type="button" @click="props.click">
     <div class="setting-row">
       <div class="item-left">
         <Icon
@@ -29,14 +29,15 @@ const props = withDefaults(defineProps<Props>(), {
       </div>
       <div class="item-right">
         <Icon
-          :icon="props.isLink ? 'mdi:chevron-right' : 'material-symbols:chevron-left'"
+          v-if="props.isLink"
+          icon="mdi:chevron-right"
           :width="20"
           color="var(--primary-color)"
         />
       </div>
     </div>
     <div class="setting-desc">{{ props.desc }}</div>
-  </div>
+  </button>
 </template>
 
 <style lang="scss" scoped>

@@ -102,12 +102,16 @@ export const DEFAULT_COVER =
   )
 
 export const isInList = (id: string, queue: Song[]) => queue.some((song) => song.id === id)
-export async function fetchCoverFromWeb(title: string, artist: string): Promise<string | null> {
+export async function fetchCoverFromWeb(
+  title: string,
+  artist: string,
+  signal?: AbortSignal
+): Promise<string | null> {
   try {
     const itunesUrl = `https://itunes.apple.com/search?term=${encodeURIComponent(
       `${title} ${artist}`
     )}&media=music&limit=1`
-    const r = await fetch(itunesUrl)
+    const r = await fetch(itunesUrl, { signal })
     const d = await r.json()
     if (d.resultCount > 0) {
       const art = d.results[0].artworkUrl100?.replace('100x100bb', '600x600bb')
@@ -120,7 +124,7 @@ export async function fetchCoverFromWeb(title: string, artist: string): Promise<
   try {
     const query = encodeURIComponent(`track:"${title}" artist:"${artist}"`)
     const deezerUrl = `https://api.deezer.com/search?q=${query}&limit=1`
-    const r = await fetch(deezerUrl)
+    const r = await fetch(deezerUrl, { signal })
     const d = await r.json()
     if (d.data?.length > 0) {
       const cover = d.data[0].album?.cover_big || d.data[0].album?.cover_xl
@@ -135,6 +139,7 @@ export async function fetchCoverFromWeb(title: string, artist: string): Promise<
     const mbUrl = `https://musicbrainz.org/ws/2/recording/?query=${mbQuery}&fmt=json&limit=1`
     const r = await fetch(mbUrl, {
       headers: { 'User-Agent': USER_AGENT },
+      signal,
     })
     const d = await r.json()
     const recordings = d.recordings
@@ -142,7 +147,7 @@ export async function fetchCoverFromWeb(title: string, artist: string): Promise<
       const mbid = recordings[0].releases?.[0]?.['release-group']?.id
       if (mbid) {
         const coverUrl = `https://coverartarchive.org/release-group/${mbid}/front-250`
-        const imgCheck = await fetch(coverUrl, { method: 'HEAD' })
+        const imgCheck = await fetch(coverUrl, { method: 'HEAD', signal })
         if (imgCheck.ok) return coverUrl
       }
     }

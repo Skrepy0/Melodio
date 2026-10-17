@@ -13,6 +13,7 @@ export interface CircleButtonProps {
   bgColor?: string // 背景色，默认使用主题的 --bg-header 或当前背景
   iconColor?: string // 图标颜色，默认使用主题的 --text-color
   disabled?: boolean // 是否禁用
+  label?: string // 无障碍标签（图标按钮必填）
 }
 export interface DropdownItem {
   icon?: string
@@ -35,6 +36,7 @@ export interface DropdownButtonProps {
   itemIconSize?: number // 选项内的图标尺寸
   dx?: number // x轴偏移
   dy?: number // y轴偏移
+  label?: string // 触发按钮的无障碍标签
 }
 
 export interface HorizontalSelectOption {

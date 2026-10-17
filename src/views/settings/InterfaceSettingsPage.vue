@@ -72,10 +72,14 @@ onMounted(() => {
                 color="var(--primary-color)"
                 icon="material-symbols:palette-outline"
               />
-              <span class="item-label">{{ $t('settings.interface.themeColor') || '主题色' }}</span>
+              <span class="item-label">{{ $t('settings.interface.themeColor') }}</span>
             </div>
             <div class="color-picker-wrapper">
-              <label :style="{ backgroundColor: currentColor }" class="color-picker-trigger">
+              <label
+                :aria-label="$t('settings.interface.themeColor')"
+                :style="{ backgroundColor: currentColor }"
+                class="color-picker-trigger"
+              >
                 <input
                   :value="currentColor"
                   class="color-picker-input"
@@ -88,13 +92,16 @@ onMounted(() => {
           <div class="setting-desc">
             {{ $t('settings.interface.themeColorDesc') }}
           </div>
-          <div class="preset-colors">
-            <div
+          <div class="preset-colors" role="radiogroup">
+            <button
               v-for="color in presetColors"
               :key="color"
-              :class="{ active: currentColor === color }"
+              :aria-checked="currentColor === color"
+              :aria-label="color"
               :style="{ backgroundColor: color }"
               class="preset-color-item"
+              role="radio"
+              type="button"
               @click="selectPresetColor(color)"
             >
               <Icon
@@ -103,7 +110,7 @@ onMounted(() => {
                 icon="material-symbols:check-small"
                 width="18"
               />
-            </div>
+            </button>
           </div>
         </div>
       </div>
@@ -152,6 +159,7 @@ onMounted(() => {
     .preset-color-item {
       width: 28px;
       height: 28px;
+      padding: 0;
       border-radius: 50%;
       cursor: pointer;
       border: 2px solid transparent;
@@ -165,11 +173,16 @@ onMounted(() => {
         border-color: var(--text-color, #333);
       }
 
-      &.active {
+      &[aria-checked='true'] {
         border-color: var(--text-color, #333);
         box-shadow:
           0 0 0 2px var(--bg-color, #fff),
           0 0 0 4px var(--primary, #1677ff);
+      }
+
+      &:focus-visible {
+        outline: 2px solid var(--primary-color);
+        outline-offset: 3px;
       }
     }
   }

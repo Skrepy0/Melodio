@@ -32,9 +32,9 @@ watch(
   () => route.path,
   (newPath, oldPath) => {
     if (newPath === '/player-view') {
-      transitionName.value = 'slide-up'
+      transitionName.value = 'player-slide'
     } else if (oldPath === '/player-view') {
-      transitionName.value = 'slide-up'
+      transitionName.value = 'player-slide'
     } else {
       transitionName.value = 'zoom'
     }
@@ -82,34 +82,23 @@ onMounted(() => {
   transform: scale(1.05);
 }
 
-.slide-up-enter-active,
-.slide-up-leave-active {
+/* Router-level transition for the player sheet. Named separately from the
+   shared `.slide-up-*` utilities so the two never fight over declarations. */
+.player-slide-enter-active,
+.player-slide-leave-active {
   transition:
     transform 0.3s cubic-bezier(0.32, 0.72, 0, 1),
     opacity 0.3s ease;
 }
-.slide-up-enter-from {
+.player-slide-enter-from {
   transform: translateY(100%);
   opacity: 0;
 }
-.slide-up-leave-to {
+.player-slide-leave-to {
   transform: translateY(100%);
   opacity: 0;
-}
-.slide-up-enter-to,
-.slide-up-leave-from {
-  transform: translateY(0);
-  opacity: 1;
 }
 body {
   background-color: var(--bg-color, #1e1e1e); /* 你的深色背景 */
-}
-
-.safe-area-top {
-  padding-top: env(safe-area-inset-top, 0px);
-}
-
-.safe-area-bottom {
-  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 </style>

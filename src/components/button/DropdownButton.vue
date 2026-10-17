@@ -16,6 +16,7 @@ const props = withDefaults(defineProps<DropdownButtonProps>(), {
   itemIconSize: 20,
   dx: 0,
   dy: 0,
+  label: '',
 })
 
 const emit = defineEmits<{
@@ -129,14 +130,24 @@ const handleClickOutside = (event: MouseEvent) => {
   }
 }
 
+const handleKeydown = (event: KeyboardEvent) => {
+  if (!showDropdown.value) return
+  if (event.key === 'Escape') {
+    showDropdown.value = false
+    ;(buttonRef.value?.$el as HTMLElement | undefined)?.focus()
+  }
+}
+
 onMounted(() => {
   document.addEventListener('click', handleClickOutside)
+  document.addEventListener('keydown', handleKeydown)
   window.addEventListener('resize', handleResizeOrScroll)
   window.addEventListener('scroll', handleResizeOrScroll, true)
 })
 
 onUnmounted(() => {
   document.removeEventListener('click', handleClickOutside)
+  document.removeEventListener('keydown', handleKeydown)
   window.removeEventListener('resize', handleResizeOrScroll)
   window.removeEventListener('scroll', handleResizeOrScroll, true)
 })
@@ -162,18 +173,29 @@ watch(showDropdown, (val) => {
       :disabled="disabled"
       :icon="buttonIcon"
       :icon-color="iconColor"
+      :label="label"
       :size="size"
       @click="toggleDropdown"
     />
     <Teleport to="body">
       <Transition name="dropdown-fade">
-        <div v-if="showDropdown" ref="dropdownRef" :style="dropdownStyle" class="dropdown-menu">
+        <div
+          v-if="showDropdown"
+          ref="dropdownRef"
+          :style="dropdownStyle"
+          :aria-label="label || $t('common.more')"
+          class="dropdown-menu"
+          role="menu"
+        >
           <div class="dropdown-list">
-            <div
+            <button
               v-for="(item, index) in options"
               :key="index"
               :class="{ disabled: item.disabled }"
+              :disabled="item.disabled"
               class="dropdown-item"
+              role="menuitem"
+              type="button"
               @click="selectItem(item)"
             >
               <Icon
@@ -184,7 +206,7 @@ watch(showDropdown, (val) => {
                 color="var(--primary-color)"
               />
               <span class="item-description">{{ item.description }}</span>
-            </div>
+            </button>
           </div>
         </div>
       </Transition>
@@ -220,13 +242,21 @@ watch(showDropdown, (val) => {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 10px 16px;
+  width: 100%;
+  padding: 12px 16px;
+  min-height: 48px;
+  border: none;
+  background: transparent;
+  text-align: left;
+  font: inherit;
   cursor: pointer;
   transition: background 0.2s;
   color: var(--text-color);
 
-  &:hover:not(.disabled) {
+  &:hover:not(.disabled),
+  &:focus-visible {
     background-color: var(--header-back-hover);
+    outline: none;
   }
 
   &.disabled {

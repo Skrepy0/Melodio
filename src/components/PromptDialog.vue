@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import { onMounted, ref } from 'vue'
+import { trapTabKey, useDialogA11y } from '@/composables/useDialogA11y'
 
 interface Props {
   title?: string
@@ -22,17 +23,19 @@ const props = withDefaults(defineProps<Props>(), {
 const visible = ref(true)
 const inputValue = ref(props.defaultValue)
 const inputRef = ref<HTMLInputElement | null>(null)
+const containerRef = ref<HTMLElement | null>(null)
+const titleId = `prompt-title-${Math.random().toString(36).slice(2)}`
 
 let resolvePromise: (value: string | null) => void
 
 const confirm = () => {
   visible.value = false
-  resolvePromise(inputValue.value)
+  resolvePromise?.(inputValue.value)
 }
 
 const cancel = () => {
   visible.value = false
-  resolvePromise(null)
+  resolvePromise?.(null)
 }
 
 const show = (): Promise<string | null> => {
@@ -40,6 +43,8 @@ const show = (): Promise<string | null> => {
     resolvePromise = resolve
   })
 }
+
+useDialogA11y(containerRef, cancel, () => visible.value)
 
 defineExpose({ show })
 
@@ -50,10 +55,21 @@ onMounted(() => {
 
 <template>
   <Transition name="fade">
-    <div v-if="visible" class="prompt-overlay" @click.self="cancel">
-      <div class="prompt-container">
+    <div
+      v-if="visible"
+      class="prompt-overlay"
+      @click.self="cancel"
+      @keydown="trapTabKey($event, containerRef)"
+    >
+      <div
+        ref="containerRef"
+        :aria-labelledby="title ? titleId : undefined"
+        aria-modal="true"
+        class="prompt-container"
+        role="dialog"
+      >
         <div class="prompt-header">
-          <h3>{{ title }}</h3>
+          <h3 :id="titleId">{{ title }}</h3>
         </div>
         <div class="prompt-body">
           <p v-if="message">{{ message }}</p>
@@ -62,13 +78,18 @@ onMounted(() => {
             v-model="inputValue"
             :placeholder="placeholder"
             class="prompt-input"
+            data-autofocus
             type="text"
             @keyup.enter="confirm"
           />
         </div>
         <div class="prompt-footer">
-          <button class="prompt-btn cancel" @click="cancel">{{ props.cancelContent }}</button>
-          <button class="prompt-btn confirm" @click="confirm">{{ props.confirmContent }}</button>
+          <button class="prompt-btn cancel" type="button" @click="cancel">
+            {{ props.cancelContent }}
+          </button>
+          <button class="prompt-btn confirm" type="button" @click="confirm">
+            {{ props.confirmContent }}
+          </button>
         </div>
       </div>
     </div>

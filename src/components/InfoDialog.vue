@@ -1,16 +1,19 @@
 <script lang="ts" setup>
 import { OnlineSong, Song } from '@/utils/interface'
-import { computed, onBeforeUnmount, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { trapTabKey, useDialogA11y } from '@/composables/useDialogA11y'
 
 interface Props {
   song: Song | OnlineSong
 }
 
 const props = defineProps<Props>()
-const { t } = useI18n()
+const { t, locale } = useI18n()
 
 const visible = ref(false)
+const containerRef = ref<HTMLElement | null>(null)
+const titleId = `info-title-${Math.random().toString(36).slice(2)}`
 
 let resolvePromise: (value: boolean) => void
 
@@ -25,12 +28,15 @@ const unlockBodyScroll = () => {
 const handleClose = () => {
   visible.value = false
   unlockBodyScroll()
-  resolvePromise(true)
+  resolvePromise?.(true)
 }
+
+const { focusFirst } = useDialogA11y(containerRef, handleClose, () => visible.value)
 
 const show = (): Promise<boolean> => {
   visible.value = true
   lockBodyScroll()
+  nextTick(focusFirst)
   return new Promise((resolve) => {
     resolvePromise = resolve
   })
@@ -70,7 +76,7 @@ const formatFileSize = (bytes: number): string => {
 const formatDate = (timestamp: number): string => {
   if (!timestamp) return t('infoDialog.placeholder')
   const date = new Date(timestamp)
-  return date.toLocaleDateString('zh-CN', {
+  return date.toLocaleDateString(locale.value, {
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
@@ -159,12 +165,26 @@ const infoFields = computed<InfoField[]>(() => {
 
 <template>
   <Transition name="fade">
-    <div v-if="visible" class="info-overlay" @click.self="handleClose">
-      <div class="info-card" @click.stop>
+    <div
+      v-if="visible"
+      class="info-overlay"
+      @click.self="handleClose"
+      @keydown="trapTabKey($event, containerRef)"
+    >
+      <div
+        ref="containerRef"
+        :aria-labelledby="titleId"
+        aria-modal="true"
+        class="info-card"
+        role="dialog"
+        @click.stop
+      >
         <!-- 头部 -->
         <div class="info-header">
-          <span class="info-title">{{ t('infoDialog.title') }}</span>
-          <button class="close-btn" @click="handleClose">{{ t('infoDialog.close') }}</button>
+          <span :id="titleId" class="info-title">{{ t('infoDialog.title') }}</span>
+          <button class="close-btn" type="button" @click="handleClose">
+            {{ t('infoDialog.close') }}
+          </button>
         </div>
 
         <!-- 信息列表：左右两列 -->
@@ -177,7 +197,9 @@ const infoFields = computed<InfoField[]>(() => {
 
         <!-- 底部 -->
         <div class="info-footer">
-          <button class="footer-btn" @click="handleClose">{{ t('infoDialog.confirm') }}</button>
+          <button class="footer-btn" type="button" @click="handleClose">
+            {{ t('infoDialog.confirm') }}
+          </button>
         </div>
       </div>
     </div>
@@ -356,12 +378,6 @@ const infoFields = computed<InfoField[]>(() => {
   }
   .close-btn:hover {
     background: var(--header-back-hover, #2a2a2a);
-  }
-  .badge.local {
-    background: rgba(52, 152, 219, 0.2);
-  }
-  .badge.online {
-    background: rgba(46, 204, 113, 0.2);
   }
 }
 

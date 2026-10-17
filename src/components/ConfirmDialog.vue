@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import { ref } from 'vue'
+import { trapTabKey, useDialogA11y } from '@/composables/useDialogA11y'
 
 interface Props {
   title?: string
@@ -15,17 +16,19 @@ withDefaults(defineProps<Props>(), {
 })
 
 const visible = ref(true)
+const containerRef = ref<HTMLElement | null>(null)
+const titleId = `confirm-title-${Math.random().toString(36).slice(2)}`
 
 let resolvePromise: (value: boolean) => void
 
 const handleConfirm = () => {
   visible.value = false
-  resolvePromise(true)
+  resolvePromise?.(true)
 }
 
 const handleCancel = () => {
   visible.value = false
-  resolvePromise(false)
+  resolvePromise?.(false)
 }
 
 const show = (): Promise<boolean> => {
@@ -34,22 +37,39 @@ const show = (): Promise<boolean> => {
   })
 }
 
+useDialogA11y(containerRef, handleCancel, () => visible.value)
+
 defineExpose({ show })
 </script>
 
 <template>
   <Transition name="fade">
-    <div v-if="visible" class="confirm-overlay" @click.self="handleCancel">
-      <div class="confirm-container">
+    <div
+      v-if="visible"
+      class="confirm-overlay"
+      @click.self="handleCancel"
+      @keydown="trapTabKey($event, containerRef)"
+    >
+      <div
+        ref="containerRef"
+        :aria-labelledby="title ? titleId : undefined"
+        aria-modal="true"
+        class="confirm-container"
+        role="dialog"
+      >
         <div v-if="title" class="confirm-header">
-          <h3>{{ title }}</h3>
+          <h3 :id="titleId">{{ title }}</h3>
         </div>
         <div class="confirm-body">
           <p>{{ message }}</p>
         </div>
         <div class="confirm-footer">
-          <button class="confirm-btn cancel" @click="handleCancel">{{ cancelText }}</button>
-          <button class="confirm-btn confirm" @click="handleConfirm">{{ confirmText }}</button>
+          <button class="confirm-btn cancel" type="button" @click="handleCancel">
+            {{ cancelText }}
+          </button>
+          <button class="confirm-btn confirm" type="button" @click="handleConfirm">
+            {{ confirmText }}
+          </button>
         </div>
       </div>
     </div>

@@ -85,9 +85,14 @@ defineExpose({
 <template>
   <div :class="[`size-${size}`, { disabled }]" class="search-container">
     <div class="search-box">
-      <span class="search-icon" @click="handleSearch">
+      <button
+        :aria-label="$t('common.search')"
+        class="icon-btn search-icon"
+        type="button"
+        @click="handleSearch"
+      >
         <Icon :width="iconSize" color="var(--primary-color)" icon="mdi:magnify" />
-      </span>
+      </button>
       <input
         ref="inputRef"
         :autofocus="autofocus"
@@ -100,11 +105,23 @@ defineExpose({
         @keyup.enter="handleSearch"
       />
 
-      <span v-if="clearable && modelValue.length > 0" class="clear-icon" @click="clearInput">
+      <button
+        v-if="clearable && modelValue.length > 0"
+        :aria-label="$t('common.remove')"
+        class="icon-btn clear-icon"
+        type="button"
+        @click="clearInput"
+      >
         <Icon :width="iconSize" color="var(--primary-color)" icon="mdi:close-circle" />
-      </span>
+      </button>
 
-      <button v-if="showButton" :disabled="disabled" class="search-button" @click="handleSearch">
+      <button
+        v-if="showButton"
+        :disabled="disabled"
+        class="search-button"
+        type="button"
+        @click="handleSearch"
+      >
         {{ $t('searchBox.searchButton') }}
       </button>
     </div>
@@ -179,22 +196,31 @@ defineExpose({
   }
 }
 
-.search-icon,
-.clear-icon {
+.icon-btn {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
+  min-width: 40px;
+  min-height: 40px;
+  padding: 0;
+  border: none;
+  background: transparent;
   cursor: pointer;
   color: var(--text-color);
   opacity: 0.6;
   transition: opacity 0.2s;
+  border-radius: 50%;
+  flex-shrink: 0;
 
   &:hover {
     opacity: 1;
   }
-}
 
-.clear-icon {
-  cursor: pointer;
+  &:focus-visible {
+    opacity: 1;
+    outline: 2px solid var(--primary-color);
+    outline-offset: -2px;
+  }
 }
 
 .search-input {

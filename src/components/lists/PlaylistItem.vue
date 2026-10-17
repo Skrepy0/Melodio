@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { Icon } from '@iconify/vue'
 import DropdownButton from '@/components/button/DropdownButton.vue'
 import type { DropdownItem, Playlist } from '@/utils/interface'
@@ -121,10 +121,6 @@ watch(
   },
   { immediate: true, deep: true }
 )
-
-onMounted(() => {
-  resolveCover()
-})
 </script>
 
 <template>
@@ -163,7 +159,7 @@ onMounted(() => {
         :button-icon="'mdi:dots-vertical'"
         :dx="-40"
         :dy="-60"
-        :offset-y="-4"
+        :label="t('common.more')"
         :options="menuOptions"
         :size="32"
         placement="bottom-end"

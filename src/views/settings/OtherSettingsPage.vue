@@ -24,8 +24,9 @@ const exportData = async () => {
 const importData = async () => {
   try {
     await importLocalStorage()
-    window.location.reload()
     toast.success(t('settings.other.io.successImport'))
+    // Give the toast a beat to render before the reload wipes the page.
+    window.setTimeout(() => window.location.reload(), 900)
   } catch (e) {
     toast.error(t('settings.other.io.importError', { e: e }))
   }

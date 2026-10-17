@@ -42,6 +42,9 @@
       "playlistCreated": "Playlist created",
       "playlistCreateFailed": "Creation failed",
       "invalidSongsCleaned": "{count} invalid song(s) have been cleaned"
+    },
+    "a11y": {
+      "playAll": "Play all"
     }
   },
   "player": {
@@ -70,7 +73,19 @@
       "remove": "Remove from queue",
       "cancel": "Cancel"
     },
-    "error": "Playback failed"
+    "error": "Playback failed",
+    "a11y": {
+      "back": "Back",
+      "playMode": "Change play mode",
+      "previous": "Previous song",
+      "next": "Next song",
+      "playPause": "Play or pause",
+      "shuffle": "Shuffle queue",
+      "rate": "Playback speed",
+      "seek": "Playback position",
+      "expand": "Open player",
+      "drag": "Drag to reorder"
+    }
   },
   "song": {
     "menu": {
@@ -175,7 +190,9 @@
     }
   },
   "playlistSelector": {
-    "title": "Select Playlist"
+    "title": "Select Playlist",
+    "songCount": "{count} songs",
+    "close": "Close"
   },
   "prompt": {
     "defaultTitle": "Please Enter",
@@ -253,7 +270,14 @@
     "back": "Back",
     "confirm": "Confirm",
     "cancel": "Cancel",
-    "playFailed": "Play Failed"
+    "playFailed": "Play Failed",
+    "close": "Close",
+    "more": "More",
+    "remove": "Remove",
+    "search": "Search",
+    "downloading": "Downloading…",
+    "unknown": "Unknown",
+    "resetDefault": "Reset to default"
   },
   "editor": {
     "title": "Sort Songs",
@@ -276,6 +300,10 @@
     "toast": {
       "invalid_list": "Invalid playlist",
       "list_not_found": "Playlist not found"
+    },
+    "a11y": {
+      "save": "Save order",
+      "back": "Back"
     }
   },
   "about": {
@@ -364,6 +392,19 @@
       },
       "client": "Client request error, please try again later",
       "unknown": "Unknown error"
+    },
+    "historyRemove": "Remove this search history entry",
+    "toast": {
+      "songNotFound": "Song information is unavailable",
+      "noDownloadUrl": "No download link is available for this song",
+      "invalidDownloadUrl": "Invalid download link: {reason}",
+      "downloadSuccess": "“{name}” downloaded",
+      "downloadFailed": "Failed to download “{name}”: {reason}",
+      "unknownReason": "unknown reason",
+      "noDownloadable": "No downloadable songs selected. Check your selection and the song links.",
+      "batchAllDone": "All {count} songs downloaded",
+      "batchPartial": "Download finished: {succeeded} succeeded, {failed} failed, {invalid} invalid",
+      "batchError": "Something went wrong while downloading. Try again later."
     }
   },
   "downloads": {
@@ -406,7 +447,8 @@
       "resumeFailed": "Failed to resume download",
       "retryFailed": "Retry failed",
       "taskNotFound": "Download task not found",
-      "historyCleared": "Download history cleared"
+      "historyCleared": "Download history cleared",
+      "unknownTotal": "Unknown"
     }
   },
   "infoDialog": {

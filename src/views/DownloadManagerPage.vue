@@ -179,7 +179,7 @@ const clearHistory = async () => {
   border: none;
   border-radius: 999px;
   background: rgba(255, 107, 107, 0.12);
-  color: #ff6b6b;
+  color: var(--danger-color-hover);
   font-size: 13px;
 }
 </style>

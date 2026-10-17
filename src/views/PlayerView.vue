@@ -113,34 +113,40 @@ const playSong = async (song: Song) => {
 const progressBarRef = ref<HTMLElement | null>(null)
 let isDraggingProgress = false
 
-const updateProgressByEvent = (e: MouseEvent | TouchEvent) => {
+const updateProgressByClientX = (clientX: number) => {
   if (!progressBarRef.value) return
   const rect = progressBarRef.value.getBoundingClientRect()
-  const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX
   let clickX = clientX - rect.left
   clickX = Math.max(0, Math.min(clickX, rect.width))
-  const percent = clickX / rect.width
+  const percent = rect.width > 0 ? clickX / rect.width : 0
   const newTime = Math.min(percent * mockDuration.value, mockDuration.value)
   appStore.setMockCurrentTime(newTime)
 }
 
-const startDragProgress = (e: MouseEvent | TouchEvent) => {
+const startDragProgress = (e: PointerEvent) => {
   e.preventDefault()
   isDraggingProgress = true
-  updateProgressByEvent(e)
-  document.addEventListener('mousemove', onDragProgress)
-  document.addEventListener('mouseup', stopDragProgress)
-  document.addEventListener('touchmove', onDragProgress)
-  document.addEventListener('touchend', stopDragProgress)
+  ;(e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId)
+  updateProgressByClientX(e.clientX)
+  document.addEventListener('pointermove', onDragProgress)
+  document.addEventListener('pointerup', stopDragProgress)
+  document.addEventListener('pointercancel', stopDragProgress)
 }
 
-const onDragProgress = (e: MouseEvent | TouchEvent) => {
+const onDragProgress = (e: PointerEvent) => {
   if (!isDraggingProgress) return
   e.preventDefault()
-  updateProgressByEvent(e)
+  updateProgressByClientX(e.clientX)
+}
+
+const removeProgressListeners = () => {
+  document.removeEventListener('pointermove', onDragProgress)
+  document.removeEventListener('pointerup', stopDragProgress)
+  document.removeEventListener('pointercancel', stopDragProgress)
 }
 
 const stopDragProgress = async () => {
+  removeProgressListeners()
   if (!isDraggingProgress) return
   isDraggingProgress = false
   const targetTime = Math.min(
@@ -149,18 +155,14 @@ const stopDragProgress = async () => {
   )
   appStore.setMockCurrentTime(targetTime)
   await audio.seek(targetTime)
-  document.removeEventListener('mousemove', onDragProgress)
-  document.removeEventListener('mouseup', stopDragProgress)
-  document.removeEventListener('touchmove', onDragProgress)
-  document.removeEventListener('touchend', stopDragProgress)
 }
 
-const mockSeek = async (e: MouseEvent) => {
-  updateProgressByEvent(e)
+const seekBy = async (delta: number) => {
   const targetTime = Math.min(
-    Math.max(appStore.getPlayData().mockCurrentTime, 0),
+    Math.max(appStore.getPlayData().mockCurrentTime + delta, 0),
     mockDuration.value
   )
+  appStore.setMockCurrentTime(targetTime)
   await audio.seek(targetTime)
 }
 
@@ -281,6 +283,7 @@ const startDrag = (e: PointerEvent, idx: number) => {
   dragItem.classList.add('dragging-source')
   document.addEventListener('pointermove', onDragMove)
   document.addEventListener('pointerup', stopDrag)
+  document.addEventListener('pointercancel', stopDrag)
 
   scrollContainer = document.querySelector('.queue-list') as HTMLElement | null
 }
@@ -378,10 +381,11 @@ const stopDrag = async (e: PointerEvent) => {
   dragCurrentIndex.value = null
   currentSongOverride.value = null
   currentPlayingSongId = null
-  setTimeout(() => appStore.setIsSwitchingSong(false), 1000)
+  appStore.setIsSwitchingSong(false)
 
   document.removeEventListener('pointermove', onDragMove)
   document.removeEventListener('pointerup', stopDrag)
+  document.removeEventListener('pointercancel', stopDrag)
 }
 
 const getRelativeIndex = (idx: number) => {
@@ -440,7 +444,7 @@ const resolveCover = async (song: Song | null) => {
     return
   }
   try {
-    const url = await fetchCoverFromWeb(song.title, song.artist || '')
+    const url = await fetchCoverFromWeb(song.title, song.artist || '', signal)
     if (!signal.aborted) {
       coverSrc.value = url || DEFAULT_COVER
     }
@@ -462,6 +466,7 @@ onUnmounted(() => {
   <div class="player-view">
     <div class="back-button">
       <CircleButton
+        :label="t('common.back')"
         :size="40"
         icon="mdi:arrow-left"
         icon-color="var(--text-color)"
@@ -470,7 +475,13 @@ onUnmounted(() => {
     </div>
 
     <div class="rate-button-top-right">
-      <button :title="t('player.speed')" class="rate-fab" @click="cyclePlaybackRate">
+      <button
+        :aria-label="t('player.a11y.rate')"
+        :title="t('player.speed')"
+        class="rate-fab"
+        type="button"
+        @click="cyclePlaybackRate"
+      >
         <span class="rate-text">{{ currentRate }}x</span>
       </button>
     </div>
@@ -494,52 +505,69 @@ onUnmounted(() => {
       <div class="progress-section">
         <div class="time-current">{{ formatTime(mockCurrentTime) }}</div>
         <div
+          :aria-label="t('player.a11y.seek')"
+          :aria-valuemax="Math.round(mockDuration)"
+          :aria-valuemin="0"
+          :aria-valuenow="Math.round(mockCurrentTime)"
           class="progress-bar-container"
-          @click="mockSeek"
-          @mousedown="startDragProgress"
-          @touchstart="startDragProgress"
+          role="slider"
+          tabindex="0"
+          @keydown.left.prevent="seekBy(-5)"
+          @keydown.right.prevent="seekBy(5)"
+          @pointerdown="startDragProgress"
         >
-          <div
-            ref="progressBarRef"
-            class="progress-bar"
-            @mousedown="startDragProgress"
-            @touchstart="startDragProgress"
-          >
-            <div
-              :style="{ width: progressPercent + '%' }"
-              class="progress-fill"
-              @mousedown="startDragProgress"
-              @touchstart="startDragProgress"
-            ></div>
-            <div
-              :style="{ left: progressPercent + '%' }"
-              class="progress-handle"
-              @mousedown="startDragProgress"
-              @touchstart="startDragProgress"
-            ></div>
+          <div ref="progressBarRef" class="progress-bar">
+            <div :style="{ width: progressPercent + '%' }" class="progress-fill"></div>
+            <div :style="{ left: progressPercent + '%' }" class="progress-handle"></div>
           </div>
         </div>
         <div class="time-duration">{{ formatTime(mockDuration) }}</div>
       </div>
 
       <div class="controls">
-        <button :title="playModeText" class="control-btn" @click="togglePlayMode">
+        <button
+          :aria-label="t('player.a11y.playMode')"
+          :title="playModeText"
+          class="control-btn"
+          type="button"
+          @click="togglePlayMode"
+        >
           <Icon :icon="playModeIcon" :width="24" color="var(--text-color)" />
         </button>
-        <button class="control-btn" @click="prevSong">
+        <button
+          :aria-label="t('player.a11y.previous')"
+          class="control-btn"
+          type="button"
+          @click="prevSong"
+        >
           <Icon :width="32" color="var(--text-color)" icon="mdi:skip-previous" />
         </button>
-        <button class="control-btn play-pause" @click="togglePlay">
+        <button
+          :aria-label="t('player.a11y.playPause')"
+          class="control-btn play-pause"
+          type="button"
+          @click="togglePlay"
+        >
           <Icon
             :icon="isPlaying ? 'mdi:pause-circle' : 'mdi:play-circle'"
             :width="48"
             color="var(--primary-color, #007aff)"
           />
         </button>
-        <button class="control-btn" @click="nextSong">
+        <button
+          :aria-label="t('player.a11y.next')"
+          class="control-btn"
+          type="button"
+          @click="nextSong"
+        >
           <Icon :width="32" color="var(--text-color)" icon="mdi:skip-next" />
         </button>
-        <button class="control-btn" @click="shuffleQueue">
+        <button
+          :aria-label="t('player.a11y.shuffle')"
+          class="control-btn"
+          type="button"
+          @click="shuffleQueue"
+        >
           <Icon :width="24" color="var(--text-color)" icon="mdi:shuffle-variant" />
         </button>
       </div>
@@ -581,8 +609,7 @@ onUnmounted(() => {
             :button-icon="'mdi:dots-vertical'"
             :dx="-40"
             :dy="-60"
-            :offset-x="0"
-            :offset-y="4"
+            :label="t('common.more')"
             :options="menuOptions"
             :size="32"
             :visible="openDropdownId === song.id"
@@ -708,6 +735,13 @@ onUnmounted(() => {
     flex: 1;
     cursor: pointer;
     padding: 6px 0;
+    touch-action: none;
+    border-radius: var(--radius-xs);
+
+    &:focus-visible {
+      outline: 2px solid var(--primary-color);
+      outline-offset: 4px;
+    }
   }
   .progress-bar {
     position: relative;
@@ -843,7 +877,7 @@ onUnmounted(() => {
     transform 0.2s ease,
     background 0.2s,
     opacity 0.2s;
-  will-change: transform;
+  cursor: pointer;
 
   &:hover {
     background: var(--bg-card-hover);

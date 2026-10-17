@@ -1,8 +1,10 @@
 <script lang="ts" setup>
-import { ref, watch } from 'vue'
+import { nextTick, ref, watch } from 'vue'
 import { Icon } from '@iconify/vue'
+import { useI18n } from 'vue-i18n'
 import type { Playlist } from '@/utils/interface'
 import { DEFAULT_COVER, fetchCoverFromWeb } from '@/utils/functions'
+import { trapTabKey, useDialogA11y } from '@/composables/useDialogA11y'
 
 const props = withDefaults(
   defineProps<{
@@ -17,15 +19,26 @@ const props = withDefaults(
   }
 )
 
+const { t } = useI18n()
+
 const visible = ref(false)
+const containerRef = ref<HTMLElement | null>(null)
+const titleId = `playlist-selector-title-${Math.random().toString(36).slice(2)}`
 let resolvePromise: ((value: Playlist | null) => void) | null = null
 const playlists = ref<Playlist[]>([])
 const coverCache = ref<Record<number, string>>({})
+
+const { focusFirst } = useDialogA11y(
+  containerRef,
+  () => cancel(),
+  () => visible.value
+)
 
 const show = (list: Playlist[]): Promise<Playlist | null> => {
   playlists.value = list
   visible.value = true
   list.forEach((p) => loadCover(p))
+  nextTick(focusFirst)
   return new Promise((resolve) => {
     resolvePromise = resolve
   })
@@ -85,17 +98,36 @@ defineExpose({ show })
 <template>
   <Teleport to="body">
     <Transition name="fade">
-      <div v-if="visible" class="playlist-selector-overlay" @click.self="cancel">
-        <div class="playlist-selector-container">
+      <div
+        v-if="visible"
+        class="playlist-selector-overlay"
+        @click.self="cancel"
+        @keydown="trapTabKey($event, containerRef)"
+      >
+        <div
+          ref="containerRef"
+          :aria-labelledby="titleId"
+          aria-modal="true"
+          class="playlist-selector-container"
+          role="dialog"
+        >
           <div class="playlist-selector-header">
-            <h3>{{ props.title }}</h3>
-            <button class="close-btn" @click="cancel">✕</button>
+            <h3 :id="titleId">{{ props.title }}</h3>
+            <button
+              :aria-label="t('playlistSelector.close')"
+              class="close-btn"
+              type="button"
+              @click="cancel"
+            >
+              <Icon height="18" icon="mdi:close" width="18" />
+            </button>
           </div>
           <div class="playlist-selector-list">
-            <div
+            <button
               v-for="playlist in playlists"
               :key="playlist.id"
               class="playlist-selector-item"
+              type="button"
               @click="selectPlaylist(playlist)"
             >
               <div class="playlist-cover">
@@ -125,11 +157,12 @@ defineExpose({ show })
                   {{
                     playlist.id === 0
                       ? props.likeListDescription
-                      : playlist.description || `${playlist.songCount}首歌曲`
+                      : playlist.description ||
+                        t('playlistSelector.songCount', { count: playlist.songCount })
                   }}
                 </div>
               </div>
-            </div>
+            </button>
           </div>
         </div>
       </div>
@@ -221,12 +254,20 @@ defineExpose({ show })
   display: flex;
   align-items: center;
   gap: 14px;
+  width: 100%;
   padding: 12px 16px;
+  border: none;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  color: var(--text-color);
   cursor: pointer;
   transition: all 0.2s;
-  &:hover {
+  &:hover,
+  &:focus-visible {
     background: var(--setting-hover-bg);
     transform: translateX(4px);
+    outline: none;
   }
 }
 

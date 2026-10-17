@@ -161,9 +161,11 @@ const resetToDefault = () => {
         />
         <button
           v-if="props.defaultValue !== undefined"
+          :aria-label="$t('common.resetDefault')"
           :disabled="isDefault"
+          :title="$t('common.resetDefault')"
           class="reset-btn"
-          title="恢复默认值"
+          type="button"
           @click="resetToDefault"
         >
           <Icon icon="mdi:restore" width="18" />

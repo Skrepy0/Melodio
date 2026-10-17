@@ -43,14 +43,20 @@ async function resolveCover() {
   }
 
   isCoverLoading.value = true
+  abortController?.abort()
   abortController = new AbortController()
+  const controller = abortController
   try {
-    const url = await fetchCoverFromWeb(props.song.name, props.song.singers || '')
-    coverSrc.value = url || DEFAULT_COVER
+    const url = await fetchCoverFromWeb(
+      props.song.name,
+      props.song.singers || '',
+      controller.signal
+    )
+    if (!controller.signal.aborted) coverSrc.value = url || DEFAULT_COVER
   } catch {
-    coverSrc.value = DEFAULT_COVER
+    if (!controller.signal.aborted) coverSrc.value = DEFAULT_COVER
   } finally {
-    isCoverLoading.value = false
+    if (!controller.signal.aborted) isCoverLoading.value = false
   }
 }
 
@@ -115,8 +121,7 @@ const onMenuItemSelect = computed(() => {
         :button-icon="'mdi:dots-vertical'"
         :dx="-40"
         :dy="-60"
-        :offset-x="0"
-        :offset-y="4"
+        :label="$t('common.more')"
         :options="props.operations"
         :size="32"
         placement="bottom-end"

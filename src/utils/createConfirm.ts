@@ -21,10 +21,19 @@ export function showConfirm(options: ConfirmOptions): Promise<boolean> {
 
   render(vnode, container)
 
+  const cleanup = () => {
+    // Unmount first so the dialog's focus-restore hook runs, then drop the host.
+    render(null, container)
+    if (container.parentNode) {
+      container.parentNode.removeChild(container)
+    }
+  }
+
   const instance = vnode.component
 
   if (instance?.exposed?.show) {
-    return instance.exposed.show() as Promise<boolean>
+    return (instance.exposed.show() as Promise<boolean>).finally(cleanup)
   }
+  cleanup()
   return Promise.resolve(false)
 }

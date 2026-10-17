@@ -268,6 +268,7 @@ const handleSongClick = (song: Song) => {
   z-index: 200;
   backdrop-filter: blur(10px);
   background-color: rgba(var(--bottom-actions-bg-rgb, 255, 255, 255), 0.9);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 .actions-container {
@@ -319,18 +320,6 @@ const handleSongClick = (song: Song) => {
   &.danger {
     color: var(--danger-color, #ff4444);
   }
-}
-
-.slide-up-enter-active,
-.slide-up-leave-active {
-  transition:
-    transform 0.3s ease,
-    opacity 0.3s ease;
-}
-.slide-up-enter-from,
-.slide-up-leave-to {
-  transform: translateY(100%);
-  opacity: 0;
 }
 
 // 暗色模式专用（全局 .dark 类下覆盖）

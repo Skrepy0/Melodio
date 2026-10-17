@@ -25,7 +25,12 @@ const props = defineProps<Props>()
         <span class="item-label">{{ props.title }}</span>
       </div>
       <label class="switch">
-        <input :checked="props.checked" type="checkbox" @change="props.change" />
+        <input
+          :aria-label="props.title"
+          :checked="props.checked"
+          type="checkbox"
+          @change="props.change"
+        />
         <span class="slider round"></span>
       </label>
     </div>

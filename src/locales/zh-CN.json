@@ -42,6 +42,9 @@
       "playlistCreated": "播放列表已创建",
       "playlistCreateFailed": "创建失败",
       "invalidSongsCleaned": "已自动清理 {count} 首失效歌曲"
+    },
+    "a11y": {
+      "playAll": "播放全部"
     }
   },
   "player": {
@@ -70,7 +73,19 @@
       "remove": "从队列移除",
       "cancel": "取消"
     },
-    "error": "播放失败"
+    "error": "播放失败",
+    "a11y": {
+      "back": "返回",
+      "playMode": "切换播放模式",
+      "previous": "上一首",
+      "next": "下一首",
+      "playPause": "播放或暂停",
+      "shuffle": "打乱队列",
+      "rate": "播放速度",
+      "seek": "播放进度",
+      "expand": "展开播放器",
+      "drag": "拖动排序"
+    }
   },
   "song": {
     "menu": {
@@ -175,7 +190,9 @@
     }
   },
   "playlistSelector": {
-    "title": "选择播放列表"
+    "title": "选择播放列表",
+    "songCount": "{count} 首歌曲",
+    "close": "关闭"
   },
   "prompt": {
     "defaultTitle": "请输入",
@@ -253,7 +270,14 @@
     "back": "返回",
     "confirm": "确定",
     "cancel": "取消",
-    "playFailed": "播放失败"
+    "playFailed": "播放失败",
+    "close": "关闭",
+    "more": "更多",
+    "remove": "移除",
+    "search": "搜索",
+    "downloading": "下载中…",
+    "unknown": "未知",
+    "resetDefault": "恢复默认值"
   },
   "editor": {
     "title": "编辑歌单",
@@ -276,6 +300,10 @@
     "toast": {
       "invalid_list": "无效歌单",
       "list_not_found": "歌单不存在"
+    },
+    "a11y": {
+      "save": "保存顺序",
+      "back": "返回"
     }
   },
   "about": {
@@ -298,7 +326,9 @@
       "confirm": "确定",
       "cancel": "取消"
     },
-    "toast": { "removeSuccess": "已成功将这{count}项移出黑名单!" },
+    "toast": {
+      "removeSuccess": "已成功将这{count}项移出黑名单!"
+    },
     "deleteAllSongs": {
       "title": "提示",
       "message": "确定要清空黑名单吗?",
@@ -362,6 +392,19 @@
       },
       "client": "客户端请求异常, 请稍后重试",
       "unknown": "未知错误"
+    },
+    "historyRemove": "删除这条搜索历史",
+    "toast": {
+      "songNotFound": "歌曲信息不存在",
+      "noDownloadUrl": "该歌曲没有可用的下载链接",
+      "invalidDownloadUrl": "下载链接无效：{reason}",
+      "downloadSuccess": "《{name}》下载成功！",
+      "downloadFailed": "《{name}》下载失败：{reason}",
+      "unknownReason": "未知原因",
+      "noDownloadable": "没有可下载的歌曲，请检查是否选中或歌曲是否有效",
+      "batchAllDone": "全部 {count} 首歌曲下载完成！",
+      "batchPartial": "下载完成：成功 {succeeded} 首，失败 {failed} 首，{invalid} 首无效",
+      "batchError": "下载过程中发生错误，请稍后重试"
     }
   },
   "downloads": {
@@ -404,7 +447,8 @@
       "resumeFailed": "继续失败",
       "retryFailed": "重试失败",
       "taskNotFound": "下载任务不存在",
-      "historyCleared": "下载历史已清空"
+      "historyCleared": "下载历史已清空",
+      "unknownTotal": "未知"
     }
   },
   "infoDialog": {

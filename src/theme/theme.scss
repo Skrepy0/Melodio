@@ -80,12 +80,16 @@
   --bg-color: #f8f9fc;
   --bg-card: #ffffff;
   --bg-card-hover: #f0f2f5;
+  --bg-card-dimmed: rgba(0, 0, 0, 0.02);
   --bg-header: #ffffff;
+  --bg-header-rgb: 255, 255, 255;
   --bg-placeholder: #e0e0e0;
   --bg-color-rgb: 248, 249, 252;
   --bg-input: #f5f5f5;
+  --chip-bg: rgba(0, 0, 0, 0.03);
   --text-color: #1a1c1e;
   --text-secondary: #6c6f78;
+  --text-disabled: #7c7f88;
   --text-color-rgb: 26, 28, 30;
   --primary-color: #007aff;
   --primary-color-dark: #005bbf;
@@ -96,6 +100,10 @@
   --switch-handle-color: #ffffff;
   --header-border-bottom: rgba(0, 0, 0, 0.05);
   --setting-border: rgba(0, 0, 0, 0.05);
+  --border-color: rgba(0, 0, 0, 0.08);
+  --bg-secondary: rgba(0, 0, 0, 0.08);
+  --primary: var(--primary-color);
+  --primary-color-light: rgba(var(--primary-color-rgb), 0.1);
   --input-border: rgba(0, 0, 0, 0.1);
   --dropdown-border: rgba(0, 0, 0, 0.1);
   --border-light: rgba(0, 0, 0, 0.04);
@@ -142,12 +150,16 @@
   --bg-color: #0a0a0c;
   --bg-card: #1c1c1e;
   --bg-card-hover: #2c2c2e;
+  --bg-card-dimmed: rgba(255, 255, 255, 0.03);
   --bg-header: #121212;
+  --bg-header-rgb: 18, 18, 18;
   --bg-placeholder: #2c2c2e;
   --bg-color-rgb: 10, 10, 12;
   --bg-input: #2c2c2c;
+  --chip-bg: rgba(255, 255, 255, 0.06);
   --text-color: #e9e9ef;
   --text-secondary: #8e8e93;
+  --text-disabled: #77777d;
   --text-color-rgb: 233, 233, 239;
   --primary-color: #0a84ff;
   --primary-color-dark: #0055b3;
@@ -158,6 +170,10 @@
   --switch-handle-color: #ffffff;
   --header-border-bottom: rgba(255, 255, 255, 0.1);
   --setting-border: rgba(255, 255, 255, 0.1);
+  --border-color: rgba(255, 255, 255, 0.12);
+  --bg-secondary: rgba(255, 255, 255, 0.08);
+  --primary: var(--primary-color);
+  --primary-color-light: rgba(var(--primary-color-rgb), 0.16);
   --input-border: rgba(255, 255, 255, 0.1);
   --dropdown-border: rgba(255, 255, 255, 0.1);
   --border-light: rgba(255, 255, 255, 0.05);
@@ -188,12 +204,18 @@
   --progress-bar: #ffffff55;
 }
 
-* {
+// Theme switches animate their colour changes, but a permanent global
+// transition would also lag every hover/scroll interaction. The class is
+// applied to <html> only for the duration of a theme change.
+html.theme-transition,
+html.theme-transition *,
+html.theme-transition *::before,
+html.theme-transition *::after {
   transition:
     background-color 0.3s ease,
     color 0.3s ease,
     border-color 0.3s ease,
-    box-shadow 0.3s ease;
+    box-shadow 0.3s ease !important;
 }
 
 .no-transition {

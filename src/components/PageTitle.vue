@@ -13,13 +13,13 @@ const props = withDefaults(defineProps<Props>(), {
 
 <template>
   <div class="settings-header">
-    <div class="header-back" @click="props.goBack">
+    <button :aria-label="$t('common.back')" class="header-back" type="button" @click="props.goBack">
       <Icon
         :width="props.icon_width"
         color="var(--primary-color)"
         icon="material-symbols:arrow-back"
       />
-    </div>
+    </button>
     <div class="header-title">{{ props.title }}</div>
   </div>
 </template>

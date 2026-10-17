@@ -76,7 +76,7 @@ const onSearch = async () => {
 const onMenuItemClicked = async (item: DropdownItem) => {
   const song = searchResults.value.find((s) => s.identifier === openDropdownId.value)
   if (!song) {
-    toast.error('歌曲信息不存在')
+    toast.error(t('search.toast.songNotFound'))
     return
   }
 
@@ -85,22 +85,27 @@ const onMenuItemClicked = async (item: DropdownItem) => {
 
     const url = song.download_url?.trim()
     if (!url) {
-      toast.warning('该歌曲没有可用的下载链接')
+      toast.warning(t('search.toast.noDownloadUrl'))
       return
     }
 
     if (song.download_url_status && !song.download_url_status.ok) {
-      const reason = song.download_url_status.reason?.join(', ') || '未知原因'
-      toast.error(`下载链接无效: ${reason}`)
+      const reason = song.download_url_status.reason?.join(', ') || t('search.toast.unknownReason')
+      toast.error(t('search.toast.invalidDownloadUrl', { reason }))
       return
     }
 
     try {
       await downloadMusic(song)
-      toast.success(`《${song.name}》下载成功！`)
+      toast.success(t('search.toast.downloadSuccess', { name: song.name }))
     } catch (error: any) {
       console.error(`下载失败: ${song.name}`, error)
-      toast.error(`《${song.name}》下载失败: ${error.message || '未知错误'}`)
+      toast.error(
+        t('search.toast.downloadFailed', {
+          name: song.name,
+          reason: error.message || t('search.toast.unknownReason'),
+        })
+      )
     }
   } else if (item.value === 'play') {
     await onItemClick(song)
@@ -157,7 +162,7 @@ const addSelectedToQueue = () => {
   exitSelectMode()
 }
 
-const addToSongList = async (songs: OnlineSong[]) => {
+const addToSongList = async (songs: OnlineSong[], onlySelected = false) => {
   const selected = await showPlaylistSelector(
     [appStore.getLikeList(), ...appStore.getSongLists()],
     t('playlistSelector.title'),
@@ -165,12 +170,18 @@ const addToSongList = async (songs: OnlineSong[]) => {
     t('playList.like.description')
   )
   if (selected) {
+    // Batch actions pass a pre-filtered list; row actions pass a single song
+    // that is not part of the selection, so filtering by selectedIds would
+    // silently add nothing.
+    const candidates = onlySelected
+      ? songs.filter((song) => selectedIds.value.has(song.identifier))
+      : songs
     if (selected.id === 0) {
       const likeList = appStore.getLikeList().data
       const newSongs: Song[] = []
-      songs.forEach((o_song) => {
+      candidates.forEach((o_song) => {
         const song = getSongFromOnlineSong(o_song)
-        if (selectedIds.value.has(song.id) && !isInList(song.id, likeList)) {
+        if (song.id && !isInList(song.id, likeList)) {
           newSongs.push(song)
         }
       })
@@ -187,7 +198,7 @@ const addToSongList = async (songs: OnlineSong[]) => {
       }
     } else {
       const list: Song[] = []
-      songs.forEach((o_song) => {
+      candidates.forEach((o_song) => {
         const song = getSongFromOnlineSong(o_song)
         if (song.id && !isInList(song.id, selected.data)) {
           list.push(song)
@@ -209,7 +220,7 @@ const addSelectedToSongList = async () => {
   const selectedSongs = searchResults.value.filter(
     (song) => selectedIds.value.has(song.identifier) && song.download_url?.trim()
   )
-  await addToSongList(selectedSongs)
+  await addToSongList(selectedSongs, true)
   exitSelectMode()
 }
 
@@ -309,26 +320,27 @@ const downloadSelectedMusics = async () => {
   )
 
   if (selectedSongs.length === 0) {
-    toast.warning('没有可下载的歌曲，请检查是否选中或歌曲是否有效')
+    toast.warning(t('search.toast.noDownloadable'))
     return
   }
 
   isDownloadingBatch.value = true
   try {
-    const { succeeded, failed, invalidSongsCount, results } =
-      await downloadMultipleSongs(selectedSongs)
+    const { succeeded, failed, invalidSongsCount } = await downloadMultipleSongs(selectedSongs)
 
     if (failed === 0 && invalidSongsCount === 0) {
-      toast.success(`全部 ${succeeded} 首歌曲下载完成！`)
+      toast.success(t('search.toast.batchAllDone', { count: succeeded }))
     } else {
       toast.warning(
-        `下载完成：成功 ${succeeded} 首，失败 ${failed} 首，${invalidSongsCount} 首无效`
+        t('search.toast.batchPartial', {
+          succeeded,
+          failed,
+          invalid: invalidSongsCount,
+        })
       )
     }
-
-    console.log('下载结果详情:', results)
   } catch (error) {
-    toast.error('下载过程中发生错误，请稍后重试')
+    toast.error(t('search.toast.batchError'))
     console.error(error)
   } finally {
     isDownloadingBatch.value = false
@@ -377,22 +389,20 @@ onBeforeUnmount(() => {
           </button>
         </div>
         <div class="history-list">
-          <button
-            v-for="item in searchHistory"
-            :key="item"
-            class="history-item"
-            @click="onHistoryClick(item)"
-          >
-            <Icon icon="mdi:history" width="16" />
-            <span>{{ item }}</span>
+          <div v-for="item in searchHistory" :key="item" class="history-item">
+            <button class="history-main" type="button" @click="onHistoryClick(item)">
+              <Icon icon="mdi:history" width="16" />
+              <span>{{ item }}</span>
+            </button>
             <button
-              aria-label="remove history item"
+              :aria-label="$t('search.historyRemove')"
               class="history-remove"
+              type="button"
               @click.stop="appStore.removeSearchHistoryItem(item)"
             >
               <Icon icon="mdi:close" width="14" />
             </button>
-          </button>
+          </div>
         </div>
       </div>
 
@@ -462,7 +472,9 @@ onBeforeUnmount(() => {
               @click="downloadSelectedMusics"
             >
               <Icon :width="20" color="var(--primary-color)" icon="material-symbols:download" />
-              <span>{{ isDownloadingBatch ? '下载中...' : $t('search.operations.download') }}</span>
+              <span>{{
+                isDownloadingBatch ? $t('common.downloading') : $t('search.operations.download')
+              }}</span>
             </button>
             <button class="action-btn" @click="addSelectedToQueue">
               <Icon :width="20" color="var(--primary-color)" icon="ic:baseline-queue" />
@@ -489,7 +501,7 @@ onBeforeUnmount(() => {
   position: relative;
   height: 100%;
   overflow-y: auto;
-  padding-bottom: 80px;
+  padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
 }
 
 .header {
@@ -528,8 +540,8 @@ onBeforeUnmount(() => {
   margin: 12px;
   padding: 12px;
   border-radius: 14px;
-  background: var(--bg-card, rgba(255, 255, 255, 0.8));
-  border: 1px solid var(--border-color, rgba(0, 0, 0, 0.08));
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
 }
 
 .history-header {
@@ -559,16 +571,26 @@ onBeforeUnmount(() => {
 .history-item {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 8px 10px;
   border-radius: 999px;
-  border: 1px solid var(--border-color, rgba(0, 0, 0, 0.08));
-  background: var(--chip-bg, rgba(0, 0, 0, 0.03));
+  border: 1px solid var(--border-color);
+  background: var(--chip-bg);
   color: var(--text-color);
+  overflow: hidden;
+}
+
+.history-main {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 4px 10px 12px;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
   cursor: pointer;
 }
 
-.history-item span {
+.history-main span {
   max-width: 180px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -581,8 +603,16 @@ onBeforeUnmount(() => {
   color: inherit;
   display: inline-flex;
   align-items: center;
-  padding: 0;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  margin-right: 4px;
+  border-radius: 50%;
   cursor: pointer;
+
+  &:hover {
+    background: var(--header-back-hover);
+  }
 }
 
 .status-placeholder {
@@ -596,7 +626,7 @@ onBeforeUnmount(() => {
   text-align: center;
 
   &.error {
-    color: #ff6b6b;
+    color: var(--danger-color-hover);
   }
 
   .status-text {
@@ -618,6 +648,7 @@ onBeforeUnmount(() => {
   z-index: 200;
   backdrop-filter: blur(10px);
   background-color: rgba(var(--bottom-actions-bg-rgb, 255, 255, 255), 0.9);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 .actions-container {
@@ -676,17 +707,6 @@ onBeforeUnmount(() => {
   }
 }
 
-.slide-up-enter-active,
-.slide-up-leave-active {
-  transition:
-    transform 0.3s ease,
-    opacity 0.3s ease;
-}
-.slide-up-enter-from,
-.slide-up-leave-to {
-  transform: translateY(100%);
-  opacity: 0;
-}
 .loading-indicator {
   display: flex;
   align-items: center;

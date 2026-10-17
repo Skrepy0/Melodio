@@ -139,16 +139,13 @@ const playSong = async (song: Song) => {
     console.error('播放失败:', error)
     toast.error(t('common.playFailed'))
   } finally {
-    appStore.togglePlay()
-    setTimeout(() => {
-      appStore.setIsSwitchingSong(false)
-      appStore.togglePlay()
-    }, 200)
+    // Playback state is owned by the native songChanged listener; toggling it
+    // here raced with that listener and produced an audible pause/play blip.
+    appStore.setIsSwitchingSong(false)
   }
 }
 
 const onSelectOperation = async (item: DropdownItem) => {
-  console.log('选中:', item.description, item.value)
   if (item.value === 'edit_name') {
     const index = appStore.getCurrentPlayListIndex()
     if (index === 0) {
@@ -228,17 +225,23 @@ const onSearch = () => {
   <ion-page>
     <div class="song-list-page">
       <div class="song-list-header">
-        <div class="header-back" @click="goBack">
+        <button :aria-label="$t('common.back')" class="header-back" type="button" @click="goBack">
           <Icon :width="24" color="var(--primary-color)" icon="material-symbols:arrow-back" />
-        </div>
+        </button>
 
         <Transition mode="out-in" name="fade">
           <div v-if="!isSearchMode" key="normal" class="normal-mode">
             <div class="header-title">{{ title }}</div>
             <div class="button-container">
-              <CircleButton :size="36" icon="mdi:magnify" @click="enterSearchMode" />
+              <CircleButton
+                :label="$t('common.search')"
+                :size="36"
+                icon="mdi:magnify"
+                @click="enterSearchMode"
+              />
               <DropdownButton
                 :dx="-100"
+                :label="$t('common.more')"
                 :options="operations"
                 :size="36"
                 button-icon="mingcute:more-2-line"
@@ -259,6 +262,7 @@ const onSearch = () => {
                 @search="onSearch"
               />
               <CircleButton
+                :label="$t('common.close')"
                 :size="36"
                 bg-color="transparent"
                 icon="mdi:close"
@@ -275,14 +279,11 @@ const onSearch = () => {
           <Icon :width="32" class="loading-icon" icon="mdi:loading" />
           <span>{{ $t('songList.loading') }}</span>
         </div>
-        <div v-if="!isLoading && songsList.length === 0" class="empty-state">
+        <div v-else-if="songsList.length === 0" class="empty-state">
           <Icon :width="48" color="var(--text-secondary)" icon="mdi:music-off" />
           <p>{{ $t('songList.empty') }}</p>
         </div>
-        <div
-          v-if="!isLoading && songsList.length !== 0 && showSongsList.length === 0"
-          class="empty-state"
-        >
+        <div v-else-if="showSongsList.length === 0" class="empty-state">
           <Icon :width="48" color="var(--text-secondary)" icon="mdi:music-off" />
           <p>{{ $t('songList.notFound') }}</p>
         </div>
@@ -326,11 +327,18 @@ const onSearch = () => {
   justify-content: center;
   width: 36px;
   height: 36px;
+  padding: 0;
+  border: none;
+  background: transparent;
   cursor: pointer;
   border-radius: 50%;
   transition: background 0.2s;
   &:hover {
     background-color: var(--header-back-hover);
+  }
+  &:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
   }
 }
 
@@ -367,7 +375,7 @@ const onSearch = () => {
 .content-body {
   flex: 1;
   overflow-y: auto;
-  padding-bottom: 80px;
+  padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
 }
 
 .loading-state,

@@ -2,22 +2,13 @@ import { createVNode, render } from 'vue'
 import PlaylistSelectorDialog from '@/components/PlaylistSelectorDialog.vue'
 import type { Playlist } from '@/utils/interface'
 
-let container: HTMLDivElement | null = null
-let instance: any = null
-
 export function showPlaylistSelector(
   playlists: Playlist[],
   head: string,
   likeListName: string,
   likeListDescription: string
 ): Promise<Playlist | null> {
-  if (container) {
-    document.body.removeChild(container)
-    container = null
-    instance = null
-  }
-
-  container = document.createElement('div')
+  const container = document.createElement('div')
   document.body.appendChild(container)
 
   const vnode = createVNode(PlaylistSelectorDialog, {
@@ -26,10 +17,19 @@ export function showPlaylistSelector(
     likeListDescription: likeListDescription,
   })
   render(vnode, container)
-  instance = vnode.component
+
+  const cleanup = () => {
+    render(null, container)
+    if (container.parentNode) {
+      container.parentNode.removeChild(container)
+    }
+  }
+
+  const instance = vnode.component
 
   if (instance?.exposed?.show) {
-    return instance.exposed.show(playlists) as Promise<Playlist | null>
+    return (instance.exposed.show(playlists) as Promise<Playlist | null>).finally(cleanup)
   }
+  cleanup()
   return Promise.resolve(null)
 }

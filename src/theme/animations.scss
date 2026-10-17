@@ -51,19 +51,25 @@
 
 // Slide up from bottom (used by bottom sheets, player view)
 .slide-up-enter-active {
-  transition: transform 0.3s cubic-bezier(0.22, 0.61, 0.36, 1);
+  transition:
+    transform 0.3s cubic-bezier(0.22, 0.61, 0.36, 1),
+    opacity 0.3s ease;
 }
 
 .slide-up-leave-active {
-  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  transition:
+    transform 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 0.25s ease;
 }
 
 .slide-up-enter-from {
   transform: translateY(100%);
+  opacity: 0;
 }
 
 .slide-up-leave-to {
   transform: translateY(100%);
+  opacity: 0;
 }
 
 // Fade with slight scale + slide (used by header mode transitions)
@@ -87,16 +93,6 @@
 
 // ===== New Micro-interaction Keyframes =====
 
-// Skeleton loading shimmer — moving gradient sweep
-@keyframes shimmer {
-  0% {
-    background-position: -200% 0;
-  }
-  100% {
-    background-position: 200% 0;
-  }
-}
-
 // Subtle float for album art / hero elements
 @keyframes float {
   0%,
@@ -105,17 +101,6 @@
   }
   50% {
     transform: translateY(-6px);
-  }
-}
-
-// Pulsing glow ring for play button
-@keyframes pulse-glow {
-  0%,
-  100% {
-    box-shadow: 0 0 0 0 rgba(var(--primary-color-rgb), 0.4);
-  }
-  50% {
-    box-shadow: 0 0 0 12px rgba(var(--primary-color-rgb), 0);
   }
 }
 
@@ -135,28 +120,9 @@
   }
 }
 
-// Fade in from bottom (for toasts, notifications)
-@keyframes slideDownIn {
-  from {
-    opacity: 0;
-    transform: translateY(-16px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
 // ===== Shared Transition Classes (unchanged above) =====
 
 // ===== Utility Classes =====
-
-// Single-line text truncation with ellipsis
-.text-ellipsis {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
 
 // Centered loading spinner icon
 .loading-icon {
@@ -180,38 +146,14 @@
   }
 }
 
-// Skeleton placeholder — shimmer loading animation
-.skeleton {
-  background: linear-gradient(
-    90deg,
-    var(--bg-placeholder) 25%,
-    var(--bg-card-hover) 37%,
-    var(--bg-placeholder) 63%
-  );
-  background-size: 200% 100%;
-  animation: shimmer 1.4s ease infinite;
-  border-radius: var(--radius-sm, 8px);
-}
-
-// Staggered list entrance — add to any list container
-// Children enter one-by-one with slideInUp
-.stagger-children > * {
-  opacity: 0;
-  animation: slideInUp 0.35s var(--ease-out-expo, cubic-bezier(0.19, 1, 0.22, 1)) forwards;
-
-  @for $i from 1 through 30 {
-    &:nth-child(#{$i}) {
-      animation-delay: #{$i * 0.04}s;
-    }
+// Respect the user's motion preference: keep the UI static but intact.
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
-}
-
-// Floating element — subtle up/down bob
-.is-floating {
-  animation: float 3s var(--ease-in-out, ease) infinite;
-}
-
-// Pulsing glow — for active state indicators
-.is-pulsing {
-  animation: pulse-glow 2s ease infinite;
 }

@@ -167,6 +167,7 @@ function onDragStart(e: PointerEvent, idx: number) {
   isDragging = true
   document.addEventListener('pointermove', onDragMove)
   document.addEventListener('pointerup', onDragEnd)
+  document.addEventListener('pointercancel', onDragEnd)
 }
 
 function onDragMove(e: PointerEvent) {
@@ -207,6 +208,7 @@ function onDragEnd(e: PointerEvent) {
   pointerId = null
   document.removeEventListener('pointermove', onDragMove)
   document.removeEventListener('pointerup', onDragEnd)
+  document.removeEventListener('pointercancel', onDragEnd)
 }
 
 function saveOrder() {
@@ -252,12 +254,22 @@ const backWithoutSave = () => {
   <div class="song-list-editor">
     <div class="editor-header">
       <div class="header-left">
-        <button class="back-btn" @click="backWithoutSave">
+        <button
+          :aria-label="t('common.back')"
+          class="back-btn"
+          type="button"
+          @click="backWithoutSave"
+        >
           <Icon :width="24" color="var(--primary-color)" icon="mdi:arrow-left" />
         </button>
         <h2>{{ $t('editor.title') }}</h2>
       </div>
-      <CircleButton :icon-color="'#1bd96a'" icon="ic:twotone-save" @click="saveOrder" />
+      <CircleButton
+        :icon-color="'#1bd96a'"
+        :label="t('editor.a11y.save')"
+        icon="ic:twotone-save"
+        @click="saveOrder"
+      />
     </div>
 
     <div class="sort-controls">

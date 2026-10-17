@@ -1,11 +1,13 @@
 <script lang="ts" setup>
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { Icon } from '@iconify/vue'
+import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'
 import { audio } from '@/utils/createAudio'
 import { DEFAULT_COVER, fetchCoverFromWeb } from '@/utils/functions'
 
 const appStore = useAppStore()
+const { t } = useI18n()
 
 const currentSong = computed(() => appStore.currentSong)
 const isPlaying = computed(() => appStore.getPlayData().isPlaying)
@@ -68,7 +70,7 @@ const resolveCover = async (song: any) => {
     return
   }
   try {
-    const url = await fetchCoverFromWeb(song.title, song.artist || '')
+    const url = await fetchCoverFromWeb(song.title, song.artist || '', signal)
     if (!signal.aborted) {
       coverSrc.value = url || DEFAULT_COVER
     }
@@ -93,7 +95,15 @@ onUnmounted(() => {
     </div>
 
     <div class="bar-content">
-      <div class="song-info" @click="onExpand">
+      <div
+        :aria-label="t('player.a11y.expand')"
+        class="song-info"
+        role="button"
+        tabindex="0"
+        @click="onExpand"
+        @keydown.enter="onExpand"
+        @keydown.space.prevent="onExpand"
+      >
         <div class="cover">
           <img
             v-if="coverSrc && coverSrc !== DEFAULT_COVER"
@@ -116,7 +126,12 @@ onUnmounted(() => {
           <span>{{ formatTime(duration) }}</span>
         </div>
         <div class="action-buttons">
-          <button class="play-pause-btn" @click="togglePlay">
+          <button
+            :aria-label="t('player.a11y.playPause')"
+            class="play-pause-btn"
+            type="button"
+            @click="togglePlay"
+          >
             <Icon :icon="isPlaying ? 'mdi:pause' : 'mdi:play'" :width="28" />
           </button>
         </div>
@@ -137,6 +152,7 @@ onUnmounted(() => {
   border-top: 1px solid var(--glass-border);
   z-index: 100;
   box-shadow: var(--elevation-3);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 .progress-line {

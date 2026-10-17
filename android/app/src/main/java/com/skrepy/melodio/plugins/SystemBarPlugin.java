@@ -34,14 +34,27 @@ public class SystemBarPlugin extends Plugin {
      * Apply a theme to both the status bar and navigation bar.
      * Called from the web layer whenever the user toggles light/dark mode.
      *
-     * @param call expects { mode: "light" | "dark" }
+     * Content is intentionally laid out below the system bars; this method only
+     * tints the bar areas so they follow the current theme background.
+     *
+     * @param call expects { mode: "light" | "dark", color?: "#rrggbb" }
      */
     @PluginMethod
     public void setTheme(PluginCall call) {
         String mode = call.getString("mode", "light");
         boolean isDark = "dark".equals(mode);
+        String colorHex = call.getString("color", null);
 
-        Log.d(TAG, "setTheme called with mode=" + mode);
+        int bgColor = isDark ? DARK_BG_COLOR : LIGHT_BG_COLOR;
+        if (colorHex != null) {
+            try {
+                bgColor = Color.parseColor(colorHex);
+            } catch (IllegalArgumentException e) {
+                Log.w(TAG, "Invalid color from web layer: " + colorHex + ", using theme default");
+            }
+        }
+
+        Log.d(TAG, "setTheme called with mode=" + mode + ", color=" + colorHex);
 
         Activity activity = getActivity();
         if (activity == null) {
@@ -50,26 +63,29 @@ public class SystemBarPlugin extends Plugin {
             return;
         }
 
+        final int barColor = bgColor;
         activity.runOnUiThread(() -> {
             Window window = activity.getWindow();
-            int bgColor = isDark ? DARK_BG_COLOR : LIGHT_BG_COLOR;
 
             // Ensure the system knows we are handling bar backgrounds ourselves.
             // Some OEM ROMs (ColorOS, MIUI) require this flag + an explicit color
             // set on the decor view's root for the status bar area to pick up the
             // change; they ignore setStatusBarColor() alone.
             window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
-            window.setStatusBarColor(bgColor);
-            window.setNavigationBarColor(bgColor);
+            window.setStatusBarColor(barColor);
+            window.setNavigationBarColor(barColor);
+            window.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);
 
-            // On Android 15+ edge-to-edge, ColourOS and similar OEM skins do not
-            // allow WebView content to draw behind the status bar. The area above
-            // the content uses the decor view's background, so we tint that as well.
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
-                window.getDecorView().setBackgroundColor(bgColor);
+            // The decor view is what shows through the bar areas (and is the only
+            // lever left on Android 15+, where edge-to-edge is enforced and
+            // setStatusBarColor() is ignored). Keep it in sync with the theme.
+            window.getDecorView().setBackgroundColor(barColor);
+
+            // Below Android 15 this is what keeps WebView content out of the bars.
+            // On 15+ it is a no-op; Capacitor's SystemBars plugin pads the WebView
+            // parent by the system bar insets instead.
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.VANILLA_ICE_CREAM) {
                 WindowCompat.setDecorFitsSystemWindows(window, true);
-            } else {
-                window.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);
             }
 
             // Configure icon/button appearance for legibility against the background
@@ -85,7 +101,7 @@ public class SystemBarPlugin extends Plugin {
             }
 
             Log.d(TAG, "Applied " + mode + " theme: barColor=" +
-                    String.format("#%08X", bgColor) + ", lightBars=" + lightBars);
+                    String.format("#%08X", barColor) + ", lightBars=" + lightBars);
         });
 
         JSObject result = new JSObject();

@@ -16,7 +16,7 @@ import toast from '@/utils/createToast'
 import { i18n } from '@/i18n'
 import { registerPlugin } from '@capacitor/core'
 import type { SystemBarPlugin } from '@/plugins/system-bar/definitions'
-import { mixColors } from '@/utils/color'
+import { hexToRgb, mixColors } from '@/utils/color'
 import { musicClients, USER_AGENT } from '@/config'
 import { MusicSignerPlugin } from '@/plugins/music-signer/definitions'
 import { requestMediaPermissions } from '@/utils/permission'
@@ -268,12 +268,15 @@ export const useAppStore = defineStore('app', () => {
   }
   function applyThemeColor() {
     const color = themeColor.value
+    const [r, g, b] = hexToRgb(color)
     document.documentElement.style.setProperty('--primary-color', color)
+    // In dark mode a lighter companion reads better against the dark surface;
+    // in light mode the companion needs to be darker for gradients to hold up.
     document.documentElement.style.setProperty(
       '--primary-color-dark',
-      mixColors(color, '#fff', 0.14)
+      darkMode.value ? mixColors(color, '#fff', 0.2) : mixColors(color, '#000', 0.2)
     )
-    document.documentElement.style.setProperty('--primary-color-rgb', color)
+    document.documentElement.style.setProperty('--primary-color-rgb', `${r}, ${g}, ${b}`)
   }
   function getThemeColor() {
     return themeColor.value
@@ -823,9 +826,20 @@ export const useAppStore = defineStore('app', () => {
   }
 
   function applyDarkMode() {
-    if (darkMode.value) document.documentElement.classList.add('dark')
-    else document.documentElement.classList.remove('dark')
-    SystemBar.setTheme({ mode: darkMode.value ? 'dark' : 'light' }).catch(() => {
+    const root = document.documentElement
+    // Animate colour swaps only while the theme is changing.
+    root.classList.add('theme-transition')
+    if (darkMode.value) root.classList.add('dark')
+    else root.classList.remove('dark')
+    applyThemeColor()
+    window.setTimeout(() => root.classList.remove('theme-transition'), 350)
+    // Keep the native bar areas in step with the themed page background.
+    // Resolve the CSS token after the class swap so the value is current.
+    const bgColor = window.getComputedStyle(root).getPropertyValue('--bg-color').trim()
+    SystemBar.setTheme({
+      mode: darkMode.value ? 'dark' : 'light',
+      color: bgColor || undefined,
+    }).catch(() => {
       // SystemBar plugin not available on web / iOS — ignore silently
     })
   }

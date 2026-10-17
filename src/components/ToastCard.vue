@@ -32,7 +32,7 @@ defineExpose({ show })
 
 <template>
   <Transition name="toast">
-    <div v-if="visible" :class="type" class="toast">
+    <div v-if="visible" :class="type" aria-live="polite" class="toast" role="status">
       <Icon v-if="iconMap[type]" :icon="iconMap[type]" class="toast-icon" />
       <span class="toast-text">{{ message }}</span>
     </div>
@@ -42,20 +42,23 @@ defineExpose({ show })
 <style lang="scss" scoped>
 .toast {
   position: fixed;
-  top: 85%;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 72px);
   left: 50%;
   transform: translateX(-50%);
   display: flex;
   align-items: center;
   gap: 8px;
+  max-width: min(88vw, 420px);
   padding: 10px 20px;
   background: var(--toast-bg, rgba(0, 0, 0, 0.8));
   backdrop-filter: blur(10px);
   color: var(--toast-text, #ffffff);
-  border-radius: 40px;
+  border-radius: 24px;
   font-size: 14px;
-  z-index: 9999;
-  white-space: nowrap;
+  line-height: 1.4;
+  text-align: center;
+  word-break: break-word;
+  z-index: 10001;
   box-shadow: var(--toast-shadow, 0 4px 12px rgba(0, 0, 0, 0.15));
 }
 

@@ -110,7 +110,7 @@ const goToOther = () => {
           icon="ic:baseline-miscellaneous-services"
         />
 
-        <div class="setting-item clickable" @click="showLanguageSelector">
+        <button class="setting-item clickable" type="button" @click="showLanguageSelector">
           <div class="setting-row">
             <div class="item-left">
               <Icon
@@ -123,11 +123,11 @@ const goToOther = () => {
             </div>
             <div class="item-right">
               <span class="item-value">{{ currentLanguageName }}</span>
-              <Icon :width="20" color="var(--primary-color)" icon="mdi:chevron-left" />
+              <Icon :width="20" color="var(--primary-color)" icon="mdi:chevron-right" />
             </div>
           </div>
           <div class="setting-desc">{{ $t('settings.languageDesc') }}</div>
-        </div>
+        </button>
         <SettingsPageLink
           :click="goToAbout"
           :desc="$t('settings.aboutDesc')"
