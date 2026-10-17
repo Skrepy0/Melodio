@@ -46,5 +46,10 @@
                 <action android:name="android.intent.action.MEDIA_BUTTON" />
             </intent-filter>
         </receiver>
+        <!-- Transport buttons on the playback notification. Not exported: the
+             PendingIntents are created by this app. -->
+        <receiver
+            android:name="com.skrepy.melodio.plugins.TransportReceiver"
+            android:exported="false" />
     </application>
 </manifest>

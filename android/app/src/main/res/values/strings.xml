@@ -5,4 +5,9 @@
     <string name="package_name">com.skrepy.melodio</string>
     <string name="custom_url_scheme">com.skrepy.melodio</string>
     <string name="audio_player_service_description">Allows the app to play audio in the background.</string>
+    <string name="media_channel_name">Playback</string>
+    <string name="media_action_play">Play</string>
+    <string name="media_action_pause">Pause</string>
+    <string name="media_action_next">Next</string>
+    <string name="media_action_previous">Previous</string>
 </resources>

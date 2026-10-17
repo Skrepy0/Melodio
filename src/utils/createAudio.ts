@@ -163,6 +163,13 @@ export class NativeAudioPlayer {
       console.error('[NativeAudio] Error', data)
       this.emit('error', data)
     })
+    // Playback was requested but another app holds audio focus. The native
+    // side retries automatically when focus returns; this only informs the UI
+    // so it does not claim to be playing.
+    NativeAudio.addListener('audioFocusDenied', () => {
+      this._paused = true
+      this.emit('playStateChange', { isPlaying: false })
+    })
   }
 
   private emit(event: AudioEvent, data?: any) {

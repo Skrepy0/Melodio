@@ -16,6 +16,7 @@ import {
   getAccessibleUrl,
   getCachedCover,
   getNativeCoverUrl,
+  hasUsableLocalCover,
   parseSearchError,
 } from '@/utils/functions'
 import toast from '@/utils/createToast'
@@ -798,7 +799,10 @@ export const useAppStore = defineStore('app', () => {
       .sort((a, b) => Math.abs(a - current) - Math.abs(b - current))
 
     const pending = order
-      .filter((index) => !(queue[index].albumArtUri || '').trim())
+      // A MediaStore album-art URI is not proof of usable artwork: the entry
+      // can be missing even when the song has a picture tag, so those tracks
+      // are looked up too. Embedded/file covers are skipped.
+      .filter((index) => !hasUsableLocalCover(queue[index].albumArtUri))
       .filter((index) => !getCachedCover(queue[index].title, queue[index].artist || ''))
       .slice(0, MAX_QUEUE_COVER_LOOKUPS)
     if (pending.length === 0) return

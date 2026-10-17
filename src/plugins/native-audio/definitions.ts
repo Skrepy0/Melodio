@@ -40,7 +40,8 @@ export interface NativeAudioPlugin {
       | 'nexttrack'
       | 'previoustrack'
       | 'songChanged'
-      | 'playStateChange',
+      | 'playStateChange'
+      | 'audioFocusDenied',
     listener: (data: any) => void
   ): void
   removeAllListeners(): Promise<void>

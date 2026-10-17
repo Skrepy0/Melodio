@@ -11,6 +11,7 @@ import android.graphics.BitmapFactory;
 import android.media.AudioAttributes;
 import android.media.AudioFocusRequest;
 import android.media.AudioManager;
+import android.media.MediaMetadataRetriever;
 import android.media.MediaPlayer;
 import android.media.PlaybackParams;
 import android.net.Uri;
@@ -23,6 +24,7 @@ import android.support.v4.media.session.PlaybackStateCompat;
 import android.util.Log;
 
 import androidx.activity.result.ActivityResult;
+import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
 
 import com.getcapacitor.Bridge;
@@ -33,6 +35,7 @@ import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.ActivityCallback;
 import com.getcapacitor.annotation.CapacitorPlugin;
+import com.skrepy.melodio.R;
 
 import org.json.JSONObject;
 
@@ -62,6 +65,12 @@ public class NativeAudioPlugin extends Plugin {
     private static final String PREFS_NAME = "melodio_playback";
     private static final String KEY_LAST_INDEX = "lastIndex";
     private static final String KEY_LAST_POSITION_MS = "lastPositionMs";
+    /** Identity of the track the saved position belongs to. */
+    private static final String KEY_LAST_TRACK = "lastTrackKey";
+    /** Custom transport actions the notification buttons send to this plugin. */
+    static final String ACTION_TOGGLE = "com.skrepy.melodio.action.TOGGLE_PLAYBACK";
+    static final String ACTION_NEXT = "com.skrepy.melodio.action.SKIP_NEXT";
+    static final String ACTION_PREV = "com.skrepy.melodio.action.SKIP_PREVIOUS";
     /**
      * Set to true when the WebView renderer process is destroyed (e.g., app was in
      * background and Android reclaimed memory). When true, all native-to-JS events
@@ -73,7 +82,13 @@ public class NativeAudioPlugin extends Plugin {
     private static volatile boolean webViewDestroyed = false;
     private static volatile NativeAudioPlugin instance = null;
     private final List<SongItem> playlist = new ArrayList<>();
+    /**
+     * URL resolution for playback. Kept separate from cover downloads so a slow
+     * image can never delay a track change.
+     */
     private final ExecutorService networkExecutor = Executors.newSingleThreadExecutor();
+    /** Cover downloads, which may take seconds on a slow connection. */
+    private final ExecutorService coverExecutor = Executors.newFixedThreadPool(2);
     private MediaPlayer mediaPlayer;
     private MediaSessionCompat mediaSession;
     private PlaybackStateCompat.Builder stateBuilder;
@@ -81,6 +96,12 @@ public class NativeAudioPlugin extends Plugin {
     private boolean prepared = false;
     private boolean isPlaying = false;
     private int loadGeneration = 0;
+    /**
+     * Bumped on every track change and on every {@code refreshCurrentMetadata}
+     * call. A cover download started for an older generation must not overwrite
+     * the metadata of the track that is playing now.
+     */
+    private final GenerationGate metadataGeneration = new GenerationGate();
     private PluginCall pendingPlayCall;
     private volatile boolean loading = false;
     private Handler progressHandler;
@@ -98,6 +119,12 @@ public class NativeAudioPlugin extends Plugin {
     private AudioManager audioManager;
     private AudioManager.OnAudioFocusChangeListener focusChangeListener;
     private boolean audioFocusGranted = false;
+    /** True while playback is paused only because another app took audio focus. */
+    private boolean pausedForFocusLoss = false;
+    /** True while the volume is lowered for a transient duck request. */
+    private boolean ducked = false;
+    /** True when play was requested but the focus request was refused. */
+    private boolean pendingFocusPlayback = false;
 
     /**
      * Called from MainActivity.onRenderProcessGone to stop all native-to-JS
@@ -124,6 +151,11 @@ public class NativeAudioPlugin extends Plugin {
     }
 
     private String resolveFinalUrl(String urlString) throws IOException {
+        return RedirectResolver.follow(urlString, this::redirectTarget);
+    }
+
+    /** Looks up the next hop for a URL, or null when it is already final. */
+    private String redirectTarget(String urlString) throws IOException {
         HttpURLConnection connection = null;
         try {
             URL url = new URL(urlString);
@@ -141,16 +173,13 @@ public class NativeAudioPlugin extends Plugin {
                     status == 307 || status == 308) {
                 String newUrl = connection.getHeaderField("Location");
                 if (newUrl != null) {
-                    // 递归跟随（最多 5 次，防止死循环）
-                    if (connection.getURL().toString().equals(newUrl)) {
-                        return newUrl;  // 防止原地跳转
-                    }
-                    connection.disconnect();
-                    return resolveFinalUrl(newUrl);
+                    // Servers may send a relative Location; resolve it against
+                    // the URL we just queried.
+                    return new URL(url, newUrl).toString();
                 }
             }
-            // 其他状态码，直接返回原始 URL（可能是最终地址）
-            return urlString;
+            // Any other status: the URL is final as far as we can tell.
+            return null;
         } finally {
             if (connection != null) {
                 connection.disconnect();
@@ -179,6 +208,9 @@ public class NativeAudioPlugin extends Plugin {
                 stopProgress();
                 notifyPlayState(false);
                 persistPlaybackState();
+                // Nothing is playing any more, so the notification becomes a
+                // plain paused card rather than an ongoing playback control.
+                showNotification(false);
             }
         });
 
@@ -196,19 +228,60 @@ public class NativeAudioPlugin extends Plugin {
             switch (focusChange) {
                 case AudioManager.AUDIOFOCUS_LOSS:
                     // 永久失去焦点（例如其他应用开始播放），暂停
+                    pausedForFocusLoss = false;
+                    unduck();
                     pauseInternal();
                     break;
                 case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT:
-                    // 暂时失去焦点（例如通知音），不暂停
+                    // Another app took focus briefly (a call, a video). Pause and
+                    // remember that the pause was not the user's choice, so
+                    // AUDIOFOCUS_GAIN can resume it.
+                    unduck();
+                    if (isPlaying) {
+                        pausedForFocusLoss = true;
+                        pauseInternal();
+                    }
                     break;
                 case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK:
-                    // 短暂失去焦点，不暂停
+                    // Stay playing, just quieter, while the other source talks.
+                    duck();
                     break;
                 case AudioManager.AUDIOFOCUS_GAIN:
-                    // 重新获得焦点，无操作
+                    // Focus is ours again (this callback is the grant itself).
+                    audioFocusGranted = true;
+                    unduck();
+                    if (pausedForFocusLoss) {
+                        pausedForFocusLoss = false;
+                        playInternal();
+                    } else if (pendingFocusPlayback) {
+                        // The earlier play request was refused; the system has
+                        // now granted focus, so honour it.
+                        pendingFocusPlayback = false;
+                        playInternal();
+                    }
                     break;
             }
         };
+    }
+
+    private void duck() {
+        if (!prepared || !isPlaying || ducked) return;
+        try {
+            mediaPlayer.setVolume(0.2f, 0.2f);
+            ducked = true;
+        } catch (IllegalStateException e) {
+            Log.w(TAG, "duck failed", e);
+        }
+    }
+
+    private void unduck() {
+        if (!ducked) return;
+        try {
+            if (prepared) mediaPlayer.setVolume(1.0f, 1.0f);
+        } catch (IllegalStateException e) {
+            Log.w(TAG, "unduck failed", e);
+        }
+        ducked = false;
     }
 
     private void requestAudioFocus() {
@@ -217,15 +290,26 @@ public class NativeAudioPlugin extends Plugin {
             return;
         }
         if (audioManager == null) return;
+        int result;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             AudioAttributes audioAttributes = new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA).setContentType(AudioAttributes.CONTENT_TYPE_MUSIC).build();
-            AudioFocusRequest focusRequest = new AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN).setAudioAttributes(audioAttributes).setOnAudioFocusChangeListener(focusChangeListener).build();
-            audioFocusGranted = audioManager.requestAudioFocus(focusRequest) == AudioManager.AUDIOFOCUS_REQUEST_GRANTED;
+            AudioFocusRequest focusRequest = new AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
+                    .setAudioAttributes(audioAttributes)
+                    .setOnAudioFocusChangeListener(focusChangeListener)
+                    // A call in progress may delay the grant instead of
+                    // refusing it. Accepting the delay means the system sends
+                    // AUDIOFOCUS_GAIN when the call ends, which is exactly the
+                    // callback playInternal's retry waits for.
+                    .setAcceptsDelayedFocusGain(true)
+                    .build();
+            result = audioManager.requestAudioFocus(focusRequest);
         } else {
-            int result = audioManager.requestAudioFocus(focusChangeListener, AudioManager.STREAM_MUSIC, AudioManager.AUDIOFOCUS_GAIN);
-            audioFocusGranted = (result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED);
+            result = audioManager.requestAudioFocus(focusChangeListener, AudioManager.STREAM_MUSIC, AudioManager.AUDIOFOCUS_GAIN);
         }
-        Log.d(TAG, "AudioFocus requested: " + audioFocusGranted);
+        // GRANTED only. DELAYED is not permission to start: the grant arrives
+        // later through focusChangeListener.
+        audioFocusGranted = (result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED);
+        Log.d(TAG, "AudioFocus requested: granted=" + audioFocusGranted + " result=" + result);
     }
 
     private void abandonAudioFocus() {
@@ -293,6 +377,7 @@ public class NativeAudioPlugin extends Plugin {
                 playbackPrefs().edit()
                         .putInt(KEY_LAST_INDEX, index)
                         .putLong(KEY_LAST_POSITION_MS, 0)
+                        .putString(KEY_LAST_TRACK, trackKey(index))
                         .apply();
             }
             call.resolve();
@@ -331,6 +416,32 @@ public class NativeAudioPlugin extends Plugin {
             currentIndex = -1;
         }
 
+        if (playlist.isEmpty()) {
+            // The queue was cleared (e.g. the web layer emptied it). Leaving a
+            // notification pointing at a track that no longer exists is worse
+            // than removing it, and audio must not outlive its queue.
+            // Supersede any load still in flight so its onPrepared callback
+            // cannot start a track that is no longer in the queue.
+            loadGeneration++;
+            metadataGeneration.next();
+            rejectPendingCall("playlist cleared");
+            if (prepared && mediaPlayer != null) {
+                try {
+                    if (mediaPlayer.isPlaying()) mediaPlayer.pause();
+                    mediaPlayer.reset();
+                } catch (IllegalStateException e) {
+                    Log.w(TAG, "Failed to reset player for empty playlist", e);
+                }
+                prepared = false;
+            }
+            isPlaying = false;
+            pausedForFocusLoss = false;
+            pendingFocusPlayback = false;
+            updateState(false);
+            stopProgress();
+            cancelNotification();
+        }
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
             Log.d(TAG, "Playlist set: " + playlist.size() + " songs. First URL: " + (playlist.isEmpty() ? "none" : playlist.getFirst().url) + ", currentIndex=" + currentIndex);
         }
@@ -343,22 +454,22 @@ public class NativeAudioPlugin extends Plugin {
      * song data.
      */
     private void loadBitmap(String urlString, BitmapCallback callback) {
-        networkExecutor.submit(() -> {
+        coverExecutor.submit(() -> {
             Bitmap bitmap = null;
             try {
                 if (urlString.startsWith("data:")) {
                     String base64Str = urlString.substring(urlString.indexOf(",") + 1);
                     byte[] decodedBytes = android.util.Base64.decode(base64Str, android.util.Base64.DEFAULT);
-                    bitmap = BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.length);
+                    bitmap = decodeSampled(decodedBytes);
                 } else if (urlString.startsWith("file://")) {
-                    bitmap = BitmapFactory.decodeFile(urlString.substring(7));
+                    bitmap = decodeFileUri(urlString);
                 } else if (urlString.startsWith("content://")) {
                     try (InputStream input = getContext().getContentResolver()
                             .openInputStream(Uri.parse(urlString))) {
                         if (input != null) {
                             byte[] bytes = readCapped(input, MAX_COVER_BYTES);
                             if (bytes != null) {
-                                bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
+                                bitmap = decodeSampled(bytes);
                             }
                         }
                     }
@@ -375,7 +486,7 @@ public class NativeAudioPlugin extends Plugin {
                         try (InputStream input = connection.getInputStream()) {
                             byte[] bytes = readCapped(input, MAX_COVER_BYTES);
                             if (bytes != null) {
-                                bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
+                                bitmap = decodeSampled(bytes);
                             }
                         }
                     } finally {
@@ -385,9 +496,78 @@ public class NativeAudioPlugin extends Plugin {
             } catch (Exception e) {
                 Log.e(TAG, "loadBitmap failed: " + e.getMessage());
             }
+            // Even a sampled decode can be larger than the notification needs.
+            if (bitmap != null) {
+                bitmap = scaleDownArtwork(bitmap);
+            }
             Bitmap finalBitmap = bitmap;
             new Handler(Looper.getMainLooper()).post(() -> callback.onResult(finalBitmap));
         });
+    }
+
+    /**
+     * Decodes an image at a reduced sample size.
+     *
+     * <p>Embedded artwork in a music file is frequently 2000–4000 px on a side.
+     * Decoding that at full resolution costs tens of megabytes for a bitmap
+     * that is shown at ~300 px — and when the allocation fails, the artwork
+     * silently disappears from the notification. Reading the bounds first and
+     * downsampling avoids both the memory spike and the failure.</p>
+     */
+    private static Bitmap decodeSampled(byte[] bytes) {
+        BitmapFactory.Options bounds = new BitmapFactory.Options();
+        bounds.inJustDecodeBounds = true;
+        BitmapFactory.decodeByteArray(bytes, 0, bytes.length, bounds);
+        if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null;
+
+        BitmapFactory.Options options = new BitmapFactory.Options();
+        options.inSampleSize = ArtworkSampler.sampleSizeFor(bounds.outWidth, bounds.outHeight);
+        options.inPreferredConfig = Bitmap.Config.ARGB_8888;
+        return BitmapFactory.decodeByteArray(bytes, 0, bytes.length, options);
+    }
+
+    /** Downscales artwork to a size the notification can carry comfortably. */
+    private static Bitmap scaleDownArtwork(Bitmap source) {
+        int max = ArtworkSampler.TARGET_PX;
+        int width = source.getWidth();
+        int height = source.getHeight();
+        if (width <= max && height <= max) return source;
+
+        float ratio = Math.min((float) max / width, (float) max / height);
+        int targetW = Math.max(1, Math.round(width * ratio));
+        int targetH = Math.max(1, Math.round(height * ratio));
+        Bitmap scaled = Bitmap.createScaledBitmap(source, targetW, targetH, true);
+        if (scaled != source && !source.isRecycled()) source.recycle();
+        return scaled;
+    }
+
+    /**
+     * Decodes a {@code file://} URI into a bitmap.
+     *
+     * <p>The web layer percent-encodes paths before handing them over (spaces,
+     * CJK, brackets are common in music folders). Decoding is required, or the
+     * lookup silently misses and the notification shows no artwork. The
+     * {@code Uri} path is used rather than naive substring handling so Windows
+     * style {@code file:///} and authority-less forms both work.</p>
+     */
+    private static Bitmap decodeFileUri(String fileUri) {
+        String path = fileUri.substring("file://".length());
+        if (path.startsWith("/")) path = path.substring(1);
+        try {
+            path = Uri.decode(path);
+        } catch (Exception e) {
+            Log.w(TAG, "Malformed file URI: " + fileUri);
+            return null;
+        }
+        if (!path.startsWith("/")) path = "/" + path;
+        BitmapFactory.Options bounds = new BitmapFactory.Options();
+        bounds.inJustDecodeBounds = true;
+        BitmapFactory.decodeFile(path, bounds);
+        if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null;
+
+        BitmapFactory.Options options = new BitmapFactory.Options();
+        options.inSampleSize = ArtworkSampler.sampleSizeFor(bounds.outWidth, bounds.outHeight);
+        return BitmapFactory.decodeFile(path, options);
     }
 
     /** Reads at most {@code maxBytes}; returns null when the limit is exceeded. */
@@ -440,6 +620,9 @@ public class NativeAudioPlugin extends Plugin {
 
         loadGeneration++;
         final int gen = loadGeneration;
+        // Invalidate any cover still downloading for the previous track: it
+        // must not publish its metadata once this track takes over.
+        metadataGeneration.next();
 
         prepared = false;
         isPlaying = false;
@@ -504,13 +687,22 @@ public class NativeAudioPlugin extends Plugin {
                         if (autoPlay) {
                             mp.start();
                             applyPlaybackRate(true);
+                            unduck();
                             isPlaying = true;
+                            pausedForFocusLoss = false;
                             updateState(true);
                             startProgress();
                         } else {
                             isPlaying = false;
                             updateState(false);
                         }
+
+                        // `updateMetadata` above may already have posted the
+                        // notification (when the cover is a local file it
+                        // resolves synchronously). Post it again once the play
+                        // state is final so the transport button and the
+                        // ongoing flag match reality.
+                        showNotification(isPlaying);
 
                         notifySongChanged();
                         persistPlaybackState();
@@ -571,20 +763,37 @@ public class NativeAudioPlugin extends Plugin {
         if (!audioFocusGranted) {
             requestAudioFocus();
             if (!audioFocusGranted) {
+                // The system refused or delayed focus. Tell the web layer rather
+                // than silently dropping the request, and retry once the
+                // AUDIOFOCUS_GAIN callback arrives.
+                Log.w(TAG, "playInternal: audio focus not granted, deferring playback");
+                pendingFocusPlayback = true;
+                notifyFocusDenied();
                 return;
             }
         }
         if (!mediaPlayer.isPlaying()) {
             mediaPlayer.start();
             applyPlaybackRate(true);
+            unduck();
             isPlaying = true;
+            pausedForFocusLoss = false;
+            pendingFocusPlayback = false;
             updateState(true);
             startProgress();
             notifyPlayState(true);
+            showNotification(true);
             Log.d(TAG, "playInternal: started playback");
         } else {
             Log.d(TAG, "playInternal: already playing");
         }
+    }
+
+    private void notifyFocusDenied() {
+        if (isWebViewDestroyed()) return;
+        JSObject o = new JSObject();
+        o.put("reason", "audioFocusDenied");
+        notifyListeners("audioFocusDenied", o);
     }
 
     @PluginMethod
@@ -605,8 +814,14 @@ public class NativeAudioPlugin extends Plugin {
             updateState(false);
             stopProgress();
             notifyPlayState(false);
-            abandonAudioFocus();
+            // A pause caused by transient focus loss must keep the focus
+            // request alive: abandoning it would also cancel the
+            // AUDIOFOCUS_GAIN callback that is supposed to resume playback.
+            if (!pausedForFocusLoss) abandonAudioFocus();
             persistPlaybackState();
+            // Re-post the notification as a paused card: it stays visible so
+            // the user can resume from it, but it is no longer ongoing.
+            showNotification(false);
             Log.d(TAG, "pauseInternal: paused");
         } else {
             Log.d(TAG, "pauseInternal: already paused");
@@ -663,8 +878,12 @@ public class NativeAudioPlugin extends Plugin {
             mediaPlayer.seekTo(0);
         }
         isPlaying = false;
+        pausedForFocusLoss = false;
+        unduck();
         updateState(false);
         stopProgress();
+        abandonAudioFocus();
+        cancelNotification();
         call.resolve();
     }
 
@@ -696,8 +915,15 @@ public class NativeAudioPlugin extends Plugin {
 
     private void updateState(boolean playing) {
         if (stateBuilder == null) stateBuilder = new PlaybackStateCompat.Builder();
-        long pos = prepared ? mediaPlayer.getCurrentPosition() : 0;
-        stateBuilder.setState(playing ? PlaybackStateCompat.STATE_PLAYING : PlaybackStateCompat.STATE_PAUSED, pos, 1.0f);
+        // Read the position defensively: MediaPlayer throws when queried after
+        // an error or reset, and a lock screen must never crash the app.
+        long pos = currentPositionMs();
+        // The speed matters: lock screens and car head units extrapolate the
+        // progress bar from position + speed, so a hardcoded 1.0 drifts.
+        stateBuilder.setState(
+                playing ? PlaybackStateCompat.STATE_PLAYING : PlaybackStateCompat.STATE_PAUSED,
+                pos,
+                playbackSpeed);
         stateBuilder.setActions(PlaybackStateCompat.ACTION_PLAY | PlaybackStateCompat.ACTION_PAUSE | PlaybackStateCompat.ACTION_SKIP_TO_NEXT | PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS | PlaybackStateCompat.ACTION_SEEK_TO);
         mediaSession.setPlaybackState(stateBuilder.build());
     }
@@ -717,7 +943,19 @@ public class NativeAudioPlugin extends Plugin {
         call.resolve();
     }
 
+    /**
+     * Publishes the track's metadata to the MediaSession and the notification.
+     *
+     * <p>Artwork is downloaded asynchronously. The generation captured here is
+     * checked again when the bitmap arrives: a cover that finishes after the
+     * user has skipped to another track is dropped instead of overwriting the
+     * new track's metadata.</p>
+     */
     private void updateMetadata(SongItem song) {
+        updateMetadata(song, metadataGeneration.next());
+    }
+
+    private void updateMetadata(SongItem song, int generation) {
         MediaMetadataCompat.Builder b = new MediaMetadataCompat.Builder()
                 .putString(MediaMetadataCompat.METADATA_KEY_TITLE, song.title)
                 .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, song.artist)
@@ -728,47 +966,199 @@ public class NativeAudioPlugin extends Plugin {
         // result); anything unusable falls back to the default icon.
         String coverUrl = coverResolver.resolveCoverUrlSync(
                 new Song(song.cover, song.title, song.artist));
-        loadCover(coverUrl, b);
+        loadCover(coverUrl, song.url, b, generation);
     }
 
-    private void loadCover(String coverUrl, MediaMetadataCompat.Builder builder) {
+    private void loadCover(String coverUrl, String trackUrl, MediaMetadataCompat.Builder builder,
+                           int generation) {
         if (coverUrl == null || coverUrl.isEmpty() || CoverResolver.DEFAULT_COVER.equals(coverUrl)) {
-            // No usable artwork: keep the session metadata without album art.
-            mediaSession.setMetadata(builder.build());
-            showNotification();
+            // No usable artwork reference: the track file may still carry an
+            // embedded picture. Fall back to the default icon when it does not.
+            loadEmbeddedArtwork(trackUrl, builder, generation);
             return;
         }
 
         loadBitmap(coverUrl, bitmap -> {
-            if (bitmap != null) {
-                if (currentAlbumArt != null && !currentAlbumArt.isRecycled()) {
-                    currentAlbumArt.recycle();
-                }
-                currentAlbumArt = bitmap;
-                builder.putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, bitmap);
+            if (metadataGeneration.isStale(generation)) {
+                Log.d(TAG, "Dropping stale cover (gen=" + generation + " current=" + metadataGeneration.current() + ")");
+                if (bitmap != null && !bitmap.isRecycled()) bitmap.recycle();
+                return;
             }
-            mediaSession.setMetadata(builder.build());
-            showNotification();
+            if (bitmap == null) {
+                // A MediaStore album-art URI can point at an entry that no
+                // longer exists ("No album art found"). The picture embedded in
+                // the audio file is still valid, so try that before giving up.
+                loadEmbeddedArtwork(trackUrl, builder, generation);
+                return;
+            }
+            applyMetadata(builder, generation, bitmap);
         });
     }
 
-    private void showNotification() {
+    /**
+     * Reads the artwork embedded in the track itself.
+     *
+     * <p>MediaStore's album-art table is frequently empty even for files that
+     * carry a picture tag, so the {@code content://…/albumart} URI fails with
+     * "No album art found" and the notification shows no cover. Reading the tag
+     * from the file avoids depending on that index entirely.</p>
+     */
+    private void loadEmbeddedArtwork(String trackUrl, MediaMetadataCompat.Builder builder,
+                                     int generation) {
+        if (trackUrl == null || trackUrl.isEmpty()) {
+            applyMetadata(builder, generation, null);
+            return;
+        }
+        coverExecutor.submit(() -> {
+            Bitmap bitmap = null;
+            MediaMetadataRetriever retriever = new MediaMetadataRetriever();
+            try {
+                if (trackUrl.startsWith("file://")) {
+                    retriever.setDataSource(Uri.decode(trackUrl.substring("file://".length())));
+                } else if (trackUrl.startsWith("content://")) {
+                    retriever.setDataSource(getContext(), Uri.parse(trackUrl));
+                } else {
+                    retriever.setDataSource(trackUrl);
+                }
+                byte[] picture = retriever.getEmbeddedPicture();
+                if (picture != null) {
+                    bitmap = decodeSampled(picture);
+                }
+            } catch (Exception e) {
+                Log.w(TAG, "No embedded artwork: " + e.getMessage());
+            } finally {
+                try {
+                    retriever.release();
+                } catch (Exception ignored) {
+                    // Nothing useful to do if the retriever is already closed.
+                }
+            }
+            if (bitmap != null) {
+                bitmap = scaleDownArtwork(bitmap);
+            }
+            Bitmap finalBitmap = bitmap;
+            new Handler(Looper.getMainLooper()).post(() -> {
+                if (metadataGeneration.isStale(generation)) {
+                    if (finalBitmap != null && !finalBitmap.isRecycled()) finalBitmap.recycle();
+                    return;
+                }
+                applyMetadata(builder, generation, finalBitmap);
+            });
+        });
+    }
+
+    /**
+     * Publishes metadata and refreshes the notification. The previously shown
+     * bitmap is recycled only after the new metadata is in place, so the
+     * notification is never pointed at freed pixels.
+     */
+    private void applyMetadata(MediaMetadataCompat.Builder builder, int generation, Bitmap bitmap) {
+        if (metadataGeneration.isStale(generation)) {
+            if (bitmap != null && !bitmap.isRecycled()) bitmap.recycle();
+            return;
+        }
+        if (bitmap != null) {
+            // Android 13+ reads artwork from the session metadata; older
+            // versions read the notification's large icon (set in
+            // showNotification). Publish under both keys so every API level
+            // and every surface (lock screen, car, notification) finds it.
+            builder.putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, bitmap);
+            builder.putBitmap(MediaMetadataCompat.METADATA_KEY_ART, bitmap);
+        }
+        Bitmap previous = currentAlbumArt;
+        currentAlbumArt = bitmap;
+        mediaSession.setMetadata(builder.build());
+        showNotification(isPlaying);
+        if (previous != null && previous != bitmap && !previous.isRecycled()) {
+            previous.recycle();
+        }
+    }
+
+    /**
+     * Builds the media notification with transport actions.
+     *
+     * <p>Android 13+ draws the media controls from the MediaSession itself, but
+     * Android 8–12 render only the actions attached to the notification — hence
+     * the explicit play/pause, previous and next entries.</p>
+     *
+     * @param ongoing true while playing: the notification is ongoing so it
+     *                cannot be swiped away mid-playback.
+     */
+    private void showNotification(boolean ongoing) {
         if (!canPostNotification()) {
-            Log.w(TAG, "Notification permission not granted");
-            return;
+            // Media-session notifications are exempt from POST_NOTIFICATIONS on
+            // Android 13+, so this is not fatal: attempt the post anyway and
+            // let the SecurityException path below report a real refusal.
+            Log.w(TAG, "POST_NOTIFICATIONS not granted; attempting media notification anyway");
         }
+        // The activity may be gone (backgrounded, or a WebView reload while
+        // audio kept playing). A launch intent still opens the app, so the
+        // notification is useful either way.
         Activity activity = getActivity();
-        if (activity == null) {
-            Log.w(TAG, "Activity is null, can't show notification");
+        Intent intent = activity != null
+                ? new Intent(getContext(), activity.getClass())
+                : getContext().getPackageManager()
+                        .getLaunchIntentForPackage(getContext().getPackageName());
+        if (intent == null) {
+            Log.w(TAG, "No activity to open from the notification");
             return;
         }
-        Intent intent = new Intent(getContext(), activity.getClass());
         PendingIntent pi = PendingIntent.getActivity(getContext(), 0, intent, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
-        android.app.Notification n = new androidx.core.app.NotificationCompat.Builder(getContext(), CHANNEL_ID).setSmallIcon(getContext().getApplicationInfo().icon).setContentTitle(title).setContentText(artist).setContentIntent(pi).setVisibility(androidx.core.app.NotificationCompat.VISIBILITY_PUBLIC).setPriority(androidx.core.app.NotificationCompat.PRIORITY_LOW).setStyle(new androidx.media.app.NotificationCompat.MediaStyle().setMediaSession(mediaSession.getSessionToken())).build();
+
+        // Android 8–12 draw the artwork as the notification's large icon; the
+        // MediaStyle/MediaSession path alone leaves them blank.
+        Bitmap art = (currentAlbumArt != null && !currentAlbumArt.isRecycled())
+                ? currentAlbumArt : null;
+
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(getContext(), CHANNEL_ID)
+                .setSmallIcon(R.drawable.ic_stat_music)
+                .setLargeIcon(art)
+                .setContentTitle(title)
+                .setContentText(artist)
+                .setContentIntent(pi)
+                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+                .setPriority(NotificationCompat.PRIORITY_LOW)
+                .setOnlyAlertOnce(true)
+                .setOngoing(ongoing)
+                .setShowWhen(false)
+                .addAction(transportAction(R.drawable.ic_skip_previous,
+                        getContext().getString(R.string.media_action_previous), ACTION_PREV))
+                .addAction(isPlaying
+                        ? transportAction(R.drawable.ic_pause,
+                                getContext().getString(R.string.media_action_pause), ACTION_TOGGLE)
+                        : transportAction(R.drawable.ic_play,
+                                getContext().getString(R.string.media_action_play), ACTION_TOGGLE))
+                .addAction(transportAction(R.drawable.ic_skip_next,
+                        getContext().getString(R.string.media_action_next), ACTION_NEXT))
+                .setStyle(new androidx.media.app.NotificationCompat.MediaStyle()
+                        .setMediaSession(mediaSession.getSessionToken())
+                        // Compact view: previous, play/pause, next — in the
+                        // order they were added above.
+                        .setShowActionsInCompactView(0, 1, 2));
+
+        android.app.Notification n = builder.build();
         try {
             NotificationManagerCompat.from(getContext()).notify(NOTIF_ID, n);
         } catch (SecurityException e) {
             Log.e(TAG, "Notification failed", e);
+        }
+    }
+
+    private NotificationCompat.Action transportAction(int icon, String label, String action) {
+        Intent intent = new Intent(getContext(), TransportReceiver.class).setAction(action);
+        PendingIntent pi = PendingIntent.getBroadcast(
+                getContext(),
+                action.hashCode(),
+                intent,
+                PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
+        return new NotificationCompat.Action(icon, label, pi);
+    }
+
+    private void cancelNotification() {
+        try {
+            NotificationManagerCompat.from(getContext()).cancel(NOTIF_ID);
+        } catch (Exception e) {
+            Log.w(TAG, "Failed to cancel notification", e);
         }
     }
 
@@ -786,8 +1176,38 @@ public class NativeAudioPlugin extends Plugin {
         Boolean enabledObj = call.getBoolean("enabled");
         boolean enabled = (enabledObj != null) ? enabledObj : true;
         this.audioFocusEnabled = enabled;
+        if (!enabled) {
+            // Focus management is off: treat playback as always authorised.
+            audioFocusGranted = true;
+        }
         Log.d(TAG, "Audio focus enabled: " + enabled);
         call.resolve();
+    }
+
+    /**
+     * Applies a transport command sent from the notification buttons or the
+     * headset. Called on the main thread by {@link TransportReceiver}.
+     */
+    static void handleTransportAction(String action) {
+        NativeAudioPlugin plugin = instance;
+        if (plugin == null || action == null) {
+            Log.w(TAG, "Transport action with no live plugin: " + action);
+            return;
+        }
+        switch (action) {
+            case ACTION_TOGGLE:
+                if (plugin.isPlaying) plugin.pauseInternal();
+                else plugin.playInternal();
+                break;
+            case ACTION_NEXT:
+                plugin.nextInternal();
+                break;
+            case ACTION_PREV:
+                plugin.prevInternal();
+                break;
+            default:
+                Log.w(TAG, "Unknown transport action: " + action);
+        }
     }
 
     private void notifySongChanged() {
@@ -803,9 +1223,24 @@ public class NativeAudioPlugin extends Plugin {
         // change means "playing" (e.g. after a restore that only prepares).
         o.put("isPlaying", isPlaying);
         o.put("duration", durationSec);
-        o.put("position", prepared ? mediaPlayer.getCurrentPosition() / 1000.0 : 0);
+        o.put("position", currentPositionMs() / 1000.0);
         notifyListeners("songChanged", o);
         Log.d(TAG, "songChanged event sent: index=" + currentIndex + " title=" + title + " isPlaying=" + isPlaying);
+    }
+
+    /**
+     * Current position in milliseconds, or 0 when the player is not in a state
+     * that can report one (reset, errored). MediaPlayer throws
+     * {@link IllegalStateException} rather than returning a sentinel.
+     */
+    private long currentPositionMs() {
+        if (!prepared || mediaPlayer == null) return 0;
+        try {
+            return mediaPlayer.getCurrentPosition();
+        } catch (IllegalStateException e) {
+            Log.w(TAG, "getCurrentPosition failed", e);
+            return 0;
+        }
     }
 
     /**
@@ -820,15 +1255,13 @@ public class NativeAudioPlugin extends Plugin {
             ret.put("isPlaying", isPlaying);
             ret.put("currentIndex", currentIndex);
             if (prepared) {
-                ret.put("currentPosition", mediaPlayer.getCurrentPosition() / 1000.0);
+                ret.put("currentPosition", currentPositionMs() / 1000.0);
                 ret.put("duration", durationSec);
             } else {
                 // Index selected but no track loaded (e.g. after a WebView
                 // reload) — use the persisted position only when it belongs to
                 // this track.
-                android.content.SharedPreferences prefs = playbackPrefs();
-                long savedMs = prefs.getInt(KEY_LAST_INDEX, -1) == currentIndex
-                        ? prefs.getLong(KEY_LAST_POSITION_MS, 0) : 0;
+                long savedMs = savedPositionFor(currentIndex);
                 ret.put("currentPosition", savedMs / 1000.0);
                 ret.put("duration", 0);
             }
@@ -850,14 +1283,43 @@ public class NativeAudioPlugin extends Plugin {
     private void persistPlaybackState() {
         if (currentIndex < 0) return;
         try {
-            long positionMs = prepared ? mediaPlayer.getCurrentPosition() : 0;
+            long positionMs = currentPositionMs();
             playbackPrefs().edit()
                     .putInt(KEY_LAST_INDEX, currentIndex)
                     .putLong(KEY_LAST_POSITION_MS, positionMs)
+                    // The index alone is not an identity: the queue can be
+                    // reordered or replaced between sessions, and restoring the
+                    // old position onto a different song is worse than
+                    // restarting from zero.
+                    .putString(KEY_LAST_TRACK, trackKey(currentIndex))
                     .apply();
         } catch (Exception e) {
             Log.w(TAG, "Failed to persist playback state", e);
         }
+    }
+
+    /** Stable identity for the track at {@code index}; empty when unknown. */
+    private String trackKey(int index) {
+        if (index < 0 || index >= playlist.size()) return "";
+        String url = playlist.get(index).url;
+        return url == null ? "" : url;
+    }
+
+    /**
+     * The saved position, but only when it was written for the same track the
+     * queue now holds at {@code index}.
+     */
+    private long savedPositionFor(int index) {
+        android.content.SharedPreferences prefs = playbackPrefs();
+        if (prefs.getInt(KEY_LAST_INDEX, -1) != index) return 0;
+        String savedKey = prefs.getString(KEY_LAST_TRACK, "");
+        String currentKey = trackKey(index);
+        if (savedKey != null && !savedKey.isEmpty() && !currentKey.isEmpty()
+                && !savedKey.equals(currentKey)) {
+            Log.d(TAG, "Saved position belongs to a different track, discarding");
+            return 0;
+        }
+        return prefs.getLong(KEY_LAST_POSITION_MS, 0);
     }
 
     private void notifyError(int w, int e) {
@@ -881,7 +1343,7 @@ public class NativeAudioPlugin extends Plugin {
             @Override
             public void run() {
                 if (prepared && isPlaying) {
-                    int pos = mediaPlayer.getCurrentPosition();
+                    long pos = currentPositionMs();
                     if (!isWebViewDestroyed()) {
                         JSObject o = new JSObject();
                         o.put("position", pos / 1000.0);
@@ -908,7 +1370,11 @@ public class NativeAudioPlugin extends Plugin {
 
     private void createChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            NotificationChannel c = new NotificationChannel(CHANNEL_ID, "Music", NotificationManager.IMPORTANCE_LOW);
+            NotificationChannel c = new NotificationChannel(CHANNEL_ID, getContext().getString(R.string.media_channel_name), NotificationManager.IMPORTANCE_LOW);
+            // A playback notification should be silent and un-intrusive, and it
+            // must not be blocked by the user's "silent" mode.
+            c.setShowBadge(false);
+            c.setLockscreenVisibility(android.app.Notification.VISIBILITY_PUBLIC);
             NotificationManager nm = (NotificationManager) getContext().getSystemService(Context.NOTIFICATION_SERVICE);
             if (nm != null) nm.createNotificationChannel(c);
             Log.d(TAG, "Notification channel created");
@@ -919,12 +1385,14 @@ public class NativeAudioPlugin extends Plugin {
     protected void handleOnDestroy() {
         Log.d(TAG, "Plugin destroyed");
         persistPlaybackState();
+        cancelNotification();
         instance = null;
         webViewDestroyed = false;
         rejectPendingCall("plugin destroyed");
         stopProgress();
         progressHandler = null;
         networkExecutor.shutdownNow();
+        coverExecutor.shutdownNow();
         if (mediaPlayer != null) {
             mediaPlayer.release();
             mediaPlayer = null;
@@ -1040,6 +1508,8 @@ public class NativeAudioPlugin extends Plugin {
         boolean shouldResume = prepared && mediaPlayer != null && mediaPlayer.isPlaying();
         this.playbackSpeed = rate;
         applyPlaybackRate(shouldResume);
+        // Publish the new speed so lock screens extrapolate progress correctly.
+        if (prepared) updateState(isPlaying);
         call.resolve();
     }
 

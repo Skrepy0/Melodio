@@ -209,18 +209,35 @@ export const getCachedCover = (title: string, artist: string): string =>
   coverCache.get(coverCacheKey(title, artist)) ?? ''
 
 /**
- * Cover reference handed to the native player. Local artwork is passed through
- * untouched (the native side handles content://, file:// and data: URIs);
- * otherwise a previously fetched web cover is used. When nothing is known yet,
- * returns '' and the notification falls back to the default icon.
+ * Cover reference handed to the native player. A cover resolved online wins
+ * when web lookup is enabled: MediaStore's album-art table is often stale, so
+ * a `content://` reference can point at an entry that no longer exists while
+ * the web result is known to decode. Otherwise local artwork is passed through
+ * untouched (the native side handles content://, file:// and data: URIs).
+ * When nothing is known yet, returns '' and the notification falls back to the
+ * default icon.
  */
 export const getNativeCoverUrl = (
   song: Pick<Song, 'title' | 'artist' | 'albumArtUri'>,
   allowWeb = true
 ): string => {
   const local = (song.albumArtUri || '').trim()
-  if (local) return local
-  return allowWeb ? getCachedCover(song.title, song.artist || '') : ''
+  if (allowWeb) {
+    const web = getCachedCover(song.title, song.artist || '')
+    if (web) return web
+  }
+  return local
+}
+
+/**
+ * Whether a stored cover reference is worth handing to the native player as-is.
+ * A MediaStore album-art URI is treated as unknown: the entry may have been
+ * dropped even though the song still carries a picture tag.
+ */
+export const hasUsableLocalCover = (value: string | null | undefined): boolean => {
+  const trimmed = (value || '').trim()
+  if (!trimmed) return false
+  return !trimmed.startsWith('content://')
 }
 
 export async function fetchCoverFromWeb(
