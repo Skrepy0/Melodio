@@ -11,7 +11,7 @@ import NowPlayingBar from '@/components/NowPlayingBar.vue'
 import { showConfirm } from '@/utils/createConfirm'
 import { useI18n } from 'vue-i18n'
 import { audio } from '@/utils/createAudio'
-import { getAccessibleUrl } from '@/utils/functions'
+import { getAccessibleUrl, getNativeCoverUrl } from '@/utils/functions'
 import SearchBox from '@/components/SearchBox.vue'
 import DropdownButton from '@/components/button/DropdownButton.vue'
 import CircleButton from '@/components/button/CircleButton.vue'
@@ -140,7 +140,7 @@ const playSong = async (song: Song) => {
         title: s.title,
         artist: s.artist || 'Unknown',
         album: s.album || '',
-        coverUrl: s.albumArtUri || '',
+        coverUrl: getNativeCoverUrl(s, appStore.getCanFetchCoverFromWeb()),
       }))
     )
     await audio.playIndex(index)

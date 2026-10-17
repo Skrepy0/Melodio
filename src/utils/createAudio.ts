@@ -83,17 +83,14 @@ export class NativeAudioPlayer {
     await NativeAudio.setPlaylist({ songs })
   }
 
+  /** Re-read the current track's metadata (e.g. after a cover resolves). */
+  async refreshCurrentMetadata() {
+    await NativeAudio.refreshCurrentMetadata()
+  }
+
   async playIndex(index: number, autoPlay = true) {
     await NativeAudio.playIndex({ index, autoPlay })
     // State (_paused, _currentTime) is set by native events (songChanged, playStateChange)
-  }
-
-  async setCanFetchCoverFromWeb(canFetchCoverFromWeb: boolean) {
-    await NativeAudio.setCanFetchCoverFromWeb({ canFetchCoverFromWeb })
-  }
-
-  async setUserAgent(userAgent: string) {
-    await NativeAudio.setUserAgent({ userAgent })
   }
 
   async play() {

@@ -131,11 +131,48 @@ export const DEFAULT_COVER =
   )
 
 export const isInList = (id: string, queue: Song[]) => queue.some((song) => song.id === id)
+
+/**
+ * Covers resolved from the web during this session. Any component that calls
+ * {@link fetchCoverFromWeb} populates it, so the native player can reuse a URL
+ * that has already been looked up instead of searching again.
+ */
+const coverCache = new Map<string, string>()
+const coverCacheKey = (title: string, artist: string) =>
+  `${(title || '').trim().toLowerCase()}\u0000${(artist || '').trim().toLowerCase()}`
+
+export const getCachedCover = (title: string, artist: string): string =>
+  coverCache.get(coverCacheKey(title, artist)) ?? ''
+
+/**
+ * Cover reference handed to the native player. Local artwork is passed through
+ * untouched (the native side handles content://, file:// and data: URIs);
+ * otherwise a previously fetched web cover is used. When nothing is known yet,
+ * returns '' and the notification falls back to the default icon.
+ */
+export const getNativeCoverUrl = (
+  song: Pick<Song, 'title' | 'artist' | 'albumArtUri'>,
+  allowWeb = true
+): string => {
+  const local = (song.albumArtUri || '').trim()
+  if (local) return local
+  return allowWeb ? getCachedCover(song.title, song.artist || '') : ''
+}
+
 export async function fetchCoverFromWeb(
   title: string,
   artist: string,
   signal?: AbortSignal
 ): Promise<string | null> {
+  const cacheKey = coverCacheKey(title, artist)
+  const cached = coverCache.get(cacheKey)
+  if (cached) return cached
+
+  const store = (url: string | null): string | null => {
+    if (url) coverCache.set(cacheKey, url)
+    return url
+  }
+
   try {
     const itunesUrl = `https://itunes.apple.com/search?term=${encodeURIComponent(
       `${title} ${artist}`
@@ -144,7 +181,7 @@ export async function fetchCoverFromWeb(
     const d = await r.json()
     if (d.resultCount > 0) {
       const art = d.results[0].artworkUrl100?.replace('100x100bb', '600x600bb')
-      if (art) return art
+      if (art) return store(art)
     }
   } catch {
     /* ignore */
@@ -157,7 +194,7 @@ export async function fetchCoverFromWeb(
     const d = await r.json()
     if (d.data?.length > 0) {
       const cover = d.data[0].album?.cover_big || d.data[0].album?.cover_xl
-      if (cover) return cover
+      if (cover) return store(cover)
     }
   } catch {
     /* ignore */
@@ -177,7 +214,7 @@ export async function fetchCoverFromWeb(
       if (mbid) {
         const coverUrl = `https://coverartarchive.org/release-group/${mbid}/front-250`
         const imgCheck = await fetch(coverUrl, { method: 'HEAD', signal })
-        if (imgCheck.ok) return coverUrl
+        if (imgCheck.ok) return store(coverUrl)
       }
     }
   } catch {

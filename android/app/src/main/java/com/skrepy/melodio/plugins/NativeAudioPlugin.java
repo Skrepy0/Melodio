@@ -55,6 +55,10 @@ public class NativeAudioPlugin extends Plugin {
     private static final String TAG = "NativeAudio";
     private static final String CHANNEL_ID = "melodio_audio_channel";
     private static final int NOTIF_ID = 1;
+    private static final int COVER_CONNECT_TIMEOUT_MS = 5000;
+    private static final int COVER_READ_TIMEOUT_MS = 5000;
+    /** Hard cap on a downloaded cover so a misbehaving URL cannot exhaust memory. */
+    private static final int MAX_COVER_BYTES = 10 * 1024 * 1024;
     /**
      * Set to true when the WebView renderer process is destroyed (e.g., app was in
      * background and Android reclaimed memory). When true, all native-to-JS events
@@ -81,12 +85,10 @@ public class NativeAudioPlugin extends Plugin {
     private String title = "";
     private String artist = "";
     private String album = "";
-    private String cover = "";
     private int durationSec = 0;
     private boolean repeatOne = false;
     private float playbackSpeed = 1.0f;
-    private boolean fetchCoverFromWeb = false;
-    private String userAgent = "";
+    private final CoverResolver coverResolver = new CoverResolver();
     private Bitmap currentAlbumArt;
     //焦点管理
     private boolean audioFocusEnabled = true;
@@ -312,6 +314,11 @@ public class NativeAudioPlugin extends Plugin {
         call.resolve();
     }
 
+    /**
+     * Downloads/decodes an already-resolved cover URL. No lookup happens here:
+     * the web layer owns online cover search and passes the final URL with the
+     * song data.
+     */
     private void loadBitmap(String urlString, BitmapCallback callback) {
         networkExecutor.submit(() -> {
             Bitmap bitmap = null;
@@ -322,14 +329,35 @@ public class NativeAudioPlugin extends Plugin {
                     bitmap = BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.length);
                 } else if (urlString.startsWith("file://")) {
                     bitmap = BitmapFactory.decodeFile(urlString.substring(7));
-                } else {
-                    URL url = new URL(urlString);
-                    HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-                    connection.setDoInput(true);
-                    connection.connect();
-                    InputStream input = connection.getInputStream();
-                    bitmap = BitmapFactory.decodeStream(input);
-                    input.close();
+                } else if (urlString.startsWith("content://")) {
+                    try (InputStream input = getContext().getContentResolver()
+                            .openInputStream(Uri.parse(urlString))) {
+                        if (input != null) {
+                            byte[] bytes = readCapped(input, MAX_COVER_BYTES);
+                            if (bytes != null) {
+                                bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
+                            }
+                        }
+                    }
+                } else if (urlString.startsWith("http://") || urlString.startsWith("https://")) {
+                    HttpURLConnection connection = null;
+                    try {
+                        URL url = new URL(urlString);
+                        connection = (HttpURLConnection) url.openConnection();
+                        connection.setDoInput(true);
+                        connection.setConnectTimeout(COVER_CONNECT_TIMEOUT_MS);
+                        connection.setReadTimeout(COVER_READ_TIMEOUT_MS);
+                        connection.setInstanceFollowRedirects(true);
+                        connection.connect();
+                        try (InputStream input = connection.getInputStream()) {
+                            byte[] bytes = readCapped(input, MAX_COVER_BYTES);
+                            if (bytes != null) {
+                                bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
+                            }
+                        }
+                    } finally {
+                        if (connection != null) connection.disconnect();
+                    }
                 }
             } catch (Exception e) {
                 Log.e(TAG, "loadBitmap failed: " + e.getMessage());
@@ -339,14 +367,21 @@ public class NativeAudioPlugin extends Plugin {
         });
     }
 
-    @PluginMethod
-    public void setCanFetchCoverFromWeb(PluginCall call) {
-        fetchCoverFromWeb = Boolean.TRUE.equals(call.getBoolean("canFetchCoverFromWeb"));
-    }
-
-    @PluginMethod
-    public void setUserAgent(PluginCall call) {
-        this.userAgent = call.getString("userAgent");
+    /** Reads at most {@code maxBytes}; returns null when the limit is exceeded. */
+    private static byte[] readCapped(InputStream input, int maxBytes) throws IOException {
+        java.io.ByteArrayOutputStream output = new java.io.ByteArrayOutputStream();
+        byte[] buffer = new byte[8192];
+        int total = 0;
+        int read;
+        while ((read = input.read(buffer)) != -1) {
+            total += read;
+            if (total > maxBytes) {
+                Log.w(TAG, "Cover download exceeded " + maxBytes + " bytes, aborting");
+                return null;
+            }
+            output.write(buffer, 0, read);
+        }
+        return output.toByteArray();
     }
 
     @PluginMethod
@@ -440,7 +475,6 @@ public class NativeAudioPlugin extends Plugin {
                         title = song.title;
                         artist = song.artist;
                         album = song.album;
-                        cover = song.cover;
 
                         updateMetadata(song);
 
@@ -631,99 +665,53 @@ public class NativeAudioPlugin extends Plugin {
         mediaSession.setPlaybackState(stateBuilder.build());
     }
 
+    /**
+     * Re-reads the current track's metadata. Called by the web layer after it
+     * resolves a cover asynchronously, so the notification can pick it up
+     * without waiting for the next track change.
+     */
+    @PluginMethod
+    public void refreshCurrentMetadata(PluginCall call) {
+        if (!prepared || currentIndex < 0 || currentIndex >= playlist.size()) {
+            call.resolve();
+            return;
+        }
+        updateMetadata(playlist.get(currentIndex));
+        call.resolve();
+    }
+
     private void updateMetadata(SongItem song) {
-        // 构建基础元数据
         MediaMetadataCompat.Builder b = new MediaMetadataCompat.Builder()
                 .putString(MediaMetadataCompat.METADATA_KEY_TITLE, song.title)
                 .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, song.artist)
                 .putString(MediaMetadataCompat.METADATA_KEY_ALBUM, song.album)
                 .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, durationSec * 1000L);
 
-        if (fetchCoverFromWeb) {
-            // 启用在线搜索时：先加载本地封面，失败再走在线
-            loadLocalCoverWithFallback(song, b);
-        } else {
-            // 未启用：仅加载本地（原逻辑）
-            loadLocalCover(song, b);
-        }
+        // The JS layer already resolved the cover (local artwork or a web
+        // result); anything unusable falls back to the default icon.
+        String coverUrl = coverResolver.resolveCoverUrlSync(
+                new Song(song.cover, song.title, song.artist));
+        loadCover(coverUrl, b);
     }
 
-    private void loadLocalCover(SongItem song, MediaMetadataCompat.Builder builder) {
-        if (song.cover != null && !song.cover.isEmpty()) {
-            loadBitmap(song.cover, bitmap -> {
-                if (bitmap != null) {
-                    if (currentAlbumArt != null && !currentAlbumArt.isRecycled()) {
-                        currentAlbumArt.recycle();
-                    }
-                    currentAlbumArt = bitmap;
-                    builder.putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, bitmap);
-                }
-                mediaSession.setMetadata(builder.build());
-                showNotification();
-            });
-        } else {
+    private void loadCover(String coverUrl, MediaMetadataCompat.Builder builder) {
+        if (coverUrl == null || coverUrl.isEmpty() || CoverResolver.DEFAULT_COVER.equals(coverUrl)) {
+            // No usable artwork: keep the session metadata without album art.
             mediaSession.setMetadata(builder.build());
             showNotification();
+            return;
         }
-    }
 
-    private void loadLocalCoverWithFallback(SongItem song, MediaMetadataCompat.Builder builder) {
-        // 第一步：尝试加载本地封面
-        if (song.cover != null && !song.cover.isEmpty()) {
-            loadBitmap(song.cover, bitmap -> {
-                if (bitmap != null) {
-                    // 本地封面加载成功，直接设置
-                    if (currentAlbumArt != null && !currentAlbumArt.isRecycled()) {
-                        currentAlbumArt.recycle();
-                    }
-                    currentAlbumArt = bitmap;
-                    builder.putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, bitmap);
-                    mediaSession.setMetadata(builder.build());
-                    showNotification();
-                } else {
-                    // 本地封面加载失败（bitmap 为 null），进入在线搜索
-                    fetchOnlineCover(song, builder);
+        loadBitmap(coverUrl, bitmap -> {
+            if (bitmap != null) {
+                if (currentAlbumArt != null && !currentAlbumArt.isRecycled()) {
+                    currentAlbumArt.recycle();
                 }
-            });
-        } else {
-            // 没有本地封面，直接走在线搜索
-            fetchOnlineCover(song, builder);
-        }
-    }
-
-    private void fetchOnlineCover(SongItem song, MediaMetadataCompat.Builder builder) {
-        Song coverSong = new Song(song.cover, song.title, song.artist);
-        CoverResolver coverResolver = new CoverResolver(this.userAgent);
-        coverResolver.resolveCoverUrl(coverSong, new CoverResolver.CoverCallback() {
-            @Override
-            public void onSuccess(String coverUrl) {
-                if (coverUrl != null && !coverUrl.isEmpty()) {
-                    loadBitmap(coverUrl, bitmap -> {
-                        if (bitmap != null) {
-                            if (currentAlbumArt != null && !currentAlbumArt.isRecycled()) {
-                                currentAlbumArt.recycle();
-                            }
-                            currentAlbumArt = bitmap;
-                            builder.putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, bitmap);
-                        }
-                        // 无论是否成功加载到 bitmap，都设置元数据
-                        mediaSession.setMetadata(builder.build());
-                        showNotification();
-                    });
-                } else {
-                    // 在线返回空 URL，直接设置无封面元数据
-                    mediaSession.setMetadata(builder.build());
-                    showNotification();
-                }
+                currentAlbumArt = bitmap;
+                builder.putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, bitmap);
             }
-
-            @Override
-            public void onError(Exception e) {
-                Log.w(TAG, "Online cover fetch error", e);
-                // 出错时设置无封面元数据
-                mediaSession.setMetadata(builder.build());
-                showNotification();
-            }
+            mediaSession.setMetadata(builder.build());
+            showNotification();
         });
     }
 

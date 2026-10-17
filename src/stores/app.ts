@@ -11,13 +11,19 @@ import {
 import { defineStore } from 'pinia'
 import { computed, ref, watch } from 'vue'
 import { audio } from '@/utils/createAudio'
-import { getAccessibleUrl, parseSearchError } from '@/utils/functions'
+import {
+  fetchCoverFromWeb,
+  getAccessibleUrl,
+  getCachedCover,
+  getNativeCoverUrl,
+  parseSearchError,
+} from '@/utils/functions'
 import toast from '@/utils/createToast'
 import { i18n } from '@/i18n'
 import { registerPlugin } from '@capacitor/core'
 import type { SystemBarPlugin } from '@/plugins/system-bar/definitions'
 import { hexToRgb, mixColors } from '@/utils/color'
-import { musicClients, USER_AGENT } from '@/config'
+import { musicClients } from '@/config'
 import { MusicSignerPlugin } from '@/plugins/music-signer/definitions'
 import { requestMediaPermissions } from '@/utils/permission'
 import { DownloaderPlugin } from '@/plugins/downloader/definitions'
@@ -382,12 +388,21 @@ export const useAppStore = defineStore('app', () => {
     if (['true', 'false'].includes(storage)) {
       canFetchCoverFromWeb.value = storage === 'true'
     }
-    await audio.setCanFetchCoverFromWeb(canFetchCoverFromWeb.value)
   }
 
   function setCanFetchCoverFromWeb(val: boolean) {
     canFetchCoverFromWeb.value = val
     localStorage.setItem('canFetchCoverFromWeb', String(canFetchCoverFromWeb.value))
+    if (playQueue.value.length === 0) return
+    if (val) {
+      // Pick up web artwork for the current queue now that it is allowed.
+      void resolveQueueCovers(playQueue.value, updateVersion)
+    } else {
+      coverLookupAbort?.abort()
+      coverLookupAbort = null
+      // Drop any web URL that was previously handed to the native player.
+      void audio.setPlaylist(buildNativePlaylist(playQueue.value))
+    }
   }
 
   function getCanFetchCoverFromWeb() {
@@ -618,6 +633,69 @@ export const useAppStore = defineStore('app', () => {
 
   // 播放队列更新
   let updateVersion = 0
+  let coverLookupAbort: AbortController | null = null
+
+  /** How many queue entries to look up online per sync (current song first). */
+  const MAX_QUEUE_COVER_LOOKUPS = 6
+
+  function buildNativePlaylist(queue: Song[]) {
+    return queue.map((s) => ({
+      url: getAccessibleUrl(s.uri),
+      title: s.title,
+      artist: s.artist || 'Unknown',
+      album: s.album || '',
+      // Cover resolution is owned by the web layer; hand the native player the
+      // final URL (local artwork or an already-fetched web result).
+      coverUrl: getNativeCoverUrl(s, canFetchCoverFromWeb.value),
+    }))
+  }
+
+  /**
+   * Resolve covers for tracks that have no embedded artwork, nearest to the
+   * current song first, then push the updated playlist to the native player.
+   * This is what lets the notification show a web cover without the native
+   * side doing any lookup of its own.
+   */
+  async function resolveQueueCovers(queue: Song[], version: number) {
+    coverLookupAbort?.abort()
+    coverLookupAbort = null
+    if (!canFetchCoverFromWeb.value || queue.length === 0) return
+
+    const current = playData.value.currentIndex
+    const order = queue
+      .map((_, index) => index)
+      .sort((a, b) => Math.abs(a - current) - Math.abs(b - current))
+
+    const pending = order
+      .filter((index) => !(queue[index].albumArtUri || '').trim())
+      .filter((index) => !getCachedCover(queue[index].title, queue[index].artist || ''))
+      .slice(0, MAX_QUEUE_COVER_LOOKUPS)
+    if (pending.length === 0) return
+
+    const controller = new AbortController()
+    coverLookupAbort = controller
+
+    let resolved = false
+    for (const index of pending) {
+      if (controller.signal.aborted || version !== updateVersion) return
+      try {
+        const url = await fetchCoverFromWeb(
+          queue[index].title,
+          queue[index].artist || '',
+          controller.signal
+        )
+        if (url) resolved = true
+      } catch {
+        // Offline or provider failure — the native side falls back to the icon.
+      }
+    }
+
+    if (!resolved || controller.signal.aborted || version !== updateVersion) return
+    await audio.setPlaylist(buildNativePlaylist(queue))
+    // The current track may already be playing with the default icon; refresh
+    // its metadata so the notification shows the cover that just resolved.
+    await audio.refreshCurrentMetadata()
+  }
 
   watch(
     playQueue,
@@ -625,19 +703,14 @@ export const useAppStore = defineStore('app', () => {
       const currentVersion = ++updateVersion
 
       if (!newQueue.length) {
+        coverLookupAbort?.abort()
+        coverLookupAbort = null
         await audio.setPlaylist([])
         return
       }
 
       try {
-        // 直接同步构建播放列表，不进行任何异步获取
-        const playlistItems = newQueue.map((s) => ({
-          url: getAccessibleUrl(s.uri), // 同步函数
-          title: s.title,
-          artist: s.artist || 'Unknown',
-          album: s.album || '',
-          coverUrl: s.albumArtUri || '', // 直接使用原封面
-        }))
+        const playlistItems = buildNativePlaylist(newQueue)
 
         // 检查版本号
         if (currentVersion !== updateVersion) return
@@ -649,6 +722,11 @@ export const useAppStore = defineStore('app', () => {
           playData.value.currentIndex = 0
           savePlayData()
         }
+
+        // Look up missing artwork in the background; playback starts with the
+        // local cover (or the default icon) and the notification updates when
+        // the web result arrives.
+        void resolveQueueCovers(newQueue, currentVersion)
       } catch (error) {
         // 降级（极少发生，因为现在没有异步操作）
         console.error('构建播放列表失败', error)
@@ -658,7 +736,7 @@ export const useAppStore = defineStore('app', () => {
           title: s.title,
           artist: s.artist || 'Unknown',
           album: s.album || '',
-          coverUrl: s.albumArtUri || '',
+          coverUrl: getNativeCoverUrl(s, canFetchCoverFromWeb.value),
         }))
         await audio.setPlaylist(fallbackList)
         if (playData.value.currentIndex >= fallbackList.length) {
@@ -672,10 +750,6 @@ export const useAppStore = defineStore('app', () => {
 
   watch(playMode, (newMode) => {
     audio.setRepeatMode(newMode === 'repeatOne').then((r) => console.log('repeatOne', r))
-  })
-
-  watch(canFetchCoverFromWeb, async (newVal) => {
-    await audio.setCanFetchCoverFromWeb(newVal)
   })
 
   function setupNativeAudioListeners() {
@@ -819,7 +893,6 @@ export const useAppStore = defineStore('app', () => {
       // playQueue watcher (immediate: true) already syncs playlist to native
       setupNativeAudioListeners()
       await initCanFetchCoverFromWeb()
-      await audio.setUserAgent(USER_AGENT)
       await audio.setRepeatMode(playMode.value === 'repeatOne')
       initFlag.value = true
     }

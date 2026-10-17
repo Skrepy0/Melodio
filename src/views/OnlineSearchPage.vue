@@ -13,7 +13,12 @@ import { MusicSigner, useAppStore } from '@/stores/app'
 import { downloadMultipleSongs, downloadMusic, isSongDownloading } from '@/utils/musicDownloader'
 import { useI18n } from 'vue-i18n'
 import NowPlayingBar from '@/components/NowPlayingBar.vue'
-import { getAccessibleUrl, getSongFromOnlineSong, isInList } from '@/utils/functions'
+import {
+  getAccessibleUrl,
+  getNativeCoverUrl,
+  getSongFromOnlineSong,
+  isInList,
+} from '@/utils/functions'
 import { audio } from '@/utils/createAudio'
 import { showPlaylistSelector } from '@/utils/createPlaylistSelector'
 import { showSongInfo } from '@/utils/createInfo'
@@ -300,7 +305,7 @@ const onItemClick = async (song: OnlineSong) => {
         title: s.title,
         artist: s.artist || 'Unknown',
         album: s.album || '',
-        coverUrl: s.albumArtUri,
+        coverUrl: getNativeCoverUrl(s, appStore.getCanFetchCoverFromWeb()),
       }))
     )
     await audio.playIndex(index)

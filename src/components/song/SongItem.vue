@@ -10,6 +10,7 @@ import {
   fetchCoverFromWeb,
   getAccessibleUrl,
   getCoverSrc,
+  getNativeCoverUrl,
   isInList,
 } from '@/utils/functions'
 import { showPlaylistSelector } from '@/utils/createPlaylistSelector'
@@ -104,7 +105,7 @@ const defaultOnMenuItemSelect = async (item: DropdownItem) => {
           title: s.title,
           artist: s.artist || 'Unknown',
           album: s.album || '',
-          coverUrl: s.albumArtUri || '',
+          coverUrl: getNativeCoverUrl(s, appStore.getCanFetchCoverFromWeb()),
         }))
       )
 

@@ -17,7 +17,7 @@ import { useAppStore } from '@/stores/app'
 import { showPrompt } from '@/utils/createPrompt'
 import { showConfirm } from '@/utils/createConfirm'
 import { usePlaylistSearchEnhanced, useSongSearch } from '@/utils/search'
-import { checkPlayableUrl, getAccessibleUrl, isInList } from '@/utils/functions'
+import { checkPlayableUrl, getAccessibleUrl, getNativeCoverUrl, isInList } from '@/utils/functions'
 import { useI18n } from 'vue-i18n'
 import { audio } from '@/utils/createAudio'
 
@@ -38,7 +38,7 @@ const playShownSongs = async () => {
       title: s.title,
       artist: s.artist || 'Unknown',
       album: s.album || '',
-      coverUrl: s.albumArtUri || '',
+      coverUrl: getNativeCoverUrl(s, appStore.getCanFetchCoverFromWeb()),
     }))
   )
   await audio.playIndex(0)
@@ -217,7 +217,7 @@ const playSong = async (song: Song) => {
         title: s.title,
         artist: s.artist || 'Unknown',
         album: s.album || '',
-        coverUrl: s.albumArtUri || '',
+        coverUrl: getNativeCoverUrl(s, appStore.getCanFetchCoverFromWeb()),
       }))
     )
     // setPlaylist completed — now playIndex is safe (playlist is ready)
