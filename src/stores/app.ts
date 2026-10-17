@@ -33,6 +33,24 @@ const SystemBar = registerPlugin<SystemBarPlugin>('SystemBar')
 export const MusicSigner = registerPlugin<MusicSignerPlugin>('MusicSigner')
 export const Downloader = registerPlugin<DownloaderPlugin>('Downloader')
 const SUPPORTED_LOCALES = ['zh-CN', 'en-US']
+
+/** How the wallpaper is fitted to the viewport. */
+export type WallpaperFit = 'cover' | 'contain' | 'stretch'
+/**
+ * A wallpaper is always an image data URL produced by our own canvas encoder.
+ * Anything else (remote URLs, file/content URIs, SVG, `data:text/html`) is
+ * rejected before it can reach a CSS `url()`.
+ */
+const WALLPAPER_SOURCE = /^data:image\/(?:jpeg|png|webp);base64,[a-z0-9+/=]+$/i
+/** localStorage is a few megabytes per origin; keep the payload well inside it. */
+const WALLPAPER_MAX_CHARS = 4 * 1024 * 1024
+const isWallpaperSource = (value: string) =>
+  value.length <= WALLPAPER_MAX_CHARS && WALLPAPER_SOURCE.test(value)
+const clampNumber = (raw: string | null, min: number, max: number, fallback: number) => {
+  const value = Number(raw)
+  if (raw === null || raw === '' || Number.isNaN(value)) return fallback
+  return Math.min(max, Math.max(min, Math.round(value)))
+}
 function getSystemLanguage(): string {
   const browserLang = navigator.language
   if (SUPPORTED_LOCALES.includes(browserLang)) return browserLang
@@ -55,6 +73,12 @@ export const useAppStore = defineStore('app', () => {
   // Matches the default accent in theme.scss: a muted cobalt that reads as
   // part of the neutral shell rather than as a system-blue leftover.
   const themeColor = ref<string>('#3d63dd')
+  // Wallpaper: the image itself, plus how much of it the interface lets
+  // through, how soft it is, and how it is fitted to the viewport.
+  const wallpaper = ref<string>('')
+  const wallpaperTransparency = ref(25)
+  const wallpaperBlur = ref(0)
+  const wallpaperFit = ref<WallpaperFit>('cover')
   const musicClientStatus = ref<MusicClientStatus>()
   const musicClientLimitation = ref<number>(5)
   const fetchTimeOut = ref<number>(30)
@@ -292,6 +316,104 @@ export const useAppStore = defineStore('app', () => {
   }
   function getThemeColor() {
     return themeColor.value
+  }
+
+  // ----- Wallpaper -----
+  // The interface ground is translucent over the wallpaper, never the wallpaper
+  // itself: text and hairlines keep their contrast because every page still
+  // paints `--bg-color`, just at an alpha.
+  const WALLPAPER_MIN_GROUND_ALPHA = 0.08
+
+  function applyWallpaper() {
+    const root = document.documentElement
+    const hasWallpaper = !!wallpaper.value
+    if (hasWallpaper) root.classList.add('has-wallpaper')
+    else root.classList.remove('has-wallpaper')
+    // 0 = opaque ground (nothing shows), 100 = almost fully open.
+    const open = Math.min(100, Math.max(0, wallpaperTransparency.value)) / 100
+    const alpha = hasWallpaper ? Math.max(WALLPAPER_MIN_GROUND_ALPHA, 1 - open) : 1
+    root.style.setProperty('--wallpaper-ground-alpha', alpha.toFixed(3))
+    root.style.setProperty('--wallpaper-blur', `${wallpaperBlur.value}px`)
+    // `background-size` has no `stretch` keyword; stretching is 100% 100%.
+    root.style.setProperty(
+      '--wallpaper-fit',
+      wallpaperFit.value === 'stretch' ? '100% 100%' : wallpaperFit.value
+    )
+    root.style.setProperty('--wallpaper-image', hasWallpaper ? `url("${wallpaper.value}")` : 'none')
+  }
+
+  function setWallpaper(dataUrl: string) {
+    // Refuse anything that is not an image data URL we produced ourselves; the
+    // value ends up in a CSS url() and in localStorage.
+    if (!isWallpaperSource(dataUrl)) return false
+    wallpaper.value = dataUrl
+    try {
+      localStorage.setItem('wallpaper', dataUrl)
+    } catch {
+      // Quota exceeded: keep the image for this session and let the caller
+      // report it.
+      applyWallpaper()
+      return false
+    }
+    applyWallpaper()
+    return true
+  }
+
+  function removeWallpaper() {
+    wallpaper.value = ''
+    localStorage.removeItem('wallpaper')
+    applyWallpaper()
+  }
+
+  function getWallpaper() {
+    return wallpaper.value
+  }
+
+  function setWallpaperTransparency(value: number) {
+    wallpaperTransparency.value = clampNumber(String(value), 0, 100, 25)
+    localStorage.setItem('wallpaperTransparency', String(wallpaperTransparency.value))
+    applyWallpaper()
+  }
+
+  function getWallpaperTransparency() {
+    return wallpaperTransparency.value
+  }
+
+  function setWallpaperBlur(value: number) {
+    wallpaperBlur.value = clampNumber(String(value), 0, 40, 0)
+    localStorage.setItem('wallpaperBlur', String(wallpaperBlur.value))
+    applyWallpaper()
+  }
+
+  function getWallpaperBlur() {
+    return wallpaperBlur.value
+  }
+
+  function setWallpaperFit(value: WallpaperFit) {
+    if (value !== 'cover' && value !== 'contain' && value !== 'stretch') return
+    wallpaperFit.value = value
+    localStorage.setItem('wallpaperFit', value)
+    applyWallpaper()
+  }
+
+  function getWallpaperFit() {
+    return wallpaperFit.value
+  }
+
+  function initWallpaper() {
+    const stored = localStorage.getItem('wallpaper') ?? ''
+    wallpaper.value = isWallpaperSource(stored) ? stored : ''
+    if (stored && !wallpaper.value) localStorage.removeItem('wallpaper')
+    wallpaperTransparency.value = clampNumber(
+      localStorage.getItem('wallpaperTransparency'),
+      0,
+      100,
+      25
+    )
+    wallpaperBlur.value = clampNumber(localStorage.getItem('wallpaperBlur'), 0, 40, 0)
+    const fit = localStorage.getItem('wallpaperFit')
+    wallpaperFit.value = fit === 'contain' || fit === 'stretch' ? fit : 'cover'
+    applyWallpaper()
   }
   function getFirstPlayFlag() {
     return firstPlayFlag.value
@@ -972,6 +1094,7 @@ export const useAppStore = defineStore('app', () => {
       initLanguage()
       initThemeColor()
       loadInitialDarkMode()
+      initWallpaper()
       initFetchTimeOut()
       initEachSongAveTimeOut()
       initMusicClientLimitation()
@@ -1025,10 +1148,12 @@ export const useAppStore = defineStore('app', () => {
     window.setTimeout(() => root.classList.remove('theme-transition'), 350)
     // Keep the native bar areas in step with the themed page background.
     // Resolve the CSS token after the class swap so the value is current.
-    const bgColor = window.getComputedStyle(root).getPropertyValue('--bg-color').trim()
+    // The plugin cannot parse an alpha channel, so read the opaque token: the
+    // page tint's own `--bg-color-rgb`, which the wallpaper layer never changes.
+    const bgColor = window.getComputedStyle(root).getPropertyValue('--bg-color-rgb').trim()
     SystemBar.setTheme({
       mode: darkMode.value ? 'dark' : 'light',
-      color: bgColor || undefined,
+      color: bgColor ? `rgb(${bgColor})` : undefined,
     }).catch(() => {
       // SystemBar plugin not available on web / iOS — ignore silently
     })
@@ -1450,6 +1575,17 @@ export const useAppStore = defineStore('app', () => {
     markFirstPlayFlag,
     getThemeColor,
     setThemeColor,
+    wallpaper,
+    setWallpaper,
+    removeWallpaper,
+    getWallpaper,
+    setWallpaperTransparency,
+    getWallpaperTransparency,
+    setWallpaperBlur,
+    getWallpaperBlur,
+    setWallpaperFit,
+    getWallpaperFit,
+    initWallpaper,
     musicClients,
     setClients,
     getEnabledClients,

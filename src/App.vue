@@ -1,5 +1,6 @@
 <template>
   <ion-app>
+    <div v-if="appStore.wallpaper" aria-hidden="true" class="wallpaper" />
     <div class="router-view-wrapper">
       <router-view v-slot="{ Component }">
         <keep-alive :include="['PlayerView']">
@@ -63,8 +64,28 @@ onMounted(() => {
 </script>
 
 <style>
+/* The wallpaper sits behind every page. Pages keep painting `--bg-color`; when
+   a wallpaper is set that token turns into the theme ground at an alpha, so the
+   image reads through one uniform layer instead of fighting each surface. */
+.wallpaper {
+  position: fixed;
+  /* Overscan by the blur radius so the soft edge never shows. */
+  inset: calc(var(--wallpaper-blur, 0px) * -2);
+  z-index: 0;
+  pointer-events: none;
+  background-image: var(--wallpaper-image, none);
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: var(--wallpaper-fit, cover);
+  filter: blur(var(--wallpaper-blur, 0px));
+}
+
 .router-view-wrapper {
-  background-color: var(--bg-color);
+  position: relative;
+  z-index: 1;
+  /* One ground for the whole app. Pages paint `--bg-color` themselves, which is
+     transparent under a wallpaper, so the tint lands here exactly once. */
+  background-color: var(--bg-page);
   height: 100%;
   overflow: hidden;
 }
@@ -99,6 +120,6 @@ onMounted(() => {
   opacity: 0;
 }
 body {
-  background-color: var(--bg-color, #1e1e1e); /* 你的深色背景 */
+  background-color: var(--bg-solid, #1e1e1e);
 }
 </style>

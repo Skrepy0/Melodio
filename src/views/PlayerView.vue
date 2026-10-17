@@ -773,14 +773,14 @@ onUnmounted(() => {
   inset: 0;
   z-index: -1;
   pointer-events: none;
-  background:
-    radial-gradient(
-      120% 70% at 50% 0%,
-      rgba(var(--wash-rgb), var(--wash-strength)) 0%,
-      rgba(var(--wash-rgb), calc(var(--wash-strength) * 0.45)) 42%,
-      transparent 78%
-    ),
-    var(--bg-color);
+  // Only the tint: the ground comes from `.player-view` itself, so a wallpaper
+  // is not tinted twice by two stacked translucent layers.
+  background: radial-gradient(
+    120% 70% at 50% 0%,
+    rgba(var(--wash-rgb), var(--wash-strength)) 0%,
+    rgba(var(--wash-rgb), calc(var(--wash-strength) * 0.45)) 42%,
+    transparent 78%
+  );
   transition: background var(--duration-slower) ease;
 }
 
@@ -1020,7 +1020,7 @@ onUnmounted(() => {
   flex-direction: column;
   overflow: hidden;
   border-top: 1px solid var(--hairline);
-  background: color-mix(in srgb, var(--bg-color) 82%, transparent);
+  background: var(--bg-page-soft);
 }
 
 .queue-header {

@@ -92,6 +92,8 @@ onMounted(() => {
 
   // The active view is state, so it is the one place in the control that takes
   // the accent. The raised chip stays neutral so the track keeps its weight.
+  // `--bg-elevated` is more opaque than the track's `--bg-input`, so the chip
+  // still reads as raised when both are translucent over a wallpaper.
   &.selected {
     background-color: var(--bg-elevated);
     color: var(--primary-color);

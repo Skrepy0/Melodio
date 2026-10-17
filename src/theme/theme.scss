@@ -85,6 +85,9 @@
   --bg-card-hover: #f0f0f3;
   --bg-card-dimmed: rgba(17, 17, 20, 0.025);
   --bg-elevated: #ffffff;
+  // Dialogs and menus read text directly on their surface, so they stay the
+  // most opaque tier; a wallpaper lifts them only a little.
+  --bg-dialog: var(--bg-elevated);
   --bg-header: #f3f3f5;
   --bg-header-rgb: 243, 243, 245;
   --bg-placeholder: #e5e5e9;
@@ -162,6 +165,86 @@
   // Filled by the cover-colour composable on the player screen.
   --wash-rgb: 61, 99, 221;
   --wash-strength: 0.18;
+
+  // ----- Wallpaper -----
+  // `--bg-page` is the single ground the app is painted on. Without a wallpaper
+  // it is just the theme colour; with one it becomes that colour at an alpha,
+  // and `--bg-color` goes transparent so pages do not stack a second tint on
+  // top of it. `--bg-solid` stays opaque for strips that must occlude content
+  // scrolling beneath them (the mini player, swatch rings).
+  --bg-solid: rgb(var(--bg-color-rgb));
+  // Opaque without a wallpaper, slightly open with one. Used by strips that
+  // occlude scrolling content (the mini player).
+  --bg-bar: var(--bg-solid);
+  --bg-page: var(--bg-color);
+  // A slightly-open ground for surfaces that sit on top of the page and should
+  // let a little of what is beneath them through (the player's queue panel).
+  --bg-page-soft: color-mix(in srgb, var(--bg-color) 82%, transparent);
+  --wallpaper-ground-alpha: 1;
+  --wallpaper-blur: 0px;
+
+  // ----- Translucency -----
+  // A single switch for how much the wallpaper shows through the controls.
+  // `--surface-alpha` is the weight of a filled control (input, chip, switch,
+  // track); `--surface-strong-alpha` the weight of a surface that must stay
+  // readable over busy artwork (sheets, menus, the mini player);
+  // `--surface-solid-alpha` the weight of surfaces whose content must never be
+  // read against the image (dialogs, the mini player strip). Without a
+  // wallpaper all three resolve to 1, so every surface stays exactly as opaque
+  // as it was before the feature existed.
+  --surface-alpha: 1;
+  --surface-strong-alpha: 1;
+  --surface-solid-alpha: 1;
+}
+
+// Under a wallpaper the filled controls open up so the image reads through
+// them instead of sitting behind a set of flat rectangles. The floors are
+// deliberate: below ~0.45 a slider track or switch loses its edge, and below
+// ~0.7 a menu stops being legible over a bright photo.
+html.has-wallpaper {
+  --bg-color: transparent;
+  --bg-page: rgba(var(--bg-color-rgb), var(--wallpaper-ground-alpha));
+  --bg-page-soft: var(--bg-page);
+
+  // The controls follow the ground: the more the image shows through the page,
+  // the more it shows through the things sitting on it. At full ground opacity
+  // (transparency 0) every surface resolves to 1 and looks exactly as it did
+  // before. The floors keep a track or a switch from losing its edge.
+  --surface-alpha: calc(0.5 + var(--wallpaper-ground-alpha) * 0.5);
+  --surface-strong-alpha: calc(0.75 + var(--wallpaper-ground-alpha) * 0.25);
+  // Dialogs sit on a dimmed overlay, not on the image itself, so they only
+  // need a small opening to feel part of the scene.
+  --surface-solid-alpha: 0.94;
+
+  // Filled controls: a tint of the page colour, not a solid patch of it.
+  --bg-input: rgba(var(--bg-color-rgb), var(--surface-alpha));
+  --bg-placeholder: rgba(var(--bg-color-rgb), 0.62);
+  --chip-bg: rgba(var(--bg-color-rgb), calc(var(--surface-alpha) * 0.8));
+  --switch-bg-off: rgba(var(--bg-color-rgb), calc(var(--surface-alpha) * 1.1));
+  --bottom-actions-bg: rgba(var(--bg-color-rgb), var(--surface-strong-alpha));
+  --bottom-actions-bg-rgb: var(--bg-color-rgb);
+  // The strip above the queue. `--bg-solid` stays opaque for the native canvas
+  // and swatch rings; the bar itself opens just enough to sit on the image.
+  --bg-bar: rgba(var(--bg-color-rgb), var(--surface-strong-alpha));
+
+  // Surfaces that float above the page and must not turn into glass panes:
+  // they keep the page tint, just open enough to belong to the image.
+  --bg-elevated: rgba(var(--bg-color-rgb), var(--surface-strong-alpha));
+  --dropdown-bg: var(--bg-elevated);
+  // Menus and dialogs read text directly on the surface, so they open less
+  // than the rest: still part of the image, never hard to read.
+  --bg-dialog: rgba(var(--bg-color-rgb), var(--surface-solid-alpha));
+
+  // Hairlines and state tints are already translucent; over an image they need
+  // a little more weight to stay visible.
+  --hairline: rgba(var(--text-color-rgb), 0.1);
+  --hairline-strong: rgba(var(--text-color-rgb), 0.18);
+  --input-border: rgba(var(--text-color-rgb), 0.14);
+  --dropdown-border: rgba(var(--text-color-rgb), 0.12);
+  --bg-secondary: rgba(var(--text-color-rgb), 0.1);
+  --bg-card-dimmed: rgba(var(--text-color-rgb), 0.05);
+  --header-back-hover: rgba(var(--text-color-rgb), 0.1);
+  --setting-hover-bg: rgba(var(--text-color-rgb), 0.08);
 }
 
 .dark {
@@ -180,6 +263,7 @@
   --bg-card-hover: #1e1e23;
   --bg-card-dimmed: rgba(255, 255, 255, 0.025);
   --bg-elevated: #1b1b20;
+  --bg-dialog: var(--bg-elevated);
   --bg-header: #0c0c0e;
   --bg-header-rgb: 12, 12, 14;
   --bg-placeholder: #2a2a31;
@@ -294,7 +378,9 @@ html,
 body {
   font-family: var(--font-family);
   color: var(--text-color);
-  background-color: var(--bg-color);
+  // The canvas under the app stays opaque: a wallpaper must not reveal the
+  // browser's white default at the edges.
+  background-color: var(--bg-solid);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }

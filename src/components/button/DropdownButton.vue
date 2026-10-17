@@ -218,7 +218,7 @@ watch(showDropdown, (val) => {
   position: fixed;
   z-index: 2000;
   min-width: 180px;
-  background-color: var(--bg-elevated);
+  background-color: var(--bg-dialog);
   border: 1px solid var(--hairline);
   border-radius: var(--radius-lg);
   box-shadow: var(--elevation-3);

@@ -173,7 +173,10 @@ onUnmounted(() => {
   bottom: 0;
   left: 0;
   right: 0;
-  background: var(--bg-color);
+  // Over a wallpaper this opens to `--surface-strong-alpha`, but it keeps its
+  // own tint so rows scrolling underneath never read through the title. The
+  // weight stays high enough to do that job without needing a blur.
+  background: var(--bg-bar);
   border-top: 1px solid var(--hairline);
   z-index: 100;
   padding-bottom: env(safe-area-inset-bottom, 0px);

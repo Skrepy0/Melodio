@@ -54,6 +54,23 @@ property names retained so older call sites stay coherent:
 - Accent `--primary-color`, `--primary-color-rgb`, `--selection-bg`,
   `--on-primary-color` (type on a filled accent surface)
 - Player wash `--wash-rgb`, `--wash-strength`
+- Ground layers `--bg-solid` (always opaque, for the native status bar and strips
+  that must occlude), `--bg-page` (the single tint layer the router wrapper
+  paints), `--bg-page-soft` (the same tint for overlays that sit above it)
+
+## Wallpaper (the one sanctioned exception)
+
+A user-supplied background image is the only decoration allowed behind the
+interface. It never reaches the components: one fixed layer at `.router-view-wrapper`
+z-index 0 carries the image, and `html.has-wallpaper` turns page-level
+`--bg-color` transparent so the tint lands exactly once at `--bg-page`
+(`rgba(--bg-color-rgb, --wallpaper-ground-alpha)`, floor 0.08 so text stays
+legible). Strips that must occlude content — the now-playing bar, swatch rings,
+`html, body`, the native status bar — keep using opaque `--bg-solid`. Controls:
+transparency 0–100 %, blur 0–40 px, fit cover/contain/stretch. The image is
+downscaled to 1600 px and stored as a JPEG data URL in `localStorage`; only
+`data:image/{jpeg,png,webp};base64` sources are accepted. The blur is the CSS
+`filter` on that layer, not a glass panel on any surface.
 
 ## Shared patterns
 

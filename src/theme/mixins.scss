@@ -251,7 +251,7 @@
 // Modal dialog card
 @mixin dialog-container($width: 280px) {
   width: $width;
-  background: var(--bg-elevated);
+  background: var(--bg-dialog);
   border-radius: var(--radius-xl);
   box-shadow: var(--elevation-4);
   overflow: hidden;
