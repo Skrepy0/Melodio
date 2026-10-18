@@ -18,10 +18,18 @@ import {
 } from '@/utils/functions'
 import { makeOnlineSong, makeSong, makeSongs } from '../helpers/factories'
 import { mockMethod, resetPlugins } from '../helpers/capacitor'
+import {
+  COVER_CACHE_STORAGE_KEY,
+  clearCoverCache,
+  flushCoverCache,
+  resetCoverCacheForTests,
+} from '@/utils/coverCache'
 
 beforeEach(() => {
   resetPlugins()
   vi.restoreAllMocks()
+  clearCoverCache()
+  resetCoverCacheForTests()
 })
 
 afterEach(() => {
@@ -344,6 +352,69 @@ describe('fetchCoverFromWeb', () => {
     const controller = new AbortController()
     await fetchCoverFromWeb('Signal Song', 'Signal Artist', controller.signal)
     expect(fetchMock.mock.calls[0][1].signal).toBeInstanceOf(AbortSignal)
+  })
+
+  it('skips the providers entirely when a negative entry is cached', async () => {
+    // Providers answer, but none knows the track — that is a real miss.
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(jsonResponse({ resultCount: 0, data: [], recordings: [] }))
+    )
+    await expect(fetchCoverFromWeb('Miss Song', 'Miss Artist')).resolves.toBeNull()
+
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+    await expect(fetchCoverFromWeb('Miss Song', 'Miss Artist')).resolves.toBeNull()
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('does not remember a negative entry when the providers were unreachable', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')))
+    await expect(fetchCoverFromWeb('Offline Song', 'Offline Artist')).resolves.toBeNull()
+
+    // The next lookup must try again once the network is back.
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(
+        jsonResponse({ resultCount: 1, results: [{ artworkUrl100: 'https://a/100x100bb.jpg' }] })
+      )
+    vi.stubGlobal('fetch', fetchMock)
+    await expect(fetchCoverFromWeb('Offline Song', 'Offline Artist')).resolves.toBe(
+      'https://a/600x600bb.jpg'
+    )
+    expect(fetchMock).toHaveBeenCalled()
+  })
+
+  it('reuses a persisted URL after a restart without fetching', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(
+        jsonResponse({ resultCount: 1, results: [{ artworkUrl100: 'https://a/100x100bb.jpg' }] })
+      )
+    vi.stubGlobal('fetch', fetchMock)
+    await fetchCoverFromWeb('Persist Song', 'Persist Artist')
+    flushCoverCache()
+    expect(localStorage.getItem(COVER_CACHE_STORAGE_KEY)).toContain('persist song')
+
+    // Fresh process: drop the in-memory table, keep storage.
+    resetCoverCacheForTests()
+    const secondFetch = vi.fn()
+    vi.stubGlobal('fetch', secondFetch)
+
+    await expect(fetchCoverFromWeb('Persist Song', 'Persist Artist')).resolves.toBe(
+      'https://a/600x600bb.jpg'
+    )
+    expect(secondFetch).not.toHaveBeenCalled()
+  })
+
+  it('stores a negative entry when no provider has the cover', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(jsonResponse({ resultCount: 0, data: [], recordings: [] }))
+    )
+    await expect(fetchCoverFromWeb('Unknown Song', 'Unknown Artist')).resolves.toBeNull()
+    // An empty string means "known miss", not "never looked up".
+    expect(getCachedCover('Unknown Song', 'Unknown Artist')).toBe('')
   })
 })
 

@@ -3,9 +3,16 @@ import { useAppStore } from '@/stores/app'
 import { IonPage } from '@ionic/vue'
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import PageTitle from '@/components/PageTitle.vue'
 import FunctionSwitch from '@/components/settings/FunctionSwitch.vue'
+import SettingsPageLink from '@/components/settings/SettingsPageLink.vue'
+import { clearCoverCache } from '@/utils/coverCache'
+import { audio } from '@/utils/createAudio'
+import { showConfirm } from '@/utils/createConfirm'
+import toast from '@/utils/createToast'
 
+const { t } = useI18n()
 const appStore = useAppStore()
 const router = useRouter()
 const goBack = () => {
@@ -46,6 +53,25 @@ const toggleCanFetchCoverFromWeb = (e: Event) => {
   const target = e.target as HTMLInputElement
   canFetchCoverFromWeb.value = target.checked
   appStore.setCanFetchCoverFromWeb(canFetchCoverFromWeb.value)
+}
+const clearCovers = async () => {
+  const confirmed = await showConfirm({
+    title: t('settings.accessibility.clearCoverCache'),
+    message: t('settings.accessibility.clearCoverCacheConfirm'),
+    confirmText: t('common.confirm'),
+    cancelText: t('common.cancel'),
+  })
+  if (!confirmed) return
+
+  clearCoverCache()
+  // The native notification caches decoded artwork separately; clearing only
+  // the URL table would leave the old picture on screen.
+  try {
+    await audio.clearNativeCoverCache()
+  } catch {
+    // Older builds have no native cache to clear.
+  }
+  toast.success(t('settings.accessibility.clearCoverCacheSuccess'))
 }
 </script>
 
@@ -96,6 +122,13 @@ const toggleCanFetchCoverFromWeb = (e: Event) => {
           :desc="$t('settings.accessibility.audioFocusPauseDesc')"
           :title="$t('settings.accessibility.audioFocusPause')"
           icon="lucide:focus"
+        />
+        <SettingsPageLink
+          :click="clearCovers"
+          :desc="$t('settings.accessibility.clearCoverCacheDesc')"
+          :isLink="false"
+          :title="$t('settings.accessibility.clearCoverCache')"
+          icon="mdi:image-off-outline"
         />
       </div>
     </div>

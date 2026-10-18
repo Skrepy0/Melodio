@@ -2,6 +2,7 @@ import { Filesystem } from '@capacitor/filesystem'
 import { OnlineSong, Song } from './interface'
 import { Capacitor } from '@capacitor/core'
 import { USER_AGENT } from '@/config'
+import { getCoverUrl, lookupCoverUrl, rememberCoverUrl } from './coverCache'
 
 export const getAccessibleUrl = (path: string): string => {
   if (!path) return ''
@@ -197,16 +198,12 @@ const withCoverTimeout = (signal?: AbortSignal): AbortSignal => {
 export const isInList = (id: string, queue: Song[]) => queue.some((song) => song.id === id)
 
 /**
- * Covers resolved from the web during this session. Any component that calls
+ * Covers resolved from the web. Persisted through {@link coverCache} so a
+ * restart does not re-query every track. Any component that calls
  * {@link fetchCoverFromWeb} populates it, so the native player can reuse a URL
  * that has already been looked up instead of searching again.
  */
-const coverCache = new Map<string, string>()
-const coverCacheKey = (title: string, artist: string) =>
-  `${(title || '').trim().toLowerCase()}\u0000${(artist || '').trim().toLowerCase()}`
-
-export const getCachedCover = (title: string, artist: string): string =>
-  coverCache.get(coverCacheKey(title, artist)) ?? ''
+export const getCachedCover = (title: string, artist: string): string => getCoverUrl(title, artist)
 
 /**
  * Cover reference handed to the native player. A cover resolved online wins
@@ -245,18 +242,26 @@ export async function fetchCoverFromWeb(
   artist: string,
   signal?: AbortSignal
 ): Promise<string | null> {
-  const cacheKey = coverCacheKey(title, artist)
-  const cached = coverCache.get(cacheKey)
-  if (cached) return cached
+  // A resolved URL, or a still-valid negative entry, short-circuits the
+  // provider chain — the latter is what keeps offline starts from spending
+  // three timeouts per song.
+  const cached = lookupCoverUrl(title, artist)
+  if (cached !== undefined) return cached
 
   const store = (url: string | null): string | null => {
     // Only hand back references that are safe to render later.
     if (url && isSafeCoverSource(url)) {
-      coverCache.set(cacheKey, url)
+      rememberCoverUrl(title, artist, url)
       return url
     }
     return null
   }
+
+  // Whether any provider answered at all. A negative entry is only trustworthy
+  // when the providers were actually reachable: caching "not found" after an
+  // offline or aborted lookup would hide the cover for days once the network
+  // came back.
+  let reachable = false
 
   try {
     const itunesUrl = `https://itunes.apple.com/search?term=${encodeURIComponent(
@@ -264,6 +269,7 @@ export async function fetchCoverFromWeb(
     )}&media=music&limit=1`
     const r = await fetch(itunesUrl, { signal: withCoverTimeout(signal) })
     const d = await r.json()
+    reachable = true
     if (d.resultCount > 0) {
       const art = d.results[0].artworkUrl100?.replace('100x100bb', '600x600bb')
       if (art) return store(art)
@@ -277,6 +283,7 @@ export async function fetchCoverFromWeb(
     const deezerUrl = `https://api.deezer.com/search?q=${query}&limit=1`
     const r = await fetch(deezerUrl, { signal: withCoverTimeout(signal) })
     const d = await r.json()
+    reachable = true
     if (d.data?.length > 0) {
       const cover = d.data[0].album?.cover_big || d.data[0].album?.cover_xl
       if (cover) return store(cover)
@@ -293,6 +300,7 @@ export async function fetchCoverFromWeb(
       signal: withCoverTimeout(signal),
     })
     const d = await r.json()
+    reachable = true
     const recordings = d.recordings
     if (recordings?.length > 0) {
       const mbid = recordings[0].releases?.[0]?.['release-group']?.id
@@ -309,6 +317,11 @@ export async function fetchCoverFromWeb(
     /* ignore */
   }
 
+  // Every provider answered and none knew the track. Remember that for a few
+  // days so repeated lookups (and offline starts) skip the timeouts.
+  if (reachable && !signal?.aborted) {
+    rememberCoverUrl(title, artist, '')
+  }
   return null
 }
 

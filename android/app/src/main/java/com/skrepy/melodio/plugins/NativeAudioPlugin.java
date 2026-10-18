@@ -113,6 +113,8 @@ public class NativeAudioPlugin extends Plugin {
     private boolean repeatOne = false;
     private float playbackSpeed = 1.0f;
     private final CoverResolver coverResolver = new CoverResolver();
+    /** Memory + disk cache for decoded artwork, so a track change skips IO. */
+    private CoverBitmapCache coverCache;
     private Bitmap currentAlbumArt;
     //焦点管理
     private boolean audioFocusEnabled = true;
@@ -145,6 +147,7 @@ public class NativeAudioPlugin extends Plugin {
         Log.d(TAG, "Plugin loaded, initializing...");
         instance = this;
         webViewDestroyed = false;
+        coverCache = new CoverBitmapCache(getContext().getCacheDir());
         initPlayer();
         initSession();
         createChannel();
@@ -455,6 +458,16 @@ public class NativeAudioPlugin extends Plugin {
      */
     private void loadBitmap(String urlString, BitmapCallback callback) {
         coverExecutor.submit(() -> {
+            // A decoded, notification-sized bitmap is the whole product of the
+            // work below; serve it from memory (or disk) when a previous track
+            // change already paid for it.
+            Bitmap cached = coverCache != null ? coverCache.get(urlString) : null;
+            if (cached != null) {
+                Log.d(TAG, "loadBitmap: cache hit");
+                new Handler(Looper.getMainLooper()).post(() -> callback.onResult(cached));
+                return;
+            }
+
             Bitmap bitmap = null;
             try {
                 if (urlString.startsWith("data:")) {
@@ -499,6 +512,7 @@ public class NativeAudioPlugin extends Plugin {
             // Even a sampled decode can be larger than the notification needs.
             if (bitmap != null) {
                 bitmap = scaleDownArtwork(bitmap);
+                if (coverCache != null) coverCache.put(urlString, bitmap);
             }
             Bitmap finalBitmap = bitmap;
             new Handler(Looper.getMainLooper()).post(() -> callback.onResult(finalBitmap));
@@ -944,6 +958,18 @@ public class NativeAudioPlugin extends Plugin {
     }
 
     /**
+     * Drops the decoded-artwork cache (memory and disk) when the web layer
+     * clears its cover cache, so the two tiers cannot disagree about which
+     * covers are still known.
+     */
+    @PluginMethod
+    public void clearCoverCache(PluginCall call) {
+        if (coverCache != null) coverCache.clear();
+        currentAlbumArt = null;
+        call.resolve();
+    }
+
+    /**
      * Publishes the track's metadata to the MediaSession and the notification.
      *
      * <p>Artwork is downloaded asynchronously. The generation captured here is
@@ -981,7 +1007,6 @@ public class NativeAudioPlugin extends Plugin {
         loadBitmap(coverUrl, bitmap -> {
             if (metadataGeneration.isStale(generation)) {
                 Log.d(TAG, "Dropping stale cover (gen=" + generation + " current=" + metadataGeneration.current() + ")");
-                if (bitmap != null && !bitmap.isRecycled()) bitmap.recycle();
                 return;
             }
             if (bitmap == null) {
@@ -1010,6 +1035,12 @@ public class NativeAudioPlugin extends Plugin {
             return;
         }
         coverExecutor.submit(() -> {
+            Bitmap cached = coverCache != null ? coverCache.get(trackUrl) : null;
+            if (cached != null) {
+                new Handler(Looper.getMainLooper()).post(() -> applyMetadata(builder, generation, cached));
+                return;
+            }
+
             Bitmap bitmap = null;
             MediaMetadataRetriever retriever = new MediaMetadataRetriever();
             try {
@@ -1035,28 +1066,27 @@ public class NativeAudioPlugin extends Plugin {
             }
             if (bitmap != null) {
                 bitmap = scaleDownArtwork(bitmap);
+                // Keyed by the track URL: an embedded picture belongs to the
+                // file, so the same key can never mean different artwork.
+                if (coverCache != null) coverCache.put(trackUrl, bitmap);
             }
             Bitmap finalBitmap = bitmap;
-            new Handler(Looper.getMainLooper()).post(() -> {
-                if (metadataGeneration.isStale(generation)) {
-                    if (finalBitmap != null && !finalBitmap.isRecycled()) finalBitmap.recycle();
-                    return;
-                }
-                applyMetadata(builder, generation, finalBitmap);
-            });
+            new Handler(Looper.getMainLooper()).post(
+                    () -> applyMetadata(builder, generation, finalBitmap));
         });
     }
 
     /**
-     * Publishes metadata and refreshes the notification. The previously shown
-     * bitmap is recycled only after the new metadata is in place, so the
-     * notification is never pointed at freed pixels.
+     * Publishes metadata and refreshes the notification.
+     *
+     * <p>Artwork is never recycled here: a bitmap may be shared with
+     * {@link CoverBitmapCache} or still be held by the notification, and
+     * freeing it early shows up as a blank cover or a crash. Dropping the
+     * reference is enough — the cache bounds memory and the GC reclaims the
+     * rest.</p>
      */
     private void applyMetadata(MediaMetadataCompat.Builder builder, int generation, Bitmap bitmap) {
-        if (metadataGeneration.isStale(generation)) {
-            if (bitmap != null && !bitmap.isRecycled()) bitmap.recycle();
-            return;
-        }
+        if (metadataGeneration.isStale(generation)) return;
         if (bitmap != null) {
             // Android 13+ reads artwork from the session metadata; older
             // versions read the notification's large icon (set in
@@ -1065,13 +1095,9 @@ public class NativeAudioPlugin extends Plugin {
             builder.putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, bitmap);
             builder.putBitmap(MediaMetadataCompat.METADATA_KEY_ART, bitmap);
         }
-        Bitmap previous = currentAlbumArt;
         currentAlbumArt = bitmap;
         mediaSession.setMetadata(builder.build());
         showNotification(isPlaying);
-        if (previous != null && previous != bitmap && !previous.isRecycled()) {
-            previous.recycle();
-        }
     }
 
     /**
@@ -1401,10 +1427,9 @@ public class NativeAudioPlugin extends Plugin {
             mediaSession.release();
             mediaSession = null;
         }
-        if (currentAlbumArt != null && !currentAlbumArt.isRecycled()) {
-            currentAlbumArt.recycle();
-            currentAlbumArt = null;
-        }
+        // The artwork may be owned by CoverBitmapCache; dropping the reference
+        // is the only safe action here.
+        currentAlbumArt = null;
         abandonAudioFocus();
         audioManager = null;
         focusChangeListener = null;

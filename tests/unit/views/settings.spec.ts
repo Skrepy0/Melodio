@@ -55,9 +55,19 @@ vi.mock('@/utils/ioData', () => ({
   exportLocalStorage: vi.fn(async () => {}),
   importLocalStorage: vi.fn(async () => {}),
 }))
+vi.mock('@/utils/createConfirm', () => ({
+  showConfirm: vi.fn(async () => true),
+}))
 
 import toast from '@/utils/createToast'
 import { exportLocalStorage, importLocalStorage } from '@/utils/ioData'
+import { showConfirm } from '@/utils/createConfirm'
+import {
+  COVER_CACHE_STORAGE_KEY,
+  lookupCoverUrl,
+  rememberCoverUrl,
+  resetCoverCacheForTests,
+} from '@/utils/coverCache'
 
 const mounted: any[] = []
 
@@ -66,6 +76,8 @@ beforeEach(() => {
   clearStorage()
   freshPinia()
   vi.clearAllMocks()
+  resetCoverCacheForTests()
+  localStorage.removeItem(COVER_CACHE_STORAGE_KEY)
   actionSheetCreate.mockImplementation(async () => actionSheet)
 })
 
@@ -305,6 +317,42 @@ describe('AccessibilityPage', () => {
     await nextTick()
     wrapper.findComponent(PageTitle).props('goBack')()
     expect(router.back).toHaveBeenCalled()
+  })
+
+  it('clears the cover caches after confirmation', async () => {
+    vi.mocked(showConfirm).mockResolvedValueOnce(true)
+    const nativeClear = mockMethod('NativeAudio', 'clearCoverCache')
+    rememberCoverUrl('Song', 'Artist', 'https://cdn.example.com/cover.jpg')
+
+    const wrapper = mountPage(AccessibilityPage)
+    await nextTick()
+
+    const link = wrapper
+      .findAllComponents(SettingsPageLink)
+      .find((l: any) => l.props('icon') === 'mdi:image-off-outline')
+    expect(link).toBeTruthy()
+    await (link!.props('click') as () => Promise<void>)()
+
+    expect(lookupCoverUrl('Song', 'Artist')).toBeUndefined()
+    await vi.waitFor(() => expect(nativeClear).toHaveBeenCalled())
+    expect(toast.success).toHaveBeenCalled()
+  })
+
+  it('keeps the cover cache when the confirmation is dismissed', async () => {
+    vi.mocked(showConfirm).mockResolvedValueOnce(false)
+    const nativeClear = mockMethod('NativeAudio', 'clearCoverCache')
+    rememberCoverUrl('Song', 'Artist', 'https://cdn.example.com/cover.jpg')
+
+    const wrapper = mountPage(AccessibilityPage)
+    await nextTick()
+
+    const link = wrapper
+      .findAllComponents(SettingsPageLink)
+      .find((l: any) => l.props('icon') === 'mdi:image-off-outline')
+    await (link!.props('click') as () => Promise<void>)()
+
+    expect(lookupCoverUrl('Song', 'Artist')).toBe('https://cdn.example.com/cover.jpg')
+    expect(nativeClear).not.toHaveBeenCalled()
   })
 })
 

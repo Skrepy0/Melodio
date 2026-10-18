@@ -291,7 +291,11 @@
       "canFetchCoverFromWeb": "Fetch song covers online",
       "canFetchCoverFromWebDesc": "When enabled, the system will automatically go online to fetch covers for songs that lack them.",
       "audioFocusPause": "Pause when losing audio focus",
-      "audioFocusPauseDesc": "Automatically pause playback when another app starts playing sound."
+      "audioFocusPauseDesc": "Automatically pause playback when another app starts playing sound.",
+      "clearCoverCache": "Clear cover cache",
+      "clearCoverCacheDesc": "Deletes cached cover addresses and images. Covers are looked up online again the next time they are needed.",
+      "clearCoverCacheConfirm": "Clear every cached cover?",
+      "clearCoverCacheSuccess": "Cached cover has been cleared"
     }
   },
   "common": {

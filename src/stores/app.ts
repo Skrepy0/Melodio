@@ -14,11 +14,11 @@ import { audio } from '@/utils/createAudio'
 import {
   fetchCoverFromWeb,
   getAccessibleUrl,
-  getCachedCover,
   getNativeCoverUrl,
   hasUsableLocalCover,
   parseSearchError,
 } from '@/utils/functions'
+import { lookupCoverUrl } from '@/utils/coverCache'
 import toast from '@/utils/createToast'
 import { i18n } from '@/i18n'
 import { registerPlugin } from '@capacitor/core'
@@ -803,7 +803,11 @@ export const useAppStore = defineStore('app', () => {
       // can be missing even when the song has a picture tag, so those tracks
       // are looked up too. Embedded/file covers are skipped.
       .filter((index) => !hasUsableLocalCover(queue[index].albumArtUri))
-      .filter((index) => !getCachedCover(queue[index].title, queue[index].artist || ''))
+      // `undefined` means "never looked up"; a cached miss (null) must not be
+      // retried, or every offline start walks the provider chain again.
+      .filter(
+        (index) => lookupCoverUrl(queue[index].title, queue[index].artist || '') === undefined
+      )
       .slice(0, MAX_QUEUE_COVER_LOOKUPS)
     if (pending.length === 0) return
 

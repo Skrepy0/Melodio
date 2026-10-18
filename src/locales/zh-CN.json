@@ -291,7 +291,11 @@
       "canFetchCoverFromWeb": "在线获取歌曲封面",
       "canFetchCoverFromWebDesc": "开启后，系统将自动联网为缺少封面的歌曲补充封面",
       "audioFocusPause": "失去焦点时暂停播放",
-      "audioFocusPauseDesc": "当其他应用开始播放音频时，自动暂停当前播放。"
+      "audioFocusPauseDesc": "当其他应用开始播放音频时，自动暂停当前播放。",
+      "clearCoverCache": "清除封面缓存",
+      "clearCoverCacheDesc": "删除已缓存的封面地址与图片。清除后下次播放会重新联网查找封面。",
+      "clearCoverCacheConfirm": "确定要清除所有已缓存的封面吗？",
+      "clearCoverCacheSuccess": "已清除已缓存的封面数据"
     }
   },
   "common": {

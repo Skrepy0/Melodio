@@ -93,6 +93,11 @@ export class NativeAudioPlayer {
     await NativeAudio.refreshCurrentMetadata()
   }
 
+  /** Drops the native artwork cache; call alongside the web cover cache. */
+  async clearNativeCoverCache() {
+    await NativeAudio.clearCoverCache()
+  }
+
   async playIndex(index: number, autoPlay = true) {
     await NativeAudio.playIndex({ index, autoPlay })
     // State (_paused, _currentTime) is set by native events (songChanged, playStateChange)
