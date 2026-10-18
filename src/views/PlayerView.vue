@@ -46,7 +46,6 @@ watch(
     localQueue.value = [...newQueue]
     // An emptied queue cannot scroll, so the header must come back on its own.
     if (newQueue.length === 0) {
-      lastScrollTop = 0
       setProgress(0)
     }
   },
@@ -67,7 +66,6 @@ onMounted(() => {
   // Wait a frame so the header has its real height before it is measured.
   requestAnimationFrame(() => {
     measureCollapse()
-    lastScrollTop = getQueueList()?.scrollTop ?? 0
   })
   window.addEventListener('resize', measureCollapse)
 })
@@ -118,7 +116,7 @@ const playSong = async (song: Song) => {
 
   appStore.setIsSwitchingSong(true)
   try {
-    await audio.playIndex(targetIdx)
+    await appStore.playIndex(targetIdx)
     // songChanged event from native updates currentIndex and isPlaying
     appStore.setMockCurrentTime(0)
   } catch (e) {
@@ -252,7 +250,7 @@ const onMenuItemSelect = (item: DropdownItem, song: Song) => {
         } else {
           const newIndex = Math.min(idx, newQueue.length - 1)
           appStore.setCurrentIndex(newIndex)
-          audio.playIndex(newIndex)
+          appStore.playIndex(newIndex)
           appStore.setIsPlaying(true)
           appStore.setMockCurrentTime(0)
         }
@@ -411,7 +409,6 @@ const stopDrag = async (e: PointerEvent) => {
   // scroll gesture starts from a zero delta instead of jumping by the drag's
   // auto-scroll distance. The header itself is deliberately left where it was:
   // auto-scrolling to reach a row is not the user browsing the queue.
-  lastScrollTop = getQueueList()?.scrollTop ?? 0
 
   const newIdx = currentPlayingSongId
     ? localQueue.value.findIndex((s) => s.id === currentPlayingSongId)
@@ -450,25 +447,142 @@ const rootEl = ref<HTMLElement | null>(null)
 // the div it renders, so scrollTop has to be read from the DOM. Reading it off
 // the ref silently yields undefined and the resync below would zero out the
 // drag's scroll distance.
-const getQueueList = () => rootEl.value?.querySelector<HTMLElement>('.queue-list') ?? null
-
 // How far the header shrinks between its full and simplified states. Measured
 // from the real layout so the compensation below matches the CSS exactly.
 const collapseDistance = ref(0)
-// Scroll progress, 0 at rest and 1 when the header is fully simplified. Kept
-// out of the reactive graph: it is written straight to the element.
+// Clamped progress, 0 at rest and 1 when the header is fully simplified.
+// Written straight to the element, kept out of the reactive graph.
 let progress = 0
-let lastScrollTop = 0
+// The gesture's virtual position. It may briefly leave [0,1] so that inertia
+// and the rubber-band snap-back have somewhere to live; only its clamped value
+// drives --p, and the overflow is mapped to a small translateY (--pull).
+let rawProgress = 0
 
+// 1 progress unit of overshoot ≈ 0.35 × the header height of screen movement.
+const OVERSCROLL_PULL_RATIO = 0.35
+// Hard ceiling on rawProgress overshoot, so a very fast flick can't drag the
+// whole layout off-screen before the snap-back kicks in.
+const clampRaw = (p: number) => Math.min(1.25, Math.max(-0.25, p))
+
+// How many pixels of `--pull` one progress unit of overshoot is worth, so the
+// header can look like it moves even when --p itself is pinned to 0 or 1.
+const applyProgressVisual = () => {
+  const clamped = Math.min(1, Math.max(0, rawProgress))
+  progress = clamped
+  rootEl.value?.style.setProperty('--p', clamped.toFixed(4))
+  const overflow = rawProgress - clamped
+  const pullPx = overflow * collapseDistance.value * OVERSCROLL_PULL_RATIO
+  rootEl.value?.style.setProperty('--pull', `${pullPx.toFixed(2)}px`)
+}
+
+// Used for programmatic jumps (queue cleared, etc.): settle to exactly `next`
+// with no residual overshoot and no running animation.
 const setProgress = (next: number) => {
   progress = next
+  rawProgress = next
   rootEl.value?.style.setProperty('--p', next.toFixed(4))
+  rootEl.value?.style.setProperty('--pull', '0px')
+}
+
+// ---- Velocity sampling ----
+// Samples from the last 100ms only, so the release velocity reflects the end of
+// the gesture rather than the whole drag. Values are in progress/ms.
+let velocitySamples: { y: number; t: number }[] = []
+
+const recordVelocitySample = (y: number) => {
+  const now = performance.now()
+  velocitySamples.push({ y, t: now })
+  while (velocitySamples.length > 2 && now - velocitySamples[0].t > 100) {
+    velocitySamples.shift()
+  }
+}
+
+// Positive = header is expanding (finger moving down), negative = collapsing.
+const consumeVelocity = (): number => {
+  if (velocitySamples.length < 2 || collapseDistance.value <= 0) {
+    velocitySamples = []
+    return 0
+  }
+  const first = velocitySamples[0]
+  const last = velocitySamples[velocitySamples.length - 1]
+  const dt = last.t - first.t
+  velocitySamples = []
+  if (dt <= 0) return 0
+  // progress moves opposite to clientY: a downward finger expands the header.
+  return -(last.y - first.y) / dt / collapseDistance.value
+}
+
+// ---- Inertia + snap-back ----
+let inertiaFrame: number | null = null
+let springFrame: number | null = null
+
+const cancelHeaderMotion = () => {
+  if (inertiaFrame !== null) cancelAnimationFrame(inertiaFrame)
+  if (springFrame !== null) cancelAnimationFrame(springFrame)
+  inertiaFrame = null
+  springFrame = null
+}
+
+const springBack = () => {
+  if (springFrame !== null) cancelAnimationFrame(springFrame)
+  const target = Math.min(1, Math.max(0, rawProgress))
+  const start = rawProgress
+  const delta = target - start
+  if (Math.abs(delta) < 0.001) {
+    rawProgress = target
+    applyProgressVisual()
+    return
+  }
+  const duration = Math.min(340, 180 + Math.abs(delta) * 380)
+  const t0 = performance.now()
+  const step = (now: number) => {
+    springFrame = null
+    const t = Math.min(1, (now - t0) / duration)
+    // easeOutCubic: fast start, soft landing, no bounce past the target.
+    const eased = 1 - Math.pow(1 - t, 3)
+    rawProgress = start + delta * eased
+    applyProgressVisual()
+    if (t < 1) {
+      springFrame = requestAnimationFrame(step)
+    } else {
+      rawProgress = target
+      applyProgressVisual()
+    }
+  }
+  springFrame = requestAnimationFrame(step)
+}
+
+const startInertia = (velocity: number) => {
+  if (Math.abs(velocity) < 0.0001) {
+    springBack()
+    return
+  }
+  const decayPerMs = 0.994
+  let last = performance.now()
+  const step = (now: number) => {
+    inertiaFrame = null
+    const dt = Math.min(64, now - last)
+    last = now
+    velocity *= Math.pow(decayPerMs, dt)
+    rawProgress = clampRaw(rawProgress + velocity * dt)
+    applyProgressVisual()
+    // Any overshoot, or a velocity too small to see, hands off to the spring.
+    if (rawProgress < 0 || rawProgress > 1 || Math.abs(velocity) < 0.00005) {
+      springBack()
+      return
+    }
+    inertiaFrame = requestAnimationFrame(step)
+  }
+  inertiaFrame = requestAnimationFrame(step)
 }
 
 const measureCollapse = () => {
   const root = rootEl.value
   const header = root?.querySelector<HTMLElement>('.player-header')
   if (!root || !header) return
+  // Measuring swaps --p between 0 and 1; a running animation would fight that.
+  cancelHeaderMotion()
+  root.style.setProperty('--pull', '0px')
   root.style.setProperty('--p', '0')
   const full = header.getBoundingClientRect().height
   root.style.setProperty('--p', '1')
@@ -477,30 +591,164 @@ const measureCollapse = () => {
   collapseDistance.value = Math.max(1, full - collapsed)
 }
 
-// The queue's box grows upward as the header yields. Without a correction the
-// rows would travel twice as fast as the finger (once from the scroll, once
-// from the box growing under them) and short queues would run out of scroll
-// before the header finished. Taking the growth back out of scrollTop keeps
-// the row under the finger still and makes progress track the gesture
-// one-to-one. The corrected value is written back to lastScrollTop, so the
-// scroll event it fires reads as a zero delta instead of feeding back.
-const onQueueScroll = (e: Event) => {
-  const list = e.currentTarget as HTMLElement
-  const top = list.scrollTop
-  const delta = top - lastScrollTop
-  lastScrollTop = top
-  // While a row is being dragged the auto-scroll owns scrollTop. Taking the
-  // header's growth back out here would cancel that auto-scroll every frame and
-  // resize the list under the finger, so the reorder drag must be left alone.
-  // stopDrag resyncs lastScrollTop so the next gesture starts from zero delta.
-  if (isDraggingQueue || delta === 0 || collapseDistance.value <= 0) return
+// ---- Header gesture (outside the queue) ----
+// A vertical swipe on the artwork, the track info, the transport or the top
+// bar collapses or expands the header directly. The queue list only ever
+// scrolls from inside itself, so it is explicitly excluded here.
+let headerGestureId: number | null = null
+let headerGestureStartY = 0
+let headerGestureStartProgress = 0
+let isHeaderDragging = false
 
-  const next = Math.min(1, Math.max(0, progress + delta / collapseDistance.value))
-  if (next === progress) return
-  const step = next - progress
-  setProgress(next)
-  list.scrollTop = top - collapseDistance.value * step
-  lastScrollTop = list.scrollTop
+// A few pixels of slop so a tap on a control is not read as a drag.
+const HEADER_GESTURE_SLOP = 6
+
+const onHeaderPointerDown = (e: PointerEvent) => {
+  if (headerGestureId !== null) return
+  if (e.pointerType === 'mouse' && e.button !== 0) return
+  // The queue list owns its own scroll / reorder gestures; the progress bar
+  // owns its own seek gesture. Neither should fall through to the header.
+  if (isDraggingQueue || isDraggingProgress) return
+
+  const target = e.target as HTMLElement | null
+  if (!target) return
+  if (target.closest('.queue-container') || target.closest('.progress-bar-container')) return
+
+  cancelHeaderMotion()
+  headerGestureId = e.pointerId
+  headerGestureStartY = e.clientY
+  headerGestureStartProgress = rawProgress
+  velocitySamples = []
+  recordVelocitySample(e.clientY)
+  isHeaderDragging = false
+  document.addEventListener('pointermove', onHeaderPointerMove, { passive: false })
+  document.addEventListener('pointerup', stopHeaderDrag)
+  document.addEventListener('pointercancel', stopHeaderDrag)
+}
+
+const onHeaderPointerMove = (e: PointerEvent) => {
+  if (e.pointerId !== headerGestureId) return
+  const dy = e.clientY - headerGestureStartY
+  if (!isHeaderDragging) {
+    if (Math.abs(dy) < HEADER_GESTURE_SLOP) return
+    isHeaderDragging = true
+  }
+  e.preventDefault()
+  if (collapseDistance.value <= 0) return
+
+  recordVelocitySample(e.clientY)
+  // Swiping up folds the header away, swiping down brings it back. rawProgress
+  // may overshoot, which is exactly what feeds the rubber band on release.
+  rawProgress = clampRaw(headerGestureStartProgress - dy / collapseDistance.value)
+  applyProgressVisual()
+  // Shrinking the header grows the queue under it, and the browser may clamp
+  // the list's scrollTop as a side effect. Resync so that clamp is not read
+  // back as the user scrolling the queue.
+}
+
+const stopHeaderDrag = (e: PointerEvent) => {
+  if (e.pointerId !== headerGestureId) return
+  headerGestureId = null
+  document.removeEventListener('pointermove', onHeaderPointerMove)
+  document.removeEventListener('pointerup', stopHeaderDrag)
+  document.removeEventListener('pointercancel', stopHeaderDrag)
+
+  if (!isHeaderDragging) {
+    velocitySamples = []
+    return
+  }
+  isHeaderDragging = false
+  const velocity = consumeVelocity()
+  if (rawProgress < 0 || rawProgress > 1) {
+    // Already pulled past an edge: hand straight off to the spring.
+    springBack()
+  } else {
+    startInertia(velocity)
+  }
+}
+
+// ---- 队列边界越界接力 ----
+// 队列内部滚动时 header 一动不动；只有当列表已经拉到顶、用户还想继续
+// 下拉，或者到底、还想继续上滑时，多出来的这段手势才转交给 header。
+// 方向沿用 header 手势：往上滑收缩，往下滑展开。
+
+const isQueueAtTop = (el: HTMLElement) => el.scrollTop <= 0
+
+const isQueueAtBottom = (el: HTMLElement) => el.scrollTop >= el.scrollHeight - el.clientHeight - 1
+
+// 桌面 / 触控板：wheel 本身就是增量，越界那几格直接换算成 header 位移。
+// 系统自带 wheel 惯性，所以这里不做惯性，只用一个 debounce 决定何时回弹。
+let wheelSnapTimer: number | null = null
+
+const onQueueWheel = (e: WheelEvent) => {
+  const list = e.currentTarget as HTMLElement
+  if (collapseDistance.value <= 0) return
+  const atTop = isQueueAtTop(list)
+  const atBottom = isQueueAtBottom(list)
+  const overscroll = (e.deltaY < 0 && atTop) || (e.deltaY > 0 && atBottom)
+  if (!overscroll) return
+  e.preventDefault()
+  cancelHeaderMotion()
+  // 一次 wheel 可能非常猛，截断避免一步冲到 clampRaw 上限。
+  const clamped = Math.max(-160, Math.min(160, e.deltaY))
+  // wheel 下移（deltaY > 0）等于手指上滑 → progress 增（收缩）。
+  rawProgress = clampRaw(rawProgress - clamped / collapseDistance.value)
+  applyProgressVisual()
+
+  if (wheelSnapTimer !== null) clearTimeout(wheelSnapTimer)
+  wheelSnapTimer = window.setTimeout(() => {
+    wheelSnapTimer = null
+    if (rawProgress < 0 || rawProgress > 1) springBack()
+  }, 140)
+}
+
+// 移动端：用逐帧增量而不是"起始点差值"，这样从队列中间滚到边界、
+// 再继续外拉时，只有越界之后那段距离会被算进 header，不会一次性跳变。
+let queueTouchLastY = 0
+let queueTouchActive = false
+
+const onQueueTouchStart = (e: TouchEvent) => {
+  if (collapseDistance.value <= 0) return
+  cancelHeaderMotion()
+  queueTouchLastY = e.touches[0]?.clientY ?? 0
+  queueTouchActive = false
+  velocitySamples = []
+  recordVelocitySample(queueTouchLastY)
+}
+
+const onQueueTouchMove = (e: TouchEvent) => {
+  const list = e.currentTarget as HTMLElement
+  if (collapseDistance.value <= 0) return
+
+  const currentY = e.touches[0]?.clientY ?? 0
+  const dy = currentY - queueTouchLastY
+  queueTouchLastY = currentY
+  if (dy === 0) return
+
+  const atTop = isQueueAtTop(list)
+  const atBottom = isQueueAtBottom(list)
+  // 顶部继续下拉 / 底部继续上滑，才接管。
+  if (!((atTop && dy > 0) || (atBottom && dy < 0))) return
+
+  e.preventDefault()
+  queueTouchActive = true
+  recordVelocitySample(currentY)
+  rawProgress = clampRaw(rawProgress - dy / collapseDistance.value)
+  applyProgressVisual()
+}
+
+const onQueueTouchEnd = () => {
+  if (!queueTouchActive) {
+    velocitySamples = []
+    return
+  }
+  queueTouchActive = false
+  const velocity = consumeVelocity()
+  if (rawProgress < 0 || rawProgress > 1) {
+    springBack()
+  } else {
+    startInertia(velocity)
+  }
 }
 
 const formatTime = (seconds: number): string => {
@@ -573,6 +821,11 @@ const { rgb: coverRgb } = useCoverColor(coverSrc)
 
 onUnmounted(() => {
   coverAbort?.abort()
+  cancelHeaderMotion()
+  if (wheelSnapTimer !== null) clearTimeout(wheelSnapTimer)
+  document.removeEventListener('pointermove', onHeaderPointerMove)
+  document.removeEventListener('pointerup', stopHeaderDrag)
+  document.removeEventListener('pointercancel', stopHeaderDrag)
 })
 </script>
 
@@ -583,6 +836,7 @@ onUnmounted(() => {
     :style="{
       '--wash-rgb': coverRgb ? coverRgb.join(', ') : 'var(--primary-color-rgb)',
     }"
+    @pointerdown="onHeaderPointerDown"
   >
     <!-- The wash is the only colour the player draws itself: a soft field
          sampled from the current cover, fading into the page ground. -->
@@ -706,7 +960,11 @@ onUnmounted(() => {
         class="queue-list"
         name="queue-list"
         tag="div"
-        @scroll.passive="onQueueScroll"
+        @wheel="onQueueWheel"
+        @touchstart="onQueueTouchStart"
+        @touchmove="onQueueTouchMove"
+        @touchend="onQueueTouchEnd"
+        @touchcancel="onQueueTouchEnd"
       >
         <div
           v-for="(song, idx) in localQueue"
@@ -753,10 +1011,14 @@ onUnmounted(() => {
 // of the page is neutral so the cover and the wash are the only saturated
 // things on screen.
 .player-view {
-  // Scroll progress of the queue, 0 at rest and 1 when the header is fully
-  // simplified. Set inline from the scroll handler; every collapsing value
-  // below is a function of it, so the header and the queue move together.
+  // Clamped progress, 0 at rest and 1 when the header is fully simplified.
+  // Every collapsing value below is a function of it, so the header and the
+  // queue move together.
   --p: 0;
+  // Overshoot, in pixels. Non-zero only while a gesture has pulled past an
+  // edge; the whole content block is translated by it so the pull is visible
+  // even though --p itself is clamped.
+  --pull: 0px;
   --cover-size: min(72vw, 300px);
 
   display: flex;
@@ -766,6 +1028,18 @@ onUnmounted(() => {
   position: relative;
   isolation: isolate;
   padding-top: env(safe-area-inset-top, 0px);
+  // A pull past an edge translates the content below; crop the spill so the
+  // layout does not grow scrollbars or bleed over the safe area.
+  overflow: hidden;
+}
+
+// Top bar, header and queue all follow the overshoot together, so the whole
+// stack rubber-bands as one block instead of tearing at its seams.
+.top-bar,
+.player-header,
+.queue-container {
+  transform: translateY(var(--pull, 0px));
+  will-change: transform;
 }
 
 .wash {
@@ -791,6 +1065,9 @@ onUnmounted(() => {
   height: 52px;
   padding: 0 var(--space-3);
   flex-shrink: 0;
+  // The header gesture owns vertical motion here; without this the browser
+  // would claim the touch for scrolling before the pointer handler sees it.
+  touch-action: none;
 }
 
 .bar-btn {
@@ -847,6 +1124,8 @@ onUnmounted(() => {
     calc(var(--space-4) - (var(--space-4) - var(--space-2)) * var(--p));
   flex-shrink: 0;
   overflow: hidden;
+  // Same as the top bar: the header gesture must win over native scrolling.
+  touch-action: none;
 }
 
 .album-cover {
@@ -1063,6 +1342,9 @@ onUnmounted(() => {
   min-height: 0;
   overflow-y: auto;
   padding: 0 0 var(--space-4);
+  // Keep the list's own scroll from chaining to the page once it hits an end;
+  // the boundary hand-off above turns that overscroll into header motion.
+  overscroll-behavior: contain;
   @include custom-scrollbar(3px);
 }
 
