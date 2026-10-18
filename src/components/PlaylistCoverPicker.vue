@@ -142,6 +142,12 @@ function loadCovers(target: Playlist) {
   }
 
   songRows.value = rows
+  // The template iterates the reactive proxies of `rows`, so the queued entries
+  // must point at those proxies; mutating the raw objects would not re-render.
+  const reactiveRows = new Map(songRows.value.map((row) => [row.key, row]))
+  for (const entry of pending) {
+    entry.row = reactiveRows.get(entry.row.key) ?? entry.row
+  }
   enqueueLookups(pending)
 }
 

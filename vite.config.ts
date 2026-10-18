@@ -23,6 +23,19 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'jsdom',
+    setupFiles: ['./tests/unit/setup.ts'],
+    include: ['tests/unit/**/*.spec.ts'],
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'html', 'lcov'],
+      include: [
+        'src/utils/**/*.ts',
+        'src/stores/**/*.ts',
+        'src/composables/**/*.ts',
+        'src/config.ts',
+      ],
+      exclude: ['src/**/*.d.ts', 'src/plugins/**'],
+    },
   },
   define: {
     __APP_VERSION__: JSON.stringify(pkg.version),
