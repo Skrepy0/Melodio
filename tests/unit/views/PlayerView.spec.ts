@@ -4,7 +4,7 @@ import PlayerView from '@/views/PlayerView.vue'
 import { useAppStore } from '@/stores/app'
 import { makeSongs } from '../helpers/factories'
 import { resetPlugins } from '../helpers/capacitor'
-import { mountComponent, routerMock } from '../helpers/mount'
+import { mountComponent } from '../helpers/mount'
 import { clearStorage, freshPinia } from '../helpers/store'
 
 vi.mock('@/utils/functions', async (importOriginal) => {
@@ -170,7 +170,9 @@ describe('PlayerView', () => {
     await nextTick()
 
     await wrapper.findAll('.queue-item')[2].trigger('click')
-    await vi.waitFor(() => expect(playIndex).toHaveBeenCalledWith(2))
+    await vi.waitFor(() =>
+      expect(playIndex).toHaveBeenCalledWith(2, store.getPlayQueueRepeat(), true)
+    )
     expect(store.getPlayData().mockCurrentTime).toBe(0)
   })
 
@@ -233,7 +235,6 @@ describe('PlayerView', () => {
   it('removes the current song and keeps the index in range', async () => {
     const { store } = seedQueue()
     store.playData.currentIndex = 2
-    const audio = (await import('@/utils/createAudio')).audio
     const setIndex = vi.spyOn(store, 'setCurrentIndex')
     const wrapper = mountComponent(PlayerView)
     await nextTick()

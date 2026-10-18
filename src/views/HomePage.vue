@@ -40,7 +40,7 @@ const playShownSongs = async () => {
       coverUrl: getNativeCoverUrl(s, appStore.getCanFetchCoverFromWeb()),
     }))
   )
-  await audio.playIndex(0)
+  await appStore.playIndex(0)
   appStore.setIsPlaying(true)
 }
 
@@ -220,7 +220,7 @@ const playSong = async (song: Song) => {
       }))
     )
     // setPlaylist completed — now playIndex is safe (playlist is ready)
-    await audio.playIndex(index)
+    await appStore.playIndex(index)
     // songChanged event from native updates isPlaying and currentIndex
   } catch (error) {
     console.error('播放失败:', error)

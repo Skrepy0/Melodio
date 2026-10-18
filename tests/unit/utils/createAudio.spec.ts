@@ -88,15 +88,24 @@ describe('NativeAudioPlayer', () => {
     const repeat = native('setRepeatMode')
     const index = native('setCurrentIndex')
     const refresh = native('refreshCurrentMetadata')
+    const appStore = useAppStore()
 
     const songs = [{ url: 'a', title: 'A', artist: 'B', album: '', coverUrl: '' }]
     await audio.setPlaylist(songs)
     expect(setPlaylist).toHaveBeenCalledWith({ songs })
 
-    await audio.playIndex(2)
-    expect(playIndex).toHaveBeenCalledWith({ index: 2, autoPlay: true })
-    await audio.playIndex(1, false)
-    expect(playIndex).toHaveBeenLastCalledWith({ index: 1, autoPlay: false })
+    await audio.playIndex(2, appStore.getPlayQueueRepeat())
+    expect(playIndex).toHaveBeenCalledWith({
+      index: 2,
+      playQueueRepeat: appStore.getPlayQueueRepeat(),
+      autoPlay: true,
+    })
+    await audio.playIndex(1, appStore.getPlayQueueRepeat(), false)
+    expect(playIndex).toHaveBeenLastCalledWith({
+      index: 1,
+      playQueueRepeat: appStore.getPlayQueueRepeat(),
+      autoPlay: false,
+    })
 
     await audio.setRepeatMode(true)
     expect(repeat).toHaveBeenCalledWith({ repeatOne: true })

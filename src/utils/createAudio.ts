@@ -98,8 +98,8 @@ export class NativeAudioPlayer {
     await NativeAudio.clearCoverCache()
   }
 
-  async playIndex(index: number, autoPlay = true) {
-    await NativeAudio.playIndex({ index, autoPlay })
+  async playIndex(index: number, playQueueRepeat: boolean, autoPlay = true) {
+    await NativeAudio.playIndex({ index, playQueueRepeat, autoPlay })
     // State (_paused, _currentTime) is set by native events (songChanged, playStateChange)
   }
 

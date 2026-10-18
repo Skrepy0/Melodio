@@ -23,6 +23,7 @@ const autoPauseOnDisconnect = ref(appStore.getAutoPauseOnDisconnect())
 const autoPlayOnConnect = ref(appStore.getAutoPlayOnConnect())
 const autoDelInvalidSongs = ref(appStore.getAutoDelInvalidSongs())
 const audioFocusPause = ref(appStore.getAudioFocusPause())
+const playQueueRepeat = ref(appStore.getPlayQueueRepeat())
 const canFetchCoverFromWeb = ref(appStore.getCanFetchCoverFromWeb())
 const pinyinSearch = ref(appStore.getPinyinSearch())
 const togglePinyinSearch = (e: Event) => {
@@ -48,6 +49,11 @@ const toggleAudioFocusPause = (e: Event) => {
   const target = e.target as HTMLInputElement
   audioFocusPause.value = target.checked
   appStore.setAudioFocusPause(audioFocusPause.value)
+}
+const togglePlayQueueRepeat = (e: Event) => {
+  const target = e.target as HTMLInputElement
+  playQueueRepeat.value = target.checked
+  appStore.setPlayQueueRepeat(playQueueRepeat.value)
 }
 const toggleCanFetchCoverFromWeb = (e: Event) => {
   const target = e.target as HTMLInputElement
@@ -122,6 +128,13 @@ const clearCovers = async () => {
           :desc="$t('settings.accessibility.audioFocusPauseDesc')"
           :title="$t('settings.accessibility.audioFocusPause')"
           icon="lucide:focus"
+        />
+        <FunctionSwitch
+          :change="togglePlayQueueRepeat"
+          :checked="playQueueRepeat"
+          :desc="$t('settings.accessibility.playQueueRepeatDesc')"
+          :title="$t('settings.accessibility.playQueueRepeat')"
+          icon="bi:arrow-repeat"
         />
         <SettingsPageLink
           :click="clearCovers"

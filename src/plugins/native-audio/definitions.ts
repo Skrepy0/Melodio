@@ -27,7 +27,7 @@ export interface NativeAudioPlugin {
   refreshCurrentMetadata(): Promise<void>
   /** Drops the native artwork cache when the web-side cover cache is cleared. */
   clearCoverCache(): Promise<void>
-  playIndex(options: { index: number; autoPlay: boolean }): Promise<void>
+  playIndex(options: { index: number; playQueueRepeat: boolean; autoPlay: boolean }): Promise<void>
   setMetadata(metadata: SongItem & { duration?: number }): Promise<void>
   updatePlaybackState(options: { isPlaying: boolean }): Promise<void>
   setRepeatMode(options: { repeatOne: boolean }): Promise<void>

@@ -103,7 +103,7 @@ const defaultOnMenuItemSelect = async (item: DropdownItem) => {
         }))
       )
 
-      await audio.playIndex(targetIndex)
+      await appStore.playIndex(targetIndex)
       // songChanged event from native updates isPlaying and currentIndex
     } catch (e) {
       toast.error(t('common.playFailed'))

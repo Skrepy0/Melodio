@@ -62,6 +62,7 @@ function getSystemLanguage(): string {
 export const useAppStore = defineStore('app', () => {
   const darkMode = ref(localStorage.getItem('darkMode') === 'true')
   const pinyinSearch = ref(localStorage.getItem('pinyinSearch') === 'true')
+  const playQueueRepeat = ref(true)
   const autoPauseOnDisconnect = ref(true)
   const autoPlayOnConnect = ref(false)
   const autoDelInvalidSongs = ref(true)
@@ -538,6 +539,15 @@ export const useAppStore = defineStore('app', () => {
     return canFetchCoverFromWeb.value
   }
 
+  function initPlayQueueRepeat() {
+    const val = localStorage.getItem('playQueueRepeat')
+    if (val && ['true', 'false'].includes(val)) {
+      playQueueRepeat.value = val === 'true'
+    } else {
+      setPlayQueueRepeat(true)
+    }
+  }
+
   function initAutoPauseOnDisconnect() {
     const val = localStorage.getItem('autoPauseOnDisconnect')
     if (val && ['true', 'false'].includes(val)) {
@@ -566,12 +576,21 @@ export const useAppStore = defineStore('app', () => {
     localStorage.setItem('autoPlayOnConnect', String(autoPlayOnConnect.value))
   }
 
+  function setPlayQueueRepeat(val: boolean) {
+    playQueueRepeat.value = val
+    localStorage.setItem('playQueueRepeat', String(playQueueRepeat.value))
+  }
+
   function getAutoPauseOnDisconnect() {
     return autoPauseOnDisconnect.value
   }
 
   function getAutoPlayOnConnect() {
     return autoPlayOnConnect.value
+  }
+
+  function getPlayQueueRepeat() {
+    return playQueueRepeat.value
   }
 
   function setPinyinSearch(val: boolean) {
@@ -978,6 +997,10 @@ export const useAppStore = defineStore('app', () => {
     }
   }
 
+  async function playIndex(index: number, autoPlay = true) {
+    await audio.playIndex(index, playQueueRepeat.value, autoPlay)
+  }
+
   async function togglePlay() {
     if (playQueue.value.length === 0) {
       toast.warning('播放队列为空')
@@ -1042,6 +1065,7 @@ export const useAppStore = defineStore('app', () => {
         // Sequential mode plays through the queue and stops at the end; only
         // repeatOne (handled natively) wraps around.
         if (
+          !playQueueRepeat.value &&
           playMode.value === 'sequential' &&
           playData.value.currentIndex + 1 >= playQueue.value.length
         ) {
@@ -1052,7 +1076,7 @@ export const useAppStore = defineStore('app', () => {
         }
         const nextIndex = (playData.value.currentIndex + 1) % playQueue.value.length
         console.log('[Store] nextSong: playing index=', nextIndex)
-        await audio.playIndex(nextIndex)
+        await playIndex(nextIndex)
         // currentIndex is updated by the 'songChanged' event from native — do NOT set it here
         playData.value.isPlaying = true
         savePlayData()
@@ -1075,13 +1099,17 @@ export const useAppStore = defineStore('app', () => {
     switchPromise = (async () => {
       try {
         // Sequential mode does not wrap backwards either.
-        if (playMode.value === 'sequential' && playData.value.currentIndex <= 0) {
+        if (
+          !playQueueRepeat.value &&
+          playMode.value === 'sequential' &&
+          playData.value.currentIndex <= 0
+        ) {
           return
         }
         const prevIndex =
           (playData.value.currentIndex - 1 + playQueue.value.length) % playQueue.value.length
         console.log('[Store] prevSong: playing index=', prevIndex)
-        await audio.playIndex(prevIndex)
+        await playIndex(prevIndex)
         // currentIndex is updated by the 'songChanged' event from native — do NOT set it here
         playData.value.isPlaying = true
         savePlayData()
@@ -1097,35 +1125,40 @@ export const useAppStore = defineStore('app', () => {
     await switchPromise
   }
 
+  function initSettings() {
+    initLanguage()
+    initThemeColor()
+    loadInitialDarkMode()
+    initWallpaper()
+    initFetchTimeOut()
+    initEachSongAveTimeOut()
+    initMusicClientLimitation()
+    initMusicClientStatus()
+    // Request media permissions on app startup so the user
+    // doesn't have to grant them later when scanning for music
+    requestMediaPermissions().catch(() => {})
+    initBlacklist()
+    initPlaybackRate()
+    initAutoPauseOnDisconnect()
+    initAutoPlayOnConnect()
+    initAutoDelInvalidSongs()
+    initAudioFocusPause().then((r) => console.log('initAudioFocusPause', r))
+    initAllSongs()
+    initDownloadTasks()
+    initDownloadHistory()
+    initSearchHistory()
+    initPlayQueue()
+    initPlayData()
+    initCurrentPlayListIndex()
+    initLikeList()
+    initSongLists()
+    initPlayMode()
+    initPlayQueueRepeat()
+  }
+
   async function init() {
     if (!initFlag.value) {
-      initLanguage()
-      initThemeColor()
-      loadInitialDarkMode()
-      initWallpaper()
-      initFetchTimeOut()
-      initEachSongAveTimeOut()
-      initMusicClientLimitation()
-      initMusicClientStatus()
-      // Request media permissions on app startup so the user
-      // doesn't have to grant them later when scanning for music
-      requestMediaPermissions().catch(() => {})
-      initBlacklist()
-      initPlaybackRate()
-      initAutoPauseOnDisconnect()
-      initAutoPlayOnConnect()
-      initAutoDelInvalidSongs()
-      initAudioFocusPause().then((r) => console.log('initAudioFocusPause', r))
-      initAllSongs()
-      initDownloadTasks()
-      initDownloadHistory()
-      initSearchHistory()
-      initPlayQueue()
-      initPlayData()
-      initCurrentPlayListIndex()
-      initLikeList()
-      initSongLists()
-      initPlayMode()
+      initSettings()
       setupAudioListener()
       setupWebViewRendererKilledListener()
       // playQueue watcher (immediate: true) already syncs playlist to native
@@ -1504,6 +1537,8 @@ export const useAppStore = defineStore('app', () => {
     getSelectedCategory,
     setCurrentPlayList,
     getCurrentPlayList,
+    setPlayQueueRepeat,
+    getPlayQueueRepeat,
     mergeSongLists,
     setSongLists,
     saveSongLists,
@@ -1617,5 +1652,6 @@ export const useAppStore = defineStore('app', () => {
     hasSearched,
     search,
     resetSearch,
+    playIndex,
   }
 })

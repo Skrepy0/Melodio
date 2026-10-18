@@ -295,7 +295,9 @@
       "clearCoverCache": "清除封面缓存",
       "clearCoverCacheDesc": "删除已缓存的封面地址与图片。清除后下次播放会重新联网查找封面。",
       "clearCoverCacheConfirm": "确定要清除所有已缓存的封面吗？",
-      "clearCoverCacheSuccess": "已清除已缓存的封面数据"
+      "clearCoverCacheSuccess": "已清除已缓存的封面数据",
+      "playQueueRepeat": "播放队列循环",
+      "playQueueRepeatDesc": "播放到队尾后回到第一首继续，第一首的上一首为最后一首，整个队列双向循环"
     }
   },
   "common": {

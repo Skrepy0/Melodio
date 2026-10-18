@@ -254,17 +254,19 @@ describe('AccessibilityPage', () => {
     store.setAutoPlayOnConnect(true)
     store.setAutoDelInvalidSongs(false)
     store.setCanFetchCoverFromWeb(false)
+    store.setPlayQueueRepeat(false)
     await store.setAudioFocusPause(false)
 
     const wrapper = mountPage(AccessibilityPage)
     await nextTick()
 
     const switches = wrapper.findAllComponents(FunctionSwitch)
-    expect(switches).toHaveLength(6)
+    expect(switches).toHaveLength(7)
     expect(switches.map((s: any) => s.props('checked'))).toEqual([
       true,
       false,
       true,
+      false,
       false,
       false,
       false,

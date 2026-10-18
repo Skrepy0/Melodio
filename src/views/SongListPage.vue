@@ -158,7 +158,7 @@ const playSong = async (song: Song) => {
         coverUrl: getNativeCoverUrl(s, appStore.getCanFetchCoverFromWeb()),
       }))
     )
-    await audio.playIndex(index)
+    await appStore.playIndex(index)
     appStore.setIsPlaying(true)
   } catch (error) {
     console.error('播放失败:', error)

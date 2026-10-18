@@ -60,14 +60,20 @@ public class NativeAudioPlugin extends Plugin {
     private static final int NOTIF_ID = 1;
     private static final int COVER_CONNECT_TIMEOUT_MS = 5000;
     private static final int COVER_READ_TIMEOUT_MS = 5000;
-    /** Hard cap on a downloaded cover so a misbehaving URL cannot exhaust memory. */
+    /**
+     * Hard cap on a downloaded cover so a misbehaving URL cannot exhaust memory.
+     */
     private static final int MAX_COVER_BYTES = 10 * 1024 * 1024;
     private static final String PREFS_NAME = "melodio_playback";
     private static final String KEY_LAST_INDEX = "lastIndex";
     private static final String KEY_LAST_POSITION_MS = "lastPositionMs";
-    /** Identity of the track the saved position belongs to. */
+    /**
+     * Identity of the track the saved position belongs to.
+     */
     private static final String KEY_LAST_TRACK = "lastTrackKey";
-    /** Custom transport actions the notification buttons send to this plugin. */
+    /**
+     * Custom transport actions the notification buttons send to this plugin.
+     */
     static final String ACTION_TOGGLE = "com.skrepy.melodio.action.TOGGLE_PLAYBACK";
     static final String ACTION_NEXT = "com.skrepy.melodio.action.SKIP_NEXT";
     static final String ACTION_PREV = "com.skrepy.melodio.action.SKIP_PREVIOUS";
@@ -87,7 +93,9 @@ public class NativeAudioPlugin extends Plugin {
      * image can never delay a track change.
      */
     private final ExecutorService networkExecutor = Executors.newSingleThreadExecutor();
-    /** Cover downloads, which may take seconds on a slow connection. */
+    /**
+     * Cover downloads, which may take seconds on a slow connection.
+     */
     private final ExecutorService coverExecutor = Executors.newFixedThreadPool(2);
     private MediaPlayer mediaPlayer;
     private MediaSessionCompat mediaSession;
@@ -113,19 +121,28 @@ public class NativeAudioPlugin extends Plugin {
     private boolean repeatOne = false;
     private float playbackSpeed = 1.0f;
     private final CoverResolver coverResolver = new CoverResolver();
-    /** Memory + disk cache for decoded artwork, so a track change skips IO. */
+    /**
+     * Memory + disk cache for decoded artwork, so a track change skips IO.
+     */
     private CoverBitmapCache coverCache;
     private Bitmap currentAlbumArt;
+    private boolean playQueueRepeat = true;
     //焦点管理
     private boolean audioFocusEnabled = true;
     private AudioManager audioManager;
     private AudioManager.OnAudioFocusChangeListener focusChangeListener;
     private boolean audioFocusGranted = false;
-    /** True while playback is paused only because another app took audio focus. */
+    /**
+     * True while playback is paused only because another app took audio focus.
+     */
     private boolean pausedForFocusLoss = false;
-    /** True while the volume is lowered for a transient duck request. */
+    /**
+     * True while the volume is lowered for a transient duck request.
+     */
     private boolean ducked = false;
-    /** True when play was requested but the focus request was refused. */
+    /**
+     * True when play was requested but the focus request was refused.
+     */
     private boolean pendingFocusPlayback = false;
 
     /**
@@ -157,7 +174,9 @@ public class NativeAudioPlugin extends Plugin {
         return RedirectResolver.follow(urlString, this::redirectTarget);
     }
 
-    /** Looks up the next hop for a URL, or null when it is already final. */
+    /**
+     * Looks up the next hop for a URL, or null when it is already final.
+     */
     private String redirectTarget(String urlString) throws IOException {
         HttpURLConnection connection = null;
         try {
@@ -204,16 +223,20 @@ public class NativeAudioPlugin extends Plugin {
                 // Sequential mode: advance while there is a next track.
                 nextInternal();
             } else {
-                // End of the queue in sequential mode: stop instead of wrapping.
-                Log.d(TAG, "Playlist finished (sequential mode)");
-                isPlaying = false;
-                updateState(false);
-                stopProgress();
-                notifyPlayState(false);
-                persistPlaybackState();
-                // Nothing is playing any more, so the notification becomes a
-                // plain paused card rather than an ongoing playback control.
-                showNotification(false);
+                if (!playQueueRepeat) {
+                    // End of the queue in sequential mode: stop instead of wrapping.
+                    Log.d(TAG, "Playlist finished (sequential mode)");
+                    isPlaying = false;
+                    updateState(false);
+                    stopProgress();
+                    notifyPlayState(false);
+                    persistPlaybackState();
+                    // Nothing is playing any more, so the notification becomes a
+                    // plain paused card rather than an ongoing playback control.
+                    showNotification(false);
+                } else {
+                    nextInternal();
+                }
             }
         });
 
@@ -540,7 +563,9 @@ public class NativeAudioPlugin extends Plugin {
         return BitmapFactory.decodeByteArray(bytes, 0, bytes.length, options);
     }
 
-    /** Downscales artwork to a size the notification can carry comfortably. */
+    /**
+     * Downscales artwork to a size the notification can carry comfortably.
+     */
     private static Bitmap scaleDownArtwork(Bitmap source) {
         int max = ArtworkSampler.TARGET_PX;
         int width = source.getWidth();
@@ -584,7 +609,9 @@ public class NativeAudioPlugin extends Plugin {
         return BitmapFactory.decodeFile(path, options);
     }
 
-    /** Reads at most {@code maxBytes}; returns null when the limit is exceeded. */
+    /**
+     * Reads at most {@code maxBytes}; returns null when the limit is exceeded.
+     */
     private static byte[] readCapped(InputStream input, int maxBytes) throws IOException {
         java.io.ByteArrayOutputStream output = new java.io.ByteArrayOutputStream();
         byte[] buffer = new byte[8192];
@@ -605,6 +632,7 @@ public class NativeAudioPlugin extends Plugin {
     public void playIndex(PluginCall call) {
         Integer indexObj = call.getInt("index");
         int index = (indexObj != null) ? indexObj : 0;
+        playQueueRepeat = Boolean.TRUE.equals(call.getBoolean("playQueueRepeat", true));
         boolean autoPlay = Boolean.TRUE.equals(call.getBoolean("autoPlay", true));
 
         Log.d(TAG, "playIndex called with index=" + index + ", autoPlay=" + autoPlay + " (playlist size=" + playlist.size() + ")");
@@ -903,7 +931,7 @@ public class NativeAudioPlugin extends Plugin {
 
     private void nextInternal() {
         if (playlist.isEmpty()) return;
-        if (!repeatOne && currentIndex + 1 >= playlist.size()) {
+        if (!repeatOne && currentIndex + 1 >= playlist.size() && !playQueueRepeat) {
             // Sequential mode: the queue is finished, do not wrap around.
             Log.d(TAG, "nextInternal: end of playlist (sequential mode)");
             if (prepared && mediaPlayer.isPlaying()) pauseInternal();
@@ -918,7 +946,7 @@ public class NativeAudioPlugin extends Plugin {
 
     private void prevInternal() {
         if (playlist.isEmpty()) return;
-        if (!repeatOne && currentIndex <= 0) {
+        if (!repeatOne && currentIndex <= 0 && !playQueueRepeat) {
             Log.d(TAG, "prevInternal: start of playlist (sequential mode)");
             return;
         }
@@ -1124,7 +1152,7 @@ public class NativeAudioPlugin extends Plugin {
         Intent intent = activity != null
                 ? new Intent(getContext(), activity.getClass())
                 : getContext().getPackageManager()
-                        .getLaunchIntentForPackage(getContext().getPackageName());
+                .getLaunchIntentForPackage(getContext().getPackageName());
         if (intent == null) {
             Log.w(TAG, "No activity to open from the notification");
             return;
@@ -1151,9 +1179,9 @@ public class NativeAudioPlugin extends Plugin {
                         getContext().getString(R.string.media_action_previous), ACTION_PREV))
                 .addAction(isPlaying
                         ? transportAction(R.drawable.ic_pause,
-                                getContext().getString(R.string.media_action_pause), ACTION_TOGGLE)
+                        getContext().getString(R.string.media_action_pause), ACTION_TOGGLE)
                         : transportAction(R.drawable.ic_play,
-                                getContext().getString(R.string.media_action_play), ACTION_TOGGLE))
+                        getContext().getString(R.string.media_action_play), ACTION_TOGGLE))
                 .addAction(transportAction(R.drawable.ic_skip_next,
                         getContext().getString(R.string.media_action_next), ACTION_NEXT))
                 .setStyle(new androidx.media.app.NotificationCompat.MediaStyle()
@@ -1305,7 +1333,9 @@ public class NativeAudioPlugin extends Plugin {
         return getContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
     }
 
-    /** Best-effort snapshot so playback can be resumed even if JS storage is lost. */
+    /**
+     * Best-effort snapshot so playback can be resumed even if JS storage is lost.
+     */
     private void persistPlaybackState() {
         if (currentIndex < 0) return;
         try {
@@ -1324,7 +1354,9 @@ public class NativeAudioPlugin extends Plugin {
         }
     }
 
-    /** Stable identity for the track at {@code index}; empty when unknown. */
+    /**
+     * Stable identity for the track at {@code index}; empty when unknown.
+     */
     private String trackKey(int index) {
         if (index < 0 || index >= playlist.size()) return "";
         String url = playlist.get(index).url;

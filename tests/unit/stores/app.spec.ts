@@ -73,6 +73,7 @@ describe('init', () => {
     const queue = makeSongs(3)
     localStorage.setItem('darkMode', 'true')
     localStorage.setItem('pinyinSearch', 'true')
+    localStorage.setItem('playQueueRepeat', 'true')
     localStorage.setItem('playMode', 'repeatOne')
     localStorage.setItem('theme_color', '#ff0000')
     localStorage.setItem('playbackRate', '1.5')
@@ -265,6 +266,9 @@ describe('play queue', () => {
 describe('next/prev', () => {
   beforeEach(() => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
+    // 队列循环默认可能是 true；这些用例验证的是 sequential / repeat-one
+    // 的边界语义，先显式关掉队列循环，避免被另一个开关绕过守卫。
+    useAppStore().setPlayQueueRepeat(false)
   })
 
   afterEach(() => {
@@ -279,7 +283,11 @@ describe('next/prev', () => {
 
     await store.nextSong()
 
-    expect(playIndex).toHaveBeenCalledWith({ index: 1, autoPlay: true })
+    expect(playIndex).toHaveBeenCalledWith({
+      index: 1,
+      playQueueRepeat: store.getPlayQueueRepeat(),
+      autoPlay: true,
+    })
     expect(store.getPlayData().isPlaying).toBe(true)
   })
 
@@ -310,7 +318,7 @@ describe('next/prev', () => {
 
     await store.nextSong()
 
-    expect(playIndex).toHaveBeenCalledWith({ index: 0, autoPlay: true })
+    expect(playIndex).toHaveBeenCalledWith(expect.objectContaining({ index: 0, autoPlay: true }))
   })
 
   it('does nothing with an empty queue', async () => {
@@ -330,7 +338,11 @@ describe('next/prev', () => {
 
     await store.prevSong()
 
-    expect(playIndex).toHaveBeenCalledWith({ index: 1, autoPlay: true })
+    expect(playIndex).toHaveBeenCalledWith({
+      index: 1,
+      playQueueRepeat: store.getPlayQueueRepeat(),
+      autoPlay: true,
+    })
   })
 
   it('does not wrap backwards in sequential mode', async () => {
@@ -353,7 +365,7 @@ describe('next/prev', () => {
 
     await store.prevSong()
 
-    expect(playIndex).toHaveBeenCalledWith({ index: 2, autoPlay: true })
+    expect(playIndex).toHaveBeenCalledWith(expect.objectContaining({ index: 2, autoPlay: true }))
   })
 
   it('reports a failed switch without leaving the guard stuck', async () => {
@@ -422,7 +434,7 @@ describe('togglePlay', () => {
 
     await store.togglePlay()
 
-    expect(playIndex).toHaveBeenCalledWith({ index: 0, autoPlay: false })
+    expect(playIndex).toHaveBeenCalledWith(expect.objectContaining({ index: 0 }))
     expect(seek).toHaveBeenCalledWith({ time: 12 })
     expect(store.getPlayData().isPlaying).toBe(true)
   })

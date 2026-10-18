@@ -6,7 +6,6 @@ import { DropdownItem, OnlineSong, Song } from '@/utils/interface'
 import { useDropdownManager } from '@/composables/useDropdownManager'
 import OnlineSongItemSelectable from '@/components/song/OnlineSongItemSelectable.vue'
 import SearchBox from '@/components/SearchBox.vue'
-import router from '@/router'
 import toast from '@/utils/createToast'
 import { MusicSigner, useAppStore } from '@/stores/app'
 import { downloadMultipleSongs, downloadMusic, isSongDownloading } from '@/utils/musicDownloader'
@@ -21,6 +20,7 @@ import {
 import { audio } from '@/utils/createAudio'
 import { showPlaylistSelector } from '@/utils/createPlaylistSelector'
 import { showSongInfo } from '@/utils/createInfo'
+import router from '@/router'
 
 const { t } = useI18n()
 const appStore = useAppStore()
@@ -307,7 +307,7 @@ const onItemClick = async (song: OnlineSong) => {
         coverUrl: getNativeCoverUrl(s, appStore.getCanFetchCoverFromWeb()),
       }))
     )
-    await audio.playIndex(index)
+    await appStore.playIndex(index)
   } catch (e) {
     console.error('播放失败', e)
     toast.error(t('common.playFailed'))
@@ -351,6 +351,9 @@ const downloadSelectedMusics = async () => {
   }
 }
 
+const toPlayView = () => {
+  router.push('/player-view')
+}
 watch(keyword, (newVal) => {
   appStore.searchKeyword = newVal
   if (isLoading.value) {
@@ -493,7 +496,7 @@ onBeforeUnmount(() => {
           </div>
         </div>
       </Transition>
-      <NowPlayingBar auto-play @expand="() => router.push('/player-view')" />
+      <NowPlayingBar auto-play @expand="toPlayView" />
     </div>
   </ion-page>
 </template>
