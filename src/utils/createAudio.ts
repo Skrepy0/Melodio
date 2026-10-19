@@ -66,6 +66,10 @@ export class NativeAudioPlayer {
     await NativeAudio.setRepeatMode({ repeatOne })
   }
 
+  async setPlayQueueRepeat(enabled: boolean) {
+    await NativeAudio.setPlayQueueRepeat({ enabled })
+  }
+
   async setCurrentIndex(index: number) {
     await NativeAudio.setCurrentIndex({ index })
   }

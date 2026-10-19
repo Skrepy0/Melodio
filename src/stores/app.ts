@@ -579,6 +579,7 @@ export const useAppStore = defineStore('app', () => {
   function setPlayQueueRepeat(val: boolean) {
     playQueueRepeat.value = val
     localStorage.setItem('playQueueRepeat', String(playQueueRepeat.value))
+    audio.setPlayQueueRepeat(val)
   }
 
   function getAutoPauseOnDisconnect() {

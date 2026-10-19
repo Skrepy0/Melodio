@@ -352,6 +352,12 @@ public class NativeAudioPlugin extends Plugin {
         call.resolve();
     }
 
+    @PluginMethod
+    public void setPlayQueueRepeat(PluginCall call){
+        this.playQueueRepeat = Boolean.TRUE.equals(call.getBoolean("enabled", true));
+        call.resolve();
+    }
+
     private void initSession() {
         mediaSession = new MediaSessionCompat(getContext(), "MelodioAudio");
         mediaSession.setFlags(
