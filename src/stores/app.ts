@@ -1170,6 +1170,7 @@ export const useAppStore = defineStore('app', () => {
       await reconcilePlaybackState()
       await initCanFetchCoverFromWeb()
       await audio.setRepeatMode(playMode.value === 'repeatOne')
+      await audio.setPlayQueueRepeat(playQueueRepeat.value)
       initFlag.value = true
     }
   }
