@@ -1044,7 +1044,7 @@ export const useAppStore = defineStore('app', () => {
       } catch {
         // getState unavailable — fall back to the persisted position.
       }
-      await audio.playIndex(playData.value.currentIndex, false)
+      await audio.playIndex(playData.value.currentIndex, playQueueRepeat.value, false)
       if (resumeAt > 0) {
         await audio.seek(resumeAt)
       }
