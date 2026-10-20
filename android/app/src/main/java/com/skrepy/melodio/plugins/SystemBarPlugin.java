@@ -21,40 +21,26 @@ public class SystemBarPlugin extends Plugin {
 
     private static final String TAG = "SystemBar";
 
-    // Theme colors matching the web layer's theme.scss
-    private static final int LIGHT_BG_COLOR = Color.parseColor("#FFF8F9FC");
-    private static final int DARK_BG_COLOR = Color.parseColor("#FF0A0A0C");
-
     @Override
     public void load() {
         Log.d(TAG, "SystemBar plugin loaded");
     }
 
     /**
-     * Apply a theme to both the status bar and navigation bar.
-     * Called from the web layer whenever the user toggles light/dark mode.
+     * Make both system bars transparent and lay the WebView out edge-to-edge.
+     * <p>
+     * The bar backgrounds are now painted by the page itself (the wallpaper
+     * composite at --bg-page); this plugin only controls the icon/button
+     * polarity so they stay legible against whatever the page shows through.
      *
-     * Content is intentionally laid out below the system bars; this method only
-     * tints the bar areas so they follow the current theme background.
-     *
-     * @param call expects { mode: "light" | "dark", color?: "#rrggbb" }
+     * @param call expects { mode: "light" | "dark" }; any other field is ignored.
      */
     @PluginMethod
     public void setTheme(PluginCall call) {
         String mode = call.getString("mode", "light");
-        boolean isDark = "dark".equals(mode);
-        String colorHex = call.getString("color", null);
+        boolean lightBars = "light".equals(mode);
 
-        int bgColor = isDark ? DARK_BG_COLOR : LIGHT_BG_COLOR;
-        if (colorHex != null) {
-            try {
-                bgColor = Color.parseColor(colorHex);
-            } catch (IllegalArgumentException e) {
-                Log.w(TAG, "Invalid color from web layer: " + colorHex + ", using theme default");
-            }
-        }
-
-        Log.d(TAG, "setTheme called with mode=" + mode + ", color=" + colorHex);
+        Log.d(TAG, "setTheme called with mode=" + mode);
 
         Activity activity = getActivity();
         if (activity == null) {
@@ -63,34 +49,35 @@ public class SystemBarPlugin extends Plugin {
             return;
         }
 
-        final int barColor = bgColor;
         activity.runOnUiThread(() -> {
             Window window = activity.getWindow();
 
-            // Ensure the system knows we are handling bar backgrounds ourselves.
-            // Some OEM ROMs (ColorOS, MIUI) require this flag + an explicit color
-            // set on the decor view's root for the status bar area to pick up the
-            // change; they ignore setStatusBarColor() alone.
+            // FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS is required for the bar colour
+            // setters to apply on API 21–34; on API 35+ the bars are transparent
+            // by default and the setters are no-ops. The transparent flag keeps
+            // legacy ROMs from painting a scrim we did not ask for.
             window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
-            window.setStatusBarColor(barColor);
-            window.setNavigationBarColor(barColor);
             window.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);
+            window.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_NAVIGATION);
+            window.setStatusBarColor(Color.TRANSPARENT);
+            window.setNavigationBarColor(Color.TRANSPARENT);
 
-            // The decor view is what shows through the bar areas (and is the only
-            // lever left on Android 15+, where edge-to-edge is enforced and
-            // setStatusBarColor() is ignored). Keep it in sync with the theme.
-            window.getDecorView().setBackgroundColor(barColor);
+            // The decor view sits behind the WebView. Make it transparent so the
+            // page background shows through instead of a solid black/white slab.
+            window.getDecorView().setBackgroundColor(Color.TRANSPARENT);
 
-            // Below Android 15 this is what keeps WebView content out of the bars.
-            // On 15+ it is a no-op; Capacitor's SystemBars plugin pads the WebView
-            // parent by the system bar insets instead.
-            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.VANILLA_ICE_CREAM) {
-                WindowCompat.setDecorFitsSystemWindows(window, true);
+            // Edge-to-edge on every API level. Android 15 (API 35) enforces this
+            // anyway; doing it ourselves keeps the layout identical below 35 so
+            // the same safe-area-inset CSS applies everywhere.
+            WindowCompat.setDecorFitsSystemWindows(window, false);
+
+            // API 29+ applies a translucent scrim over a transparent navigation
+            // bar unless contrast enforcement is disabled. Without this the bar
+            // is not truly transparent on those versions.
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                window.setNavigationBarContrastEnforced(false);
+                window.setStatusBarContrastEnforced(false);
             }
-
-            // Configure icon/button appearance for legibility against the background
-            // Light bar backgrounds → dark icons; dark bar backgrounds → light icons
-            boolean lightBars = !isDark;
 
             WindowInsetsControllerCompat insetsController =
                     WindowCompat.getInsetsController(window, window.getDecorView());
@@ -100,8 +87,7 @@ public class SystemBarPlugin extends Plugin {
                 insetsController.setAppearanceLightNavigationBars(lightBars);
             }
 
-            Log.d(TAG, "Applied " + mode + " theme: barColor=" +
-                    String.format("#%08X", barColor) + ", lightBars=" + lightBars);
+            Log.d(TAG, "Applied transparent bars: lightBars=" + lightBars);
         });
 
         JSObject result = new JSObject();

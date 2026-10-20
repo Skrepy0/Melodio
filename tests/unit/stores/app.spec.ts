@@ -4,6 +4,7 @@ import type { DownloadTaskSnapshot } from '@/utils/interface'
 import { emitNative, mockMethod, resetPlugins } from '../helpers/capacitor'
 import { makePlaylist, makeSong, makeSongs } from '../helpers/factories'
 import { clearStorage, freshPinia } from '../helpers/store'
+import { getDominantColor } from '@/utils/dominantColor'
 
 vi.mock('@/utils/createToast', () => ({
   default: {
@@ -12,6 +13,10 @@ vi.mock('@/utils/createToast', () => ({
     warning: vi.fn(),
     info: vi.fn(),
   },
+}))
+
+vi.mock('@/utils/dominantColor', () => ({
+  getDominantColor: vi.fn(async () => null),
 }))
 
 // Queue cover resolution reaches the network; keep the store tests offline.
@@ -66,6 +71,7 @@ beforeEach(() => {
   mockMethod('Filesystem', 'getUri', async () => ({
     uri: 'file:///data/user/0/pkg/files/wallpaper.jpg',
   }))
+  mockMethod('Filesystem', 'readFile', async () => ({ data: 'AAAA' }))
   mockMethod('Filesystem', 'deleteFile', async () => undefined)
 })
 
@@ -714,6 +720,119 @@ describe('cover fetching toggle', () => {
     const store = useAppStore()
     await store.init()
     expect(store.getCanFetchCoverFromWeb()).toBe(false)
+  })
+})
+
+describe('system bar colour', () => {
+  // Assigned in beforeEach: the file-level resetPlugins() wipes any spy
+  // registered at module load, so the mock has to be installed afterwards.
+  let setTheme: ReturnType<typeof mockMethod>
+
+  // The native plugin only consumes `mode` now — the bar background is
+  // transparent and painted by the page, so there is no colour to assert.
+  const lastThemeCall = (): { mode: string } => {
+    const calls = setTheme.mock.calls as unknown as Array<[{ mode: string }]>
+    const call = calls[calls.length - 1]
+    if (!call) throw new Error('SystemBar.setTheme was not called')
+    return call[0]
+  }
+
+  const setVar = (name: string, value: string) =>
+    document.documentElement.style.setProperty(name, value)
+
+  // jsdom does not resolve CSS variables through getComputedStyle; route the
+  // lookup to the inline style so `--bg-color-rgb` / `--wallpaper-ground-alpha`
+  // set by the test can be read back.
+  const computedStyleSpy = () =>
+    vi
+      .spyOn(window, 'getComputedStyle')
+      .mockImplementation(() => document.documentElement.style as unknown as CSSStyleDeclaration)
+
+  beforeEach(() => {
+    computedStyleSpy()
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    setTheme = mockMethod('SystemBar', 'setTheme', async (_opts: unknown) => undefined)
+    vi.mocked(getDominantColor).mockReset()
+    vi.mocked(getDominantColor).mockResolvedValue(null)
+    setVar('--bg-color-rgb', '243, 243, 245') // light theme ground
+    setVar('--wallpaper-ground-alpha', '1')
+    document.documentElement.classList.remove('dark', 'has-wallpaper')
+  })
+
+  it('uses the theme ground when no wallpaper is set', async () => {
+    const store = useAppStore()
+    store.setWallpaperTransparency(50)
+    await new Promise((r) => setTimeout(r, 0))
+
+    expect(setTheme).toHaveBeenCalled()
+    expect(lastThemeCall()).toEqual({ mode: 'light' })
+    expect(getDominantColor).not.toHaveBeenCalled()
+  })
+
+  it('falls back to the theme ground when the sample fails', async () => {
+    vi.mocked(getDominantColor).mockResolvedValue(null)
+    const store = useAppStore()
+    await store.setWallpaper('wallpaper.jpg')
+    await new Promise((r) => setTimeout(r, 0))
+
+    expect(getDominantColor).toHaveBeenCalled()
+    expect(lastThemeCall()).toEqual({ mode: 'light' })
+  })
+
+  it('resolves light icons when the composite is bright', async () => {
+    // Light theme ground (243) blending a light wallpaper dominant at half
+    // alpha stays well above the 128 luminance threshold.
+    vi.mocked(getDominantColor).mockResolvedValue([20, 20, 20])
+    const store = useAppStore()
+    store.setWallpaperTransparency(50)
+    await store.setWallpaper('wallpaper.jpg')
+    await new Promise((r) => setTimeout(r, 0))
+
+    // Composite: (243 * 0.5 + 20 * 0.5) ≈ 132 → luminance 132 > 128 → light.
+    expect(lastThemeCall()).toEqual({ mode: 'light' })
+  })
+
+  it('resolves dark icons when the composite is dark', async () => {
+    vi.mocked(getDominantColor).mockResolvedValue([10, 10, 10])
+    const store = useAppStore()
+    // 100% transparency → ground alpha hits the 0.08 floor, so the composite
+    // is dominated by the dark wallpaper colour.
+    store.setWallpaperTransparency(100)
+    await store.setWallpaper('wallpaper.jpg')
+    await new Promise((r) => setTimeout(r, 0))
+
+    expect(lastThemeCall()).toEqual({ mode: 'dark' })
+  })
+
+  it('discards a stale colour when the wallpaper changes mid-sample', async () => {
+    let resolveFirst: ((rgb: [number, number, number] | null) => void) | null = null
+    vi.mocked(getDominantColor)
+      .mockImplementationOnce(
+        () =>
+          new Promise<[number, number, number] | null>((resolve) => {
+            resolveFirst = resolve
+          })
+      )
+      .mockResolvedValueOnce([200, 100, 50])
+
+    const store = useAppStore()
+    store.setWallpaperTransparency(80) // ground alpha 0.2
+
+    // First setWallpaper parks in getDominantColor.
+    await store.setWallpaper('wallpaper.jpg')
+    // Second setWallpaper resolves immediately.
+    await store.setWallpaper('wallpaper.jpg')
+    await new Promise((r) => setTimeout(r, 0))
+
+    const callsAfterSecond = setTheme.mock.calls.length
+    const expected = lastThemeCall()
+
+    // Stale sample lands; generation guard must discard it.
+    resolveFirst!([0, 0, 0])
+    await new Promise((r) => setTimeout(r, 10))
+
+    expect(setTheme.mock.calls.length).toBe(callsAfterSecond)
+    expect(lastThemeCall()).toEqual(expected)
   })
 })
 

@@ -119,7 +119,7 @@ public class MainActivity extends BridgeActivity {
         // 禁止内容绘制到状态栏/导航栏下方。
         // Android 15 起系统强制 edge-to-edge，此调用不再生效；该版本由 Capacitor
         // 的 SystemBars 插件按系统栏 inset 给 WebView 父容器补 padding 来实现同样的效果。
-        WindowCompat.setDecorFitsSystemWindows(getWindow(), true);
+        WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
         // Re-set up crash handler after plugins are loaded (WebView is now ready)
         setupWebViewCrashHandler();
     }

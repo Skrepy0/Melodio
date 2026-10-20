@@ -15,7 +15,6 @@ import {
   fetchCoverFromWeb,
   getAccessibleUrl,
   getCachedCover,
-  getCoverSrc,
   getNativeCoverUrl,
   parseSearchError,
 } from '@/utils/functions'
@@ -32,6 +31,7 @@ import { requestMediaPermissions } from '@/utils/permission'
 import { DownloaderPlugin } from '@/plugins/downloader/definitions'
 import { runCoverMigration } from '@/utils/coverMigration'
 import { Directory, Filesystem } from '@capacitor/filesystem'
+import { getDominantColor } from '@/utils/dominantColor'
 
 const SystemBar = registerPlugin<SystemBarPlugin>('SystemBar')
 export const MusicSigner = registerPlugin<MusicSignerPlugin>('MusicSigner')
@@ -322,6 +322,52 @@ export const useAppStore = defineStore('app', () => {
     return themeColor.value
   }
 
+  // auto System Bar color
+  let sysBarColorGeneration = 0
+
+  /**
+   * Drive the native status/navigation bar icon polarity.
+   *
+   * The bars themselves are transparent (see SystemBarPlugin: the page ground
+   * paints through them). What still needs deciding is whether the icons are
+   * dark or light, and that depends on how bright the effective page ground is:
+   * the theme tint (`--bg-color-rgb`) alpha-composited with the wallpaper's
+   * dominant colour at `--wallpaper-ground-alpha`. Without a wallpaper, or when
+   * sampling fails, the theme ground alone is used.
+   *
+   * A bright composite gets `mode: 'light'` (dark icons); a dark one gets
+   * `mode: 'dark'` (light icons).
+   */
+  async function applySystemBarColor() {
+    // 现在只关心图标极性
+    const generation = ++sysBarColorGeneration
+    const style = window.getComputedStyle(document.documentElement)
+
+    // 计算合成色（用于亮度判定）
+    const bgParts = style.getPropertyValue('--bg-color-rgb').trim()
+    const bgRgb = bgParts ? bgParts.split(',').map((p) => Number.parseInt(p.trim(), 10)) : [0, 0, 0]
+    let [r, g, b] = bgRgb
+
+    if (wallpaper.value) {
+      const dominant = await getDominantColor(wallpaper.value)
+      if (generation !== sysBarColorGeneration) return
+      if (dominant) {
+        const alphaRaw = style.getPropertyValue('--wallpaper-ground-alpha').trim()
+        const parsed = alphaRaw ? Number.parseFloat(alphaRaw) : 1
+        const groundAlpha = Number.isFinite(parsed) ? parsed : 1
+        r = Math.round(bgRgb[0] * groundAlpha + dominant[0] * (1 - groundAlpha))
+        g = Math.round(bgRgb[1] * groundAlpha + dominant[1] * (1 - groundAlpha))
+        b = Math.round(bgRgb[2] * groundAlpha + dominant[2] * (1 - groundAlpha))
+      }
+    }
+
+    const luminance = 0.299 * r + 0.587 * g + 0.114 * b
+    const mode = luminance > 128 ? 'light' : 'dark'
+
+    // 只切换图标极性
+    SystemBar.setTheme({ mode }).catch(() => {})
+  }
+
   // ----- Wallpaper -----
   // The interface ground is translucent over the wallpaper, never the wallpaper
   // itself: text and hairlines keep their contrast because every page still
@@ -331,18 +377,27 @@ export const useAppStore = defineStore('app', () => {
   async function resolveWallpaperSrc(filename: string): Promise<string> {
     if (!filename) return ''
     try {
-      const { uri } = await Filesystem.getUri({
-        path: filename,
-        directory: Directory.Data,
-      })
-      return getCoverSrc(uri) // file:// → Capacitor 本地服务器
-    } catch {
+      const { uri } = await Filesystem.getUri({ path: filename, directory: Directory.Data })
+      if (!uri) return ''
+      // The WebView cannot fetch `file://` directly. Capacitor's local server
+      // exposes the file at `/_capacitor_file_/data/...`; build that path by hand
+      // rather than calling `Capacitor.convertFileSrc`, which depends on platform
+      // config being initialised (notably under jsdom). A relative URL resolves
+      // against the WebView's `https://localhost` origin on device, so it works
+      // there unchanged.
+      if (uri.startsWith('file://')) {
+        return `/_capacitor_file_${uri.replace(/^file:\/\/+/, '/')}`
+      }
+      return uri
+    } catch (error) {
+      console.error('[wallpaper] resolveWallpaperSrc failed', error)
       return ''
     }
   }
 
-  async function refreshWallpaperUrl() {
-    wallpaper.value = await resolveWallpaperSrc(wallpaperFilename.value)
+  async function refreshWallpaperUrl(cacheBust = false) {
+    const url = await resolveWallpaperSrc(wallpaperFilename.value)
+    wallpaper.value = cacheBust && url ? `${url}?v=${Date.now()}` : url
     applyWallpaper()
   }
 
@@ -360,21 +415,21 @@ export const useAppStore = defineStore('app', () => {
       wallpaperFit.value === 'stretch' ? '100% 100%' : wallpaperFit.value
     )
     root.style.setProperty('--wallpaper-image', hasWallpaper ? `url("${wallpaper.value}")` : 'none')
+    // The composite brightness just changed; refresh the icon polarity.
+    void applySystemBarColor()
   }
+
   async function setWallpaper(filename: string): Promise<boolean> {
     if (!isWallpaperFilename(filename)) return false
     try {
       localStorage.setItem('wallpaper', filename)
     } catch {
-      // Quota exceeded — still apply in memory for this session, but report failure.
       wallpaperFilename.value = filename
-      await refreshWallpaperUrl()
+      await refreshWallpaperUrl(true) // ← cache-bust
       return false
     }
     wallpaperFilename.value = filename
-    // Resolve the file:// URL before returning so `getWallpaper()` is immediately
-    // renderable for the caller.
-    await refreshWallpaperUrl()
+    await refreshWallpaperUrl(true) // ← cache-bust
     return true
   }
 
@@ -401,15 +456,12 @@ export const useAppStore = defineStore('app', () => {
 
   function initWallpaper() {
     const stored = localStorage.getItem('wallpaper') ?? ''
-    // Older versions persisted a data URL here. That path is no longer
-    // supported; drop it rather than resurrect a multi-megabyte string.
     if (stored && !isWallpaperFilename(stored)) {
       localStorage.removeItem('wallpaper')
       wallpaperFilename.value = ''
       wallpaper.value = ''
     } else {
       wallpaperFilename.value = stored
-      if (stored) void refreshWallpaperUrl()
     }
     wallpaperTransparency.value = clampNumber(
       localStorage.getItem('wallpaperTransparency'),
@@ -420,7 +472,19 @@ export const useAppStore = defineStore('app', () => {
     wallpaperBlur.value = clampNumber(localStorage.getItem('wallpaperBlur'), 0, 40, 0)
     const fit = localStorage.getItem('wallpaperFit')
     wallpaperFit.value = fit === 'contain' || fit === 'stretch' ? fit : 'cover'
-    applyWallpaper()
+
+    // Apply the non-image variables right away so transparency/blur/fit take
+    // effect on first paint; the image itself lands when the async URI resolves.
+    const root = document.documentElement
+    const open = Math.min(100, Math.max(0, wallpaperTransparency.value)) / 100
+    root.style.setProperty('--wallpaper-ground-alpha', (1 - open).toFixed(3))
+    root.style.setProperty('--wallpaper-blur', `${wallpaperBlur.value}px`)
+    root.style.setProperty(
+      '--wallpaper-fit',
+      wallpaperFit.value === 'stretch' ? '100% 100%' : wallpaperFit.value
+    )
+
+    if (wallpaperFilename.value) void refreshWallpaperUrl()
   }
 
   function setWallpaperTransparency(value: number) {
@@ -1292,17 +1356,10 @@ export const useAppStore = defineStore('app', () => {
     else root.classList.remove('dark')
     applyThemeColor()
     window.setTimeout(() => root.classList.remove('theme-transition'), 350)
-    // Keep the native bar areas in step with the themed page background.
-    // Resolve the CSS token after the class swap so the value is current.
-    // The plugin cannot parse an alpha channel, so read the opaque token: the
-    // page tint's own `--bg-color-rgb`, which the wallpaper layer never changes.
-    const bgColor = window.getComputedStyle(root).getPropertyValue('--bg-color-rgb').trim()
-    SystemBar.setTheme({
-      mode: darkMode.value ? 'dark' : 'light',
-      color: bgColor ? `rgb(${bgColor})` : undefined,
-    }).catch(() => {
-      // SystemBar plugin not available on web / iOS — ignore silently
-    })
+    // Theme ground changed → the icon polarity has to be recomputed from the
+    // new composite. Resolve it after the class swap so `--bg-color-rgb` is
+    // current.
+    void applySystemBarColor()
   }
 
   function setAllSongs(songs: Song[]) {
