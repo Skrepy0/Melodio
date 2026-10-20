@@ -195,11 +195,11 @@ describe('cover source validation', () => {
     expect(isSafeCoverSource(undefined)).toBe(false)
   })
 
-  it('only persists https and image data URLs', () => {
+  it('only persists https, content, file and image data URLs', () => {
     expect(isPersistableCoverSource('https://example.com/a.jpg')).toBe(true)
     expect(isPersistableCoverSource('data:image/jpeg;base64,abc')).toBe(true)
-    expect(isPersistableCoverSource('content://media/1')).toBe(false)
-    expect(isPersistableCoverSource('file:///a.jpg')).toBe(false)
+    expect(isPersistableCoverSource('content://media/1')).toBe(true)
+    expect(isPersistableCoverSource('file:///a.jpg')).toBe(true)
     expect(isPersistableCoverSource(null)).toBe(false)
   })
 

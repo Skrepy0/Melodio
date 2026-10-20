@@ -10,12 +10,13 @@ import {
 } from '@/utils/interface'
 import { defineStore } from 'pinia'
 import { computed, ref, watch } from 'vue'
-import { audio } from '@/utils/createAudio'
+import { audio, getEmbeddedCover } from '@/utils/createAudio'
 import {
   fetchCoverFromWeb,
   getAccessibleUrl,
+  getCachedCover,
+  getCoverSrc,
   getNativeCoverUrl,
-  hasUsableLocalCover,
   parseSearchError,
 } from '@/utils/functions'
 import { lookupCoverUrl } from '@/utils/coverCache'
@@ -29,6 +30,8 @@ import { musicClients } from '@/config'
 import { MusicSignerPlugin } from '@/plugins/music-signer/definitions'
 import { requestMediaPermissions } from '@/utils/permission'
 import { DownloaderPlugin } from '@/plugins/downloader/definitions'
+import { runCoverMigration } from '@/utils/coverMigration'
+import { Directory, Filesystem } from '@capacitor/filesystem'
 
 const SystemBar = registerPlugin<SystemBarPlugin>('SystemBar')
 export const MusicSigner = registerPlugin<MusicSignerPlugin>('MusicSigner')
@@ -38,15 +41,14 @@ const SUPPORTED_LOCALES = ['zh-CN', 'en-US']
 /** How the wallpaper is fitted to the viewport. */
 export type WallpaperFit = 'cover' | 'contain' | 'stretch'
 /**
- * A wallpaper is always an image data URL produced by our own canvas encoder.
- * Anything else (remote URLs, file/content URIs, SVG, `data:text/html`) is
- * rejected before it can reach a CSS `url()`.
+ * The wallpaper lives at a fixed filename under `Directory.Data`; the renderable
+ * URL is resolved at runtime via `Filesystem.getUri` + `getCoverSrc`. Data URLs
+ * and remote URLs are no longer accepted — they end up in a CSS `url()` and in
+ * localStorage.
  */
-const WALLPAPER_SOURCE = /^data:image\/(?:jpeg|png|webp);base64,[a-z0-9+/=]+$/i
-/** localStorage is a few megabytes per origin; keep the payload well inside it. */
-const WALLPAPER_MAX_CHARS = 4 * 1024 * 1024
-const isWallpaperSource = (value: string) =>
-  value.length <= WALLPAPER_MAX_CHARS && WALLPAPER_SOURCE.test(value)
+const WALLPAPER_FILENAME_RE = /^wallpaper\.jpg$/i
+const isWallpaperFilename = (value: string) => WALLPAPER_FILENAME_RE.test(value)
+const wallpaperFilename = ref<string>('')
 const clampNumber = (raw: string | null, min: number, max: number, fallback: number) => {
   const value = Number(raw)
   if (raw === null || raw === '' || Number.isNaN(value)) return fallback
@@ -326,49 +328,99 @@ export const useAppStore = defineStore('app', () => {
   // paints `--bg-color`, just at an alpha.
   const WALLPAPER_MIN_GROUND_ALPHA = 0.08
 
+  async function resolveWallpaperSrc(filename: string): Promise<string> {
+    if (!filename) return ''
+    try {
+      const { uri } = await Filesystem.getUri({
+        path: filename,
+        directory: Directory.Data,
+      })
+      return getCoverSrc(uri) // file:// → Capacitor 本地服务器
+    } catch {
+      return ''
+    }
+  }
+
+  async function refreshWallpaperUrl() {
+    wallpaper.value = await resolveWallpaperSrc(wallpaperFilename.value)
+    applyWallpaper()
+  }
+
   function applyWallpaper() {
     const root = document.documentElement
     const hasWallpaper = !!wallpaper.value
     if (hasWallpaper) root.classList.add('has-wallpaper')
     else root.classList.remove('has-wallpaper')
-    // 0 = opaque ground (nothing shows), 100 = almost fully open.
     const open = Math.min(100, Math.max(0, wallpaperTransparency.value)) / 100
     const alpha = hasWallpaper ? Math.max(WALLPAPER_MIN_GROUND_ALPHA, 1 - open) : 1
     root.style.setProperty('--wallpaper-ground-alpha', alpha.toFixed(3))
     root.style.setProperty('--wallpaper-blur', `${wallpaperBlur.value}px`)
-    // `background-size` has no `stretch` keyword; stretching is 100% 100%.
     root.style.setProperty(
       '--wallpaper-fit',
       wallpaperFit.value === 'stretch' ? '100% 100%' : wallpaperFit.value
     )
     root.style.setProperty('--wallpaper-image', hasWallpaper ? `url("${wallpaper.value}")` : 'none')
   }
-
-  function setWallpaper(dataUrl: string) {
-    // Refuse anything that is not an image data URL we produced ourselves; the
-    // value ends up in a CSS url() and in localStorage.
-    if (!isWallpaperSource(dataUrl)) return false
-    wallpaper.value = dataUrl
+  async function setWallpaper(filename: string): Promise<boolean> {
+    if (!isWallpaperFilename(filename)) return false
     try {
-      localStorage.setItem('wallpaper', dataUrl)
+      localStorage.setItem('wallpaper', filename)
     } catch {
-      // Quota exceeded: keep the image for this session and let the caller
-      // report it.
-      applyWallpaper()
+      // Quota exceeded — still apply in memory for this session, but report failure.
+      wallpaperFilename.value = filename
+      await refreshWallpaperUrl()
       return false
     }
-    applyWallpaper()
+    wallpaperFilename.value = filename
+    // Resolve the file:// URL before returning so `getWallpaper()` is immediately
+    // renderable for the caller.
+    await refreshWallpaperUrl()
     return true
   }
 
   function removeWallpaper() {
+    const previous = wallpaperFilename.value
+    wallpaperFilename.value = ''
     wallpaper.value = ''
-    localStorage.removeItem('wallpaper')
+    try {
+      localStorage.removeItem('wallpaper')
+    } catch {
+      /* storage unavailable — the in-memory state is already cleared */
+    }
     applyWallpaper()
+    if (previous) {
+      Filesystem.deleteFile({ path: previous, directory: Directory.Data }).catch(() => {})
+    }
   }
 
   function getWallpaper() {
+    // Returns the renderable URL, not the filename. Empty while the async
+    // resolution is still in flight (or when no wallpaper is set).
     return wallpaper.value
+  }
+
+  function initWallpaper() {
+    const stored = localStorage.getItem('wallpaper') ?? ''
+    // Older versions persisted a data URL here. That path is no longer
+    // supported; drop it rather than resurrect a multi-megabyte string.
+    if (stored && !isWallpaperFilename(stored)) {
+      localStorage.removeItem('wallpaper')
+      wallpaperFilename.value = ''
+      wallpaper.value = ''
+    } else {
+      wallpaperFilename.value = stored
+      if (stored) void refreshWallpaperUrl()
+    }
+    wallpaperTransparency.value = clampNumber(
+      localStorage.getItem('wallpaperTransparency'),
+      0,
+      100,
+      25
+    )
+    wallpaperBlur.value = clampNumber(localStorage.getItem('wallpaperBlur'), 0, 40, 0)
+    const fit = localStorage.getItem('wallpaperFit')
+    wallpaperFit.value = fit === 'contain' || fit === 'stretch' ? fit : 'cover'
+    applyWallpaper()
   }
 
   function setWallpaperTransparency(value: number) {
@@ -402,21 +454,6 @@ export const useAppStore = defineStore('app', () => {
     return wallpaperFit.value
   }
 
-  function initWallpaper() {
-    const stored = localStorage.getItem('wallpaper') ?? ''
-    wallpaper.value = isWallpaperSource(stored) ? stored : ''
-    if (stored && !wallpaper.value) localStorage.removeItem('wallpaper')
-    wallpaperTransparency.value = clampNumber(
-      localStorage.getItem('wallpaperTransparency'),
-      0,
-      100,
-      25
-    )
-    wallpaperBlur.value = clampNumber(localStorage.getItem('wallpaperBlur'), 0, 40, 0)
-    const fit = localStorage.getItem('wallpaperFit')
-    wallpaperFit.value = fit === 'contain' || fit === 'stretch' ? fit : 'cover'
-    applyWallpaper()
-  }
   function getFirstPlayFlag() {
     return firstPlayFlag.value
   }
@@ -520,7 +557,7 @@ export const useAppStore = defineStore('app', () => {
     }
   }
 
-  function setCanFetchCoverFromWeb(val: boolean) {
+  async function setCanFetchCoverFromWeb(val: boolean) {
     canFetchCoverFromWeb.value = val
     localStorage.setItem('canFetchCoverFromWeb', String(canFetchCoverFromWeb.value))
     if (playQueue.value.length === 0) return
@@ -531,7 +568,7 @@ export const useAppStore = defineStore('app', () => {
       coverLookupAbort?.abort()
       coverLookupAbort = null
       // Drop any web URL that was previously handed to the native player.
-      void audio.setPlaylist(buildNativePlaylist(playQueue.value))
+      void audio.setPlaylist(await buildNativePlaylist(playQueue.value))
     }
   }
 
@@ -790,18 +827,59 @@ export const useAppStore = defineStore('app', () => {
   /** How many queue entries to look up online per sync (current song first). */
   const MAX_QUEUE_COVER_LOOKUPS = 6
 
-  function buildNativePlaylist(queue: Song[]) {
-    return queue.map((s) => ({
-      url: getAccessibleUrl(s.uri),
-      title: s.title,
-      artist: s.artist || 'Unknown',
-      album: s.album || '',
-      // Cover resolution is owned by the web layer; hand the native player the
-      // final URL (local artwork or an already-fetched web result).
-      coverUrl: getNativeCoverUrl(s, canFetchCoverFromWeb.value),
-    }))
+  async function buildNativePlaylist(queue: Song[]) {
+    const allowWeb = canFetchCoverFromWeb.value
+    return Promise.all(
+      queue.map(async (s) => ({
+        url: getAccessibleUrl(s.uri),
+        title: s.title,
+        artist: s.artist || 'Unknown',
+        album: s.album || '',
+        // Native cannot decode albumart URIs. `resolveNativeCoverUrl` hands over
+        // a real file/data/https URL: web cache first, then the stored
+        // file:/data: reference, then the artwork extracted from the audio file.
+        coverUrl: await resolveNativeCoverUrl(s, allowWeb),
+      }))
+    )
   }
+  /**
+   * 每首歌已经解析出的本地封面路径（含从音频文件提取的内嵌封面）。
+   * 空串表示“提取过但没有封面”，避免每次 buildNativePlaylist 都重复读文件。
+   * 只缓存 local/embedded 结果；web 封面由 coverCache 自己缓存，且优先级更高。
+   */
+  const nativeLocalCoverCache = new Map<string, string>()
 
+  /**
+   * 原生侧封面解析。Android 通知栏的 BitmapFactory 无法解码 MediaStore 的
+   * `content://.../albumart/...` URI，所以这个引用永远不会原样透传。优先级：
+   *
+   *   1. 已命中 {@link coverCache} 的 web 封面（启用在线查询时）。
+   *   2. 可直接使用的 `file:` / `data:` / `https:` 引用。
+   *   3. 从音频文件提取的内嵌封面（按 song.id 缓存）。
+   *
+   * 全部失败返回 ''，由原生侧回退到默认图标。
+   */
+  async function resolveNativeCoverUrl(song: Song, allowWeb: boolean): Promise<string> {
+    if (allowWeb) {
+      const web = getCachedCover(song.title, song.artist || '')
+      if (web) return web
+    }
+
+    const local = (song.albumArtUri || '').trim()
+    if (local && !local.startsWith('content://')) return local
+
+    if (nativeLocalCoverCache.has(song.id)) return nativeLocalCoverCache.get(song.id)!
+
+    let path = ''
+    try {
+      const result = await getEmbeddedCover(song.uri, song.id)
+      path = typeof result === 'string' ? result : result?.path || ''
+    } catch {
+      path = ''
+    }
+    nativeLocalCoverCache.set(song.id, path)
+    return path
+  }
   /**
    * Resolve covers for tracks that have no embedded artwork, nearest to the
    * current song first, then push the updated playlist to the native player.
@@ -811,48 +889,72 @@ export const useAppStore = defineStore('app', () => {
   async function resolveQueueCovers(queue: Song[], version: number) {
     coverLookupAbort?.abort()
     coverLookupAbort = null
-    if (!canFetchCoverFromWeb.value || queue.length === 0) return
+    if (queue.length === 0) return
 
+    const allowWeb = canFetchCoverFromWeb.value
     const current = playData.value.currentIndex
     const order = queue
       .map((_, index) => index)
       .sort((a, b) => Math.abs(a - current) - Math.abs(b - current))
 
-    const pending = order
-      // A MediaStore album-art URI is not proof of usable artwork: the entry
-      // can be missing even when the song has a picture tag, so those tracks
-      // are looked up too. Embedded/file covers are skipped.
-      .filter((index) => !hasUsableLocalCover(queue[index].albumArtUri))
-      // `undefined` means "never looked up"; a cached miss (null) must not be
-      // retried, or every offline start walks the provider chain again.
-      .filter(
-        (index) => lookupCoverUrl(queue[index].title, queue[index].artist || '') === undefined
-      )
-      .slice(0, MAX_QUEUE_COVER_LOOKUPS)
-    if (pending.length === 0) return
+    // Stage 1: warm the native cover cache for the current track and its
+    // neighbours. Native BitmapFactory cannot decode albumart URIs, so every
+    // track without a directly-usable cover has its embedded artwork extracted.
+    let anyResolved = false
+    const warmup = order.slice(0, MAX_QUEUE_COVER_LOOKUPS)
+    await Promise.all(
+      warmup.map(async (index) => {
+        if (version !== updateVersion) return
+        try {
+          const url = await resolveNativeCoverUrl(queue[index], allowWeb)
+          if (url) anyResolved = true
+        } catch {
+          /* ignore */
+        }
+      })
+    )
+    if (version !== updateVersion) return
 
-    const controller = new AbortController()
-    coverLookupAbort = controller
-
-    let resolved = false
-    for (const index of pending) {
-      if (controller.signal.aborted || version !== updateVersion) return
-      try {
-        const url = await fetchCoverFromWeb(
-          queue[index].title,
-          queue[index].artist || '',
-          controller.signal
+    // Stage 2: online lookup for tracks that still have no local cover.
+    // `undefined` means "never looked up"; a cached miss (null) must not be
+    // retried, or every offline start walks the provider chain again.
+    if (allowWeb) {
+      const pending = order
+        .filter((index) => !nativeLocalCoverCache.get(queue[index].id))
+        .filter(
+          (index) => lookupCoverUrl(queue[index].title, queue[index].artist || '') === undefined
         )
-        if (url) resolved = true
-      } catch {
-        // Offline or provider failure — the native side falls back to the icon.
+        .slice(0, MAX_QUEUE_COVER_LOOKUPS)
+
+      if (pending.length > 0) {
+        const controller = new AbortController()
+        coverLookupAbort = controller
+
+        let webResolved = false
+        for (const index of pending) {
+          if (controller.signal.aborted || version !== updateVersion) return
+          try {
+            const url = await fetchCoverFromWeb(
+              queue[index].title,
+              queue[index].artist || '',
+              controller.signal
+            )
+            if (url) webResolved = true
+          } catch {
+            // Offline or provider failure — the native side falls back to the icon.
+          }
+        }
+
+        if (controller.signal.aborted || version !== updateVersion) return
+        if (webResolved) anyResolved = true
       }
     }
 
-    if (!resolved || controller.signal.aborted || version !== updateVersion) return
-    await audio.setPlaylist(buildNativePlaylist(queue))
-    // The current track may already be playing with the default icon; refresh
-    // its metadata so the notification shows the cover that just resolved.
+    if (!anyResolved) return
+
+    // Stage 3: rebuild the native playlist with the covers that resolved, then
+    // refresh the current track so the notification picks up the new cover.
+    await audio.setPlaylist(await buildNativePlaylist(queue))
     await audio.refreshCurrentMetadata()
   }
 
@@ -869,7 +971,7 @@ export const useAppStore = defineStore('app', () => {
       }
 
       try {
-        const playlistItems = buildNativePlaylist(newQueue)
+        const playlistItems = await buildNativePlaylist(newQueue)
 
         // 检查版本号
         if (currentVersion !== updateVersion) return
@@ -1160,6 +1262,7 @@ export const useAppStore = defineStore('app', () => {
   async function init() {
     if (!initFlag.value) {
       initSettings()
+      runCoverMigration()
       setupAudioListener()
       setupWebViewRendererKilledListener()
       // playQueue watcher (immediate: true) already syncs playlist to native

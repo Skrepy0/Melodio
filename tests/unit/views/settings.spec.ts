@@ -73,6 +73,10 @@ const mounted: any[] = []
 
 beforeEach(() => {
   resetPlugins()
+  mockMethod('Filesystem', 'getUri', async () => ({
+    uri: 'file:///data/user/0/pkg/files/wallpaper.jpg',
+  }))
+  mockMethod('Filesystem', 'deleteFile', async () => undefined)
   clearStorage()
   freshPinia()
   vi.clearAllMocks()
@@ -607,14 +611,12 @@ describe('InterfaceSettingsPage', () => {
 
   it('removes an existing wallpaper', async () => {
     const store = useAppStore()
-    store.setWallpaper('data:image/png;base64,AAAA')
+    await store.setWallpaper('wallpaper.jpg')
     const wrapper = mountPage(InterfaceSettingsPage)
     await nextTick()
 
     expect(wrapper.find('.wallpaper-preview').exists()).toBe(true)
-    expect(wrapper.find('.wallpaper-thumb').attributes('style')).toContain(
-      'data:image/png;base64,AAAA'
-    )
+    expect(wrapper.find('.wallpaper-thumb').attributes('style')).toContain('wallpaper.jpg')
 
     await wrapper.findAll('.text-action')[0].trigger('click')
     expect(store.getWallpaper()).toBe('')
@@ -623,7 +625,7 @@ describe('InterfaceSettingsPage', () => {
 
   it('updates transparency, blur and fit', async () => {
     const store = useAppStore()
-    store.setWallpaper('data:image/png;base64,AAAA')
+    await store.setWallpaper('wallpaper.jpg')
     const wrapper = mountPage(InterfaceSettingsPage)
     await nextTick()
 
@@ -682,10 +684,17 @@ describe('InterfaceSettingsPage', () => {
     vi.stubGlobal('Image', FakeImage)
 
     const drawImage = vi.fn()
-    const toDataURL = vi.fn(() => 'data:image/jpeg;base64,SMALL')
     const originalGetContext = HTMLCanvasElement.prototype.getContext
     HTMLCanvasElement.prototype.getContext = vi.fn(() => ({ drawImage })) as any
-    HTMLCanvasElement.prototype.toDataURL = toDataURL
+
+    // jsdom does not implement toBlob; provide a synchronous stand-in.
+    const toBlob = vi.fn((cb: BlobCallback, type?: string) => {
+      cb(new Blob(['x'], { type: type ?? 'image/jpeg' }))
+    })
+    const originalToBlob = HTMLCanvasElement.prototype.toBlob
+    HTMLCanvasElement.prototype.toBlob = toBlob as any
+
+    const writeFile = mockMethod('Filesystem', 'writeFile', async () => ({ uri: '' }))
 
     try {
       const input = wrapper.find('.file-input')
@@ -693,13 +702,26 @@ describe('InterfaceSettingsPage', () => {
       Object.defineProperty(input.element, 'files', { value: [file], configurable: true })
       await input.trigger('change')
 
-      await vi.waitFor(() => expect(store.getWallpaper()).toBe('data:image/jpeg;base64,SMALL'))
+      await vi.waitFor(() => expect(store.getWallpaper()).toContain('wallpaper.jpg'))
       // 3200x1600 is downscaled to 1600x800 before encoding.
       expect(drawImage).toHaveBeenCalledWith(expect.anything(), 0, 0, 1600, 800)
-      expect(toDataURL).toHaveBeenCalledWith('image/jpeg', 0.82)
+      expect(toBlob).toHaveBeenCalledWith(expect.any(Function), 'image/jpeg', 0.82)
+      expect(writeFile).toHaveBeenCalledWith(
+        expect.objectContaining({
+          path: 'wallpaper.jpg',
+          data: 'AAA',
+          directory: 'DATA',
+          recursive: true,
+        })
+      )
       expect(wrapper.find('.wallpaper-preview').exists()).toBe(true)
     } finally {
       HTMLCanvasElement.prototype.getContext = originalGetContext
+      if (originalToBlob) {
+        HTMLCanvasElement.prototype.toBlob = originalToBlob
+      } else {
+        delete (HTMLCanvasElement.prototype as any).toBlob
+      }
       vi.unstubAllGlobals()
     }
   })
@@ -728,9 +750,17 @@ describe('InterfaceSettingsPage', () => {
       }
     }
     vi.stubGlobal('Image', FakeImage)
+
     const originalGetContext = HTMLCanvasElement.prototype.getContext
     HTMLCanvasElement.prototype.getContext = vi.fn(() => ({ drawImage: vi.fn() })) as any
-    HTMLCanvasElement.prototype.toDataURL = vi.fn(() => 'data:image/jpeg;base64,SMALL')
+
+    const originalToBlob = HTMLCanvasElement.prototype.toBlob
+    HTMLCanvasElement.prototype.toBlob = vi.fn((cb: BlobCallback, type?: string) => {
+      cb(new Blob(['x'], { type: type ?? 'image/jpeg' }))
+    }) as any
+
+    mockMethod('Filesystem', 'writeFile', async () => ({ uri: '' }))
+
     // Simulate a full storage quota for the wallpaper key only.
     const originalSetItem = Storage.prototype.setItem
     Storage.prototype.setItem = function (key: string, value: string) {
@@ -746,12 +776,17 @@ describe('InterfaceSettingsPage', () => {
       })
       await input.trigger('change')
 
-      // The store rejects anything that is not an image data URL it produced.
+      // setWallpaper reports the failed write, but the image is still applied in
+      // memory for this session.
       await vi.waitFor(() => expect(toast.error).toHaveBeenCalled())
-      // The image is kept for this session even though it could not be saved.
-      expect(store.getWallpaper()).toBe('data:image/jpeg;base64,SMALL')
+      expect(store.getWallpaper()).toContain('wallpaper.jpg')
     } finally {
       HTMLCanvasElement.prototype.getContext = originalGetContext
+      if (originalToBlob) {
+        HTMLCanvasElement.prototype.toBlob = originalToBlob
+      } else {
+        delete (HTMLCanvasElement.prototype as any).toBlob
+      }
       Storage.prototype.setItem = originalSetItem
       vi.unstubAllGlobals()
     }

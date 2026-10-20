@@ -3,6 +3,7 @@ import { OnlineSong, Song } from './interface'
 import { Capacitor } from '@capacitor/core'
 import { USER_AGENT } from '@/config'
 import { getCoverUrl, lookupCoverUrl, rememberCoverUrl } from './coverCache'
+import { getEmbeddedCover } from './createAudio'
 
 export const getAccessibleUrl = (path: string): string => {
   if (!path) return ''
@@ -155,7 +156,12 @@ export const isSafeCoverSource = (value: string | null | undefined): boolean => 
 export const isPersistableCoverSource = (value: string | null | undefined): boolean => {
   const trimmed = (value || '').trim().toLowerCase()
   if (!trimmed) return false
-  return trimmed.startsWith('https:') || trimmed.startsWith('data:image/')
+  return (
+    trimmed.startsWith('https:') ||
+    trimmed.startsWith('data:image/') ||
+    trimmed.startsWith('content:') ||
+    trimmed.startsWith('file:')
+  )
 }
 
 /** Timeout applied to every cover-provider request. */
@@ -365,4 +371,25 @@ export function parseSearchError(e: any): { code: number; body: any } {
   }
 
   return result
+}
+
+/**
+ * 解析本地歌曲最终用于渲染的封面。
+ *
+ * - `data:` / `https:` / `file:` 这类可直接使用（或经 Capacitor 本地服务器转换后使用）
+ *   的引用，交给 {@link getCoverSrc} 处理。
+ * - 其他情况（空引用、过期的 `content://`、`http:` 等）回退到从音频文件本身提取内嵌封面。
+ *   提取失败返回 `''`。
+ */
+export async function resolveLocalCover(song: Song): Promise<string> {
+  const raw = (song.albumArtUri || '').trim()
+  const lower = raw.toLowerCase()
+
+  if (lower.startsWith('data:') || lower.startsWith('https:') || lower.startsWith('file:')) {
+    return getCoverSrc(raw)
+  }
+
+  const result = await getEmbeddedCover(song.uri, song.id)
+  const path = typeof result === 'string' ? result : result?.path
+  return path ? getCoverSrc(path) : ''
 }

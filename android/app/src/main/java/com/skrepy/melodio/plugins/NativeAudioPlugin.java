@@ -40,6 +40,8 @@ import com.skrepy.melodio.R;
 import org.json.JSONObject;
 
 import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -144,6 +146,48 @@ public class NativeAudioPlugin extends Plugin {
      * True when play was requested but the focus request was refused.
      */
     private boolean pendingFocusPlayback = false;
+
+    @PluginMethod
+    public void getEmbeddedCover(PluginCall call) {
+        String uri = call.getString("uri");
+        String key = call.getString("key");
+        if (uri == null || key == null) {
+            call.reject("missing uri/key");
+            return;
+        }
+
+        File cacheFile = new File(getContext().getCacheDir(), "covers/" + key + ".jpg");
+        if (cacheFile.isFile()) {
+            call.resolve(new JSObject().put("path", "file://" + cacheFile.getAbsolutePath()));
+            return;
+        }
+
+        MediaMetadataRetriever mmr = new MediaMetadataRetriever();
+        try {
+            mmr.setDataSource(getContext(), Uri.parse(uri));
+            byte[] art = mmr.getEmbeddedPicture();
+            if (art == null) {
+                call.resolve(new JSObject());
+                return;
+            }
+            File parent = cacheFile.getParentFile();
+            if (parent != null) parent.mkdirs();
+
+            try (FileOutputStream fos = new FileOutputStream(cacheFile)) {
+                fos.write(art);
+            }
+            call.resolve(new JSObject().put("path", "file://" + cacheFile.getAbsolutePath()));
+        } catch (Exception e) {
+            Log.w(TAG, "getEmbeddedCover failed for " + uri, e);
+            cacheFile.delete();
+            call.resolve(new JSObject());
+        } finally {
+            try {
+                mmr.release();
+            } catch (IOException ignored) {
+            }
+        }
+    }
 
     /**
      * Called from MainActivity.onRenderProcessGone to stop all native-to-JS
@@ -353,7 +397,7 @@ public class NativeAudioPlugin extends Plugin {
     }
 
     @PluginMethod
-    public void setPlayQueueRepeat(PluginCall call){
+    public void setPlayQueueRepeat(PluginCall call) {
         this.playQueueRepeat = Boolean.TRUE.equals(call.getBoolean("enabled", true));
         call.resolve();
     }

@@ -95,6 +95,11 @@ function readStorage(): Table {
       const candidate = value as Partial<CoverCacheEntry>
       return typeof candidate.url === 'string' && typeof candidate.ts === 'number'
     })
+    // Drop legacy data-URL entries written by older versions.
+    .filter(([, value]) => {
+      const url = (value as CoverCacheEntry).url.trim().toLowerCase()
+      return !url.startsWith('data:')
+    })
     .map(([key, value]) => [key, value as CoverCacheEntry] as const)
     .filter(([, entry]) => !isExpired(entry, now))
     // Newest first, so trimming keeps the most recently written entries.
@@ -194,6 +199,9 @@ export function getCoverUrl(title: string, artist: string): string {
  * the shorter TTL.
  */
 export function rememberCoverUrl(title: string, artist: string, url: string): void {
+  // base64 不 worth 占 localStorage 配额
+  const normalized = url.trim().toLowerCase()
+  if (normalized.startsWith('data:')) return
   const map = getTable()
   const key = cacheKeyFor(title, artist)
   map.delete(key)

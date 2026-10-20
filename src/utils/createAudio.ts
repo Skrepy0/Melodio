@@ -15,7 +15,9 @@ export type AudioEvent =
   | 'playStateChange'
 
 type EventCallback = (data?: any) => void
-
+export function getEmbeddedCover(uri: string, key: string) {
+  return NativeAudio.getEmbeddedCover({ uri: uri, key: key })
+}
 export class NativeAudioPlayer {
   private static instance: NativeAudioPlayer
   private listeners = new Map<AudioEvent, Set<EventCallback>>()

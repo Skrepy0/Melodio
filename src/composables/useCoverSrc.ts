@@ -1,17 +1,21 @@
 import { onUnmounted, ref, toValue, watch, type MaybeRefOrGetter } from 'vue'
 import type { Song } from '@/utils/interface'
 import { useAppStore } from '@/stores/app'
-import { DEFAULT_COVER, fetchCoverFromWeb, getCoverSrc, isSafeCoverSource } from '@/utils/functions'
+import { DEFAULT_COVER, fetchCoverFromWeb, resolveLocalCover } from '@/utils/functions'
 
-type CoverSong = Pick<Song, 'title' | 'artist' | 'albumArtUri'>
+// resolveLocalCover 需要 uri/id 才能从音频文件提取内嵌封面。
+type CoverSong = Pick<Song, 'title' | 'artist' | 'albumArtUri' | 'uri' | 'id'>
 
 /**
  * Resolve the artwork for a song in two stages:
  *
- * 1. Render the embedded `albumArtUri` directly (a MediaStore album-art URI can
- *    point at a missing entry, so this is only a best-effort first attempt).
- * 2. If the image fails to load and online lookup is enabled, query the web
- *    providers; only when that also fails does the default icon appear.
+ * 1. Resolve the local cover through {@link resolveLocalCover}: a `data:` /
+ *    `https:` / `file:` reference is used as-is, otherwise the embedded artwork
+ *    is extracted from the audio file. Best-effort — a MediaStore album-art URI
+ *    can point at a missing entry.
+ * 2. If no local cover is available (or the resolved image fails to decode) and
+ *    online lookup is enabled, query the web providers; only when that also
+ *    fails does the default icon appear.
  *
  * The returned `onCoverError` must be wired to the `<img>`'s error event.
  */
@@ -22,6 +26,9 @@ export function useCoverSrc(song: MaybeRefOrGetter<CoverSong | null | undefined>
   let abortController: AbortController | null = null
   // Reset whenever the song changes so each track gets one web attempt.
   let triedWebFallback = false
+  // Bumped by every resolve(); async results that arrive after the track
+  // switched are discarded instead of overwriting the new cover.
+  let resolveSeq = 0
 
   const canFetchFromWeb = () => appStore.getCanFetchCoverFromWeb()
 
@@ -45,8 +52,9 @@ export function useCoverSrc(song: MaybeRefOrGetter<CoverSong | null | undefined>
     }
   }
 
-  const resolve = (target: CoverSong | null | undefined) => {
+  const resolve = async (target: CoverSong | null | undefined) => {
     abortPending()
+    const seq = ++resolveSeq
     triedWebFallback = false
     isCoverLoading.value = false
     // Drop the previous track's artwork so it cannot flash while resolving.
@@ -57,7 +65,16 @@ export function useCoverSrc(song: MaybeRefOrGetter<CoverSong | null | undefined>
       return
     }
 
-    const local = isSafeCoverSource(target.albumArtUri) ? getCoverSrc(target.albumArtUri || '') : ''
+    // First stage: local cover (direct reference or embedded artwork).
+    // resolveLocalCover only reads title/artist/albumArtUri/uri/id — all present
+    // on CoverSong — so the assertion is safe.
+    let local = ''
+    try {
+      local = await resolveLocalCover(target as Song)
+    } catch {
+      local = ''
+    }
+    if (seq !== resolveSeq) return // stale: track changed during resolve
     if (local) {
       coverSrc.value = local
       return
@@ -68,7 +85,7 @@ export function useCoverSrc(song: MaybeRefOrGetter<CoverSong | null | undefined>
       return
     }
 
-    // No embedded artwork at all — look it up online right away.
+    // No local artwork — look it up online right away.
     triedWebFallback = true
     void fetchFromWeb(target)
   }
@@ -92,12 +109,16 @@ export function useCoverSrc(song: MaybeRefOrGetter<CoverSong | null | undefined>
 
   watch(
     () => toValue(song),
-    (target) => resolve(target),
+    (target) => {
+      void resolve(target)
+    },
     { immediate: true }
   )
 
   onUnmounted(() => {
     abortPending()
+    // Invalidate any in-flight resolve so it cannot write after unmount.
+    resolveSeq++
   })
 
   return { coverSrc, isCoverLoading, onCoverError, resolve }

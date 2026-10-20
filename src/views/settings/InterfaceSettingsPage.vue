@@ -10,10 +10,12 @@ import FunctionSwitch from '@/components/settings/FunctionSwitch.vue'
 import HorizontalSelect from '@/components/HorizontalSelect.vue'
 import type { HorizontalSelectOption } from '@/utils/interface'
 import toast from '@/utils/createToast'
+import { Directory, Filesystem } from '@capacitor/filesystem'
 
 /** The wallpaper is stored as a data URL, so it is downscaled before saving. */
 const MAX_WALLPAPER_SIZE = 1600
 const JPEG_QUALITY = 0.82
+const WALLPAPER_FILENAME = 'wallpaper.jpg'
 
 const { t } = useI18n()
 const appStore = useAppStore()
@@ -45,7 +47,18 @@ const handleColorPicker = (e: Event) => {
     appStore.setThemeColor(color)
   }
 }
-
+/** Filesystem.writeFile expects raw base64, without the `data:...;base64,` prefix. */
+const blobToBase64 = (blob: Blob): Promise<string> =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onerror = () => reject(new Error('blob read failed'))
+    reader.onload = () => {
+      const result = String(reader.result || '')
+      const comma = result.indexOf(',')
+      resolve(comma >= 0 ? result.slice(comma + 1) : result)
+    }
+    reader.readAsDataURL(blob)
+  })
 watch(
   () => appStore.getThemeColor(),
   (newColor) => {
@@ -73,7 +86,12 @@ const openFilePicker = () => {
   fileInputRef.value?.click()
 }
 
-/** Downscale and re-encode so the data URL fits comfortably in localStorage. */
+/**
+ * Downscale, re-encode and persist the wallpaper to the Data directory, then
+ * resolve the file name (`wallpaper.jpg`). Returning a name instead of a data
+ * URL keeps localStorage small; the reader resolves it with the same
+ * `Directory.Data` when rendering.
+ */
 const readImageAsWallpaper = (file: File): Promise<string> =>
   new Promise((resolve, reject) => {
     const reader = new FileReader()
@@ -94,7 +112,30 @@ const readImageAsWallpaper = (file: File): Promise<string> =>
           return
         }
         context.drawImage(image, 0, 0, width, height)
-        resolve(canvas.toDataURL('image/jpeg', JPEG_QUALITY))
+        canvas.toBlob(
+          (blob) => {
+            if (!blob) {
+              reject(new Error('encode failed'))
+              return
+            }
+            void (async () => {
+              try {
+                const data = await blobToBase64(blob)
+                await Filesystem.writeFile({
+                  path: WALLPAPER_FILENAME,
+                  data,
+                  directory: Directory.Data,
+                  recursive: true,
+                })
+                resolve(WALLPAPER_FILENAME)
+              } catch (error) {
+                reject(error)
+              }
+            })()
+          },
+          'image/jpeg',
+          JPEG_QUALITY
+        )
       }
       image.src = String(reader.result)
     }
@@ -112,8 +153,8 @@ const onWallpaperChange = async (event: Event) => {
   }
   isReadingWallpaper.value = true
   try {
-    const dataUrl = await readImageAsWallpaper(file)
-    if (appStore.setWallpaper(dataUrl)) {
+    const path = await readImageAsWallpaper(file)
+    if (await appStore.setWallpaper(path)) {
       wallpaper.value = appStore.getWallpaper()
     } else {
       toast.error(t('settings.interface.wallpaperTooLarge'))

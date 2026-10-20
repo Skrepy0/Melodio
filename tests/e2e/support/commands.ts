@@ -169,6 +169,7 @@ function installNativeStubs(win: any) {
       setRepeatMode: noop,
       setCurrentIndex: noop,
       setPlayQueueRepeat: noop,
+      getEmbeddedCover: async () => ({}),
       getState: async () => ({
         isPlaying: false,
         currentIndex: 0,

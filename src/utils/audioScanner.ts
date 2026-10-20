@@ -1,6 +1,5 @@
 import { CapacitorMediaStore } from '@odion-cloud/capacitor-mediastore'
 import type { OnlineSong, Song } from '@/utils/interface'
-import { getCoverBase64 } from './functions'
 import { requestMediaPermissions } from '@/utils/permission'
 
 export interface ScanResult {
@@ -21,6 +20,26 @@ interface MediaStorePlugin {
 
 export const MediaStoreAPI = CapacitorMediaStore as unknown as MediaStorePlugin
 
+/**
+ * MediaStore album-art URIs (`content://media/.../albumart/...`) point at a
+ * MediaStore row that frequently disappears while the song itself still carries
+ * a picture tag. Storing one leaves a stale reference that renders as a broken
+ * image, so they are dropped on scan: `resolveLocalCover` extracts the embedded
+ * artwork from the audio file instead, and any online `cover_url` is kept as a
+ * fallback hint.
+ */
+const ALBUM_ART_URI_RE = /^content:\/\/[^?#]*\/albumart\//i
+
+/**
+ * Drop a stale MediaStore album-art URI, keep any other reference untouched.
+ * Exported so callers that read older persisted rows can sanitize them too.
+ */
+export const stripStaleAlbumArtUri = (value: string | null | undefined): string => {
+  const trimmed = (value || '').trim()
+  if (!trimmed) return ''
+  return ALBUM_ART_URI_RE.test(trimmed) ? '' : trimmed
+}
+
 export const scanAllAudio = async (retryOnPermission = true): Promise<ScanResult> => {
   try {
     const result = await MediaStoreAPI.getMediasByType({
@@ -33,15 +52,11 @@ export const scanAllAudio = async (retryOnPermission = true): Promise<ScanResult
       return { success: false, songs: [], error: '未找到任何音频文件' }
     }
 
-    for (const item of result.media) {
-      // Inline the artwork when it can be read; otherwise keep the original
-      // content:// URI so the image can still be loaded through Capacitor's
-      // local file server (see getCoverSrc).
-      const inlineCover = await getCoverBase64(item.albumArtUri)
-      if (inlineCover) item.albumArtUri = inlineCover
-    }
-
-    const songs: Song[] = result.media
+    // Strip stale album-art URIs before they reach storage / the UI.
+    const songs: Song[] = result.media.map((song) => ({
+      ...song,
+      albumArtUri: stripStaleAlbumArtUri(song.albumArtUri),
+    }))
     return { success: true, songs }
   } catch (error: unknown) {
     const err = error as { message?: string; code?: string }
@@ -61,6 +76,7 @@ export const scanAllAudio = async (retryOnPermission = true): Promise<ScanResult
     }
   }
 }
+
 /**
  * 通过已知路径获取歌曲完整信息
  * @param path - 文件路径
@@ -93,7 +109,11 @@ export async function getSongInfoByPath(
     const title = normalizeText(media.title, media.displayName, originalSong.name, displayName)
     const artist = normalizeText(media.artist, originalSong.singers)
     const album = normalizeText(media.album, originalSong.album)
-    const albumArtUri = normalizeText(media.albumArtUri, originalSong.cover_url)
+    // Do not persist MediaStore's album-art URI (it goes stale). Keep an online
+    // cover hint when available; otherwise leave it empty and let
+    // `resolveLocalCover` extract the embedded artwork from the file.
+    const albumArtUri =
+      stripStaleAlbumArtUri(media.albumArtUri) || normalizeText(originalSong.cover_url)
 
     return {
       id: String(media.id ?? `${originalSong.source}:${originalSong.identifier}`),

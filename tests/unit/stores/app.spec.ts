@@ -21,6 +21,7 @@ vi.mock('@/utils/functions', async (importOriginal) => {
     ...actual,
     fetchCoverFromWeb: vi.fn(async () => null),
     getCachedCover: vi.fn(() => null),
+    getEmbeddedCover: vi.fn(async () => ({ path: '' })),
   }
 })
 
@@ -62,6 +63,10 @@ beforeEach(() => {
   vi.spyOn(console, 'error').mockImplementation(() => {})
   vi.spyOn(console, 'warn').mockImplementation(() => {})
   vi.spyOn(console, 'log').mockImplementation(() => {})
+  mockMethod('Filesystem', 'getUri', async () => ({
+    uri: 'file:///data/user/0/pkg/files/wallpaper.jpg',
+  }))
+  mockMethod('Filesystem', 'deleteFile', async () => undefined)
 })
 
 afterEach(() => {
@@ -203,13 +208,14 @@ describe('play queue', () => {
     const store = useAppStore()
 
     store.setPlayQueue(makeSongs(2))
-    await Promise.resolve()
 
-    expect(setPlaylist).toHaveBeenCalledWith({
-      songs: [
-        expect.objectContaining({ title: 'song 1', artist: 'Artist One' }),
-        expect.objectContaining({ title: 'song 2' }),
-      ],
+    await vi.waitFor(() => {
+      expect(setPlaylist).toHaveBeenCalledWith({
+        songs: [
+          expect.objectContaining({ title: 'song 1', artist: 'Artist One' }),
+          expect.objectContaining({ title: 'song 2' }),
+        ],
+      })
     })
   })
 
@@ -589,16 +595,15 @@ describe('settings persistence', () => {
     expect(localStorage.getItem('audioFocusPause')).toBe('false')
   })
 
-  it('persists and applies the wallpaper', () => {
+  it('persists and applies the wallpaper', async () => {
     const store = useAppStore()
-    const dataUrl = 'data:image/png;base64,iVBORw0KGgo='
 
-    expect(store.setWallpaper(dataUrl)).toBe(true)
-    expect(store.getWallpaper()).toBe(dataUrl)
-    expect(localStorage.getItem('wallpaper')).toBe(dataUrl)
+    expect(await store.setWallpaper('wallpaper.jpg')).toBe(true)
+    expect(store.getWallpaper()).toContain('wallpaper.jpg')
+    expect(localStorage.getItem('wallpaper')).toBe('wallpaper.jpg')
     expect(document.documentElement.classList.contains('has-wallpaper')).toBe(true)
-    expect(document.documentElement.style.getPropertyValue('--wallpaper-image')).toBe(
-      `url("${dataUrl}")`
+    expect(document.documentElement.style.getPropertyValue('--wallpaper-image')).toContain(
+      'wallpaper.jpg'
     )
 
     store.removeWallpaper()
@@ -607,30 +612,31 @@ describe('settings persistence', () => {
     expect(document.documentElement.classList.contains('has-wallpaper')).toBe(false)
   })
 
-  it('rejects wallpaper sources that are not self-encoded images', () => {
+  it('rejects values that are not the managed wallpaper filename', async () => {
     const store = useAppStore()
     for (const bad of [
       'https://example.com/a.jpg',
       'data:image/svg+xml;base64,PHN2Zz4=',
       'data:text/html;base64,PGgxPg==',
-      'data:image/jpeg;base64,',
+      'data:image/jpeg;base64,AAAA',
       'javascript:alert(1)',
       '',
     ]) {
-      expect(store.setWallpaper(bad)).toBe(false)
+      expect(await store.setWallpaper(bad)).toBe(false)
     }
     expect(store.getWallpaper()).toBe('')
   })
 
-  it('keeps the wallpaper in memory when storage is full', () => {
+  it('keeps the wallpaper in memory when storage is full', async () => {
     const store = useAppStore()
-    const dataUrl = 'data:image/webp;base64,UklGRg=='
     vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
       throw new Error('QuotaExceededError')
     })
 
-    expect(store.setWallpaper(dataUrl)).toBe(false)
-    expect(store.getWallpaper()).toBe(dataUrl)
+    expect(await store.setWallpaper('wallpaper.jpg')).toBe(false)
+    // The filename is applied in memory even though persistence failed, and the
+    // URL is resolved before setWallpaper returns.
+    expect(store.getWallpaper()).toContain('wallpaper.jpg')
   })
 
   it('clamps wallpaper transparency and blur', () => {
@@ -672,14 +678,14 @@ describe('settings persistence', () => {
   })
 
   it('restores wallpaper settings', async () => {
-    localStorage.setItem('wallpaper', 'data:image/jpeg;base64,AAAA')
+    localStorage.setItem('wallpaper', 'wallpaper.jpg')
     localStorage.setItem('wallpaperTransparency', '400')
     localStorage.setItem('wallpaperBlur', '12')
     localStorage.setItem('wallpaperFit', 'contain')
     freshPinia()
     const store = useAppStore()
     await store.init()
-    expect(store.getWallpaper()).toBe('data:image/jpeg;base64,AAAA')
+    await vi.waitFor(() => expect(store.getWallpaper()).toContain('wallpaper.jpg'))
     expect(store.getWallpaperTransparency()).toBe(100)
     expect(store.getWallpaperBlur()).toBe(12)
     expect(store.getWallpaperFit()).toBe('contain')
@@ -696,9 +702,10 @@ describe('cover fetching toggle', () => {
 
     store.setCanFetchCoverFromWeb(false)
 
+    await vi.waitFor(() => expect(setPlaylist).toHaveBeenCalled())
+
     expect(store.getCanFetchCoverFromWeb()).toBe(false)
     expect(localStorage.getItem('canFetchCoverFromWeb')).toBe('false')
-    expect(setPlaylist).toHaveBeenCalled()
   })
 
   it('restores the persisted value', async () => {

@@ -52,4 +52,5 @@ export interface NativeAudioPlugin {
   openFile(): Promise<{ data: string }>
   setAudioFocusEnabled(options: { enabled: boolean }): Promise<void>
   setPlaybackRate(options: { rate: number }): Promise<void>
+  getEmbeddedCover(options: { uri: string; key: string }): Promise<{ path?: string }>
 }

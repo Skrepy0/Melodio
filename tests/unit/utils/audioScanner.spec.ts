@@ -1,7 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { scanAllAudio, getSongInfoByPath } from '@/utils/audioScanner'
 import { requestMediaPermissions } from '@/utils/permission'
-import { getCoverBase64 } from '@/utils/functions'
 import { mockMethod, resetPlugins } from '../helpers/capacitor'
 import { makeOnlineSong, makeSong } from '../helpers/factories'
 
@@ -15,16 +14,12 @@ vi.mock('@/utils/functions', async (importOriginal) => {
 })
 
 const mockedPermissions = vi.mocked(requestMediaPermissions)
-const mockedCover = vi.mocked(getCoverBase64)
-
 const mediaStore = (method: string, impl?: any) => mockMethod('CapacitorMediaStore', method, impl)
 
 beforeEach(() => {
   resetPlugins()
   mockedPermissions.mockReset()
   mockedPermissions.mockResolvedValue({ audio: true, photo: true, video: true })
-  mockedCover.mockReset()
-  mockedCover.mockResolvedValue('')
   vi.spyOn(console, 'error').mockImplementation(() => {})
 })
 
@@ -47,21 +42,17 @@ describe('scanAllAudio', () => {
     expect(result).toEqual({ success: true, songs })
   })
 
-  it('inlines artwork when it can be read', async () => {
+  it('keeps the original artwork URIs without inlining', async () => {
     const songs = [
       makeSong({ id: '1', albumArtUri: 'content://art/1' }),
-      makeSong({ id: '2', albumArtUri: 'content://art/2' }),
+      makeSong({ id: '2', albumArtUri: '' }),
     ]
     mediaStore('getMediasByType', () => ({ media: songs }))
-    mockedCover.mockImplementation(async (uri?: string) =>
-      uri === 'content://art/1' ? 'data:image/jpeg;base64,AAA' : ''
-    )
 
     const result = await scanAllAudio()
 
-    expect(result.songs[0].albumArtUri).toBe('data:image/jpeg;base64,AAA')
-    // Unreadable artwork keeps its content:// URI for the local file server.
-    expect(result.songs[1].albumArtUri).toBe('content://art/2')
+    expect(result.songs[0].albumArtUri).toBe('content://art/1')
+    expect(result.songs[1].albumArtUri).toBe('')
   })
 
   it('reports an empty library', async () => {

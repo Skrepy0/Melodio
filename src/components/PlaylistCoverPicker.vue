@@ -6,7 +6,6 @@ import type { Playlist } from '@/utils/interface'
 import {
   DEFAULT_COVER,
   fetchCoverFromWeb,
-  getCoverBase64,
   getCoverSrc,
   isPersistableCoverSource,
   isSafeCoverSource,
@@ -29,7 +28,6 @@ const containerRef = ref<HTMLElement | null>(null)
 const fileInputRef = ref<HTMLInputElement | null>(null)
 const titleId = `playlist-cover-title-${Math.random().toString(36).slice(2)}`
 const playlist = ref<Playlist | null>(null)
-const isReading = ref(false)
 const currentCoverFailed = ref(false)
 
 interface CoverRow {
@@ -237,24 +235,17 @@ function onRowError(row: CoverRow) {
 
 /**
  * Persist only references that stay valid: https URLs and image data URIs.
- * A `content://` album-art URI can disappear, so local covers are inlined as a
- * data URL first; anything else is rejected.
+ * A `content://` album-art URI can disappear, so it is rejected here — the
+ * upload path is the only way to inline local artwork.
  */
-const chooseRow = async (row: CoverRow) => {
+const chooseRow = (row: CoverRow) => {
   const cover = row.raw
   if (!cover || !isSafeCoverSource(cover)) return
   if (isPersistableCoverSource(cover)) {
     finish(cover)
     return
   }
-  isReading.value = true
-  const inline = await getCoverBase64(cover)
-  isReading.value = false
-  if (isPersistableCoverSource(inline)) {
-    finish(inline)
-  } else {
-    toast.error(t('playlistCover.readFailed'))
-  }
+  toast.error(t('playlistCover.readFailed'))
 }
 
 onUnmounted(() => {
@@ -318,13 +309,10 @@ const onFileChange = async (event: Event) => {
     toast.error(t('playlistCover.invalidImage'))
     return
   }
-  isReading.value = true
   try {
     const cover = await readImageAsCover(file)
-    isReading.value = false
     finish(cover)
   } catch {
-    isReading.value = false
     toast.error(t('playlistCover.readFailed'))
   }
 }
@@ -408,16 +396,9 @@ const onFileChange = async (event: Event) => {
 
             <section class="cover-section">
               <h4>{{ t('playlistCover.upload') }}</h4>
-              <button
-                :disabled="isReading"
-                class="upload-btn"
-                type="button"
-                @click="openFilePicker"
-              >
+              <button class="upload-btn" type="button" @click="openFilePicker">
                 <Icon :width="20" icon="mdi:image-plus" />
-                <span>{{
-                  isReading ? t('playlistCover.reading') : t('playlistCover.pickImage')
-                }}</span>
+                <span>{{ t('playlistCover.pickImage') }}</span>
               </button>
               <p class="upload-hint">{{ t('playlistCover.uploadHint') }}</p>
               <input
