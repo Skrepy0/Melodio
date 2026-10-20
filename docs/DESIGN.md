@@ -68,9 +68,14 @@ z-index 0 carries the image, and `html.has-wallpaper` turns page-level
 legible). Strips that must occlude content — the now-playing bar, swatch rings,
 `html, body`, the native status bar — keep using opaque `--bg-solid`. Controls:
 transparency 0–100 %, blur 0–40 px, fit cover/contain/stretch. The image is
-downscaled to 1600 px and stored as a JPEG data URL in `localStorage`; only
-`data:image/{jpeg,png,webp};base64` sources are accepted. The blur is the CSS
-`filter` on that layer, not a glass panel on any surface.
+downscaled to 1600 px, encoded as JPEG, and written through Capacitor Filesystem
+to the app data directory under a fixed name (`wallpaper.jpg`); `localStorage`
+holds only that managed filename, never image data, and the renderable URL is
+resolved at read time by the same file-src path as other local artwork.
+`setWallpaper` accepts the managed filename and nothing else — `data:` URLs,
+remote URLs, `javascript:`, and any other scheme are rejected before the value
+can reach a CSS `url()` or the store. The blur is the CSS `filter` on that
+layer, not a glass panel on any surface.
 
 ## Shared patterns
 
