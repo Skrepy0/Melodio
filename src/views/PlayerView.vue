@@ -681,6 +681,8 @@ const isQueueAtBottom = (el: HTMLElement) => el.scrollTop >= el.scrollHeight - e
 let wheelSnapTimer: number | null = null
 
 const onQueueWheel = (e: WheelEvent) => {
+  // 正在拖动队列时不进行处理
+  if (isDraggingQueue) return
   const list = e.currentTarget as HTMLElement
   if (collapseDistance.value <= 0) return
   const atTop = isQueueAtTop(list)
@@ -708,6 +710,10 @@ let queueTouchLastY = 0
 let queueTouchActive = false
 
 const onQueueTouchStart = (e: TouchEvent) => {
+  if (isDraggingQueue) {
+    queueTouchActive = false
+    return
+  }
   if (collapseDistance.value <= 0) return
   cancelHeaderMotion()
   queueTouchLastY = e.touches[0]?.clientY ?? 0
@@ -717,6 +723,7 @@ const onQueueTouchStart = (e: TouchEvent) => {
 }
 
 const onQueueTouchMove = (e: TouchEvent) => {
+  if (isDraggingQueue) return
   const list = e.currentTarget as HTMLElement
   if (collapseDistance.value <= 0) return
 
@@ -738,6 +745,11 @@ const onQueueTouchMove = (e: TouchEvent) => {
 }
 
 const onQueueTouchEnd = () => {
+  if (isDraggingQueue) {
+    queueTouchActive = false
+    velocitySamples = []
+    return
+  }
   if (!queueTouchActive) {
     velocitySamples = []
     return

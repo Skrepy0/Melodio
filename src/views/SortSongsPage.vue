@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { Icon } from '@iconify/vue'
 import SongItem from '@/components/song/SongItem.vue'
 import { useAppStore } from '@/stores/app'
@@ -9,8 +9,14 @@ import { useI18n } from 'vue-i18n'
 import router from '@/router'
 import { showConfirm } from '@/utils/createConfirm'
 import { onBeforeRouteLeave } from 'vue-router'
-
+let leaveConfirmed = false
 onBeforeRouteLeave(async (to, from, next) => {
+  // 按钮层已经确认过，直接放行，避免第二次弹窗。
+  if (leaveConfirmed) {
+    leaveConfirmed = false
+    next()
+    return
+  }
   if (hasUnsavedChanges.value) {
     const confirm = await showConfirm({
       title: t('editor.unsavedTitle'),
@@ -40,11 +46,73 @@ const sortAsc = ref<boolean>(true)
 const customOrderSongs = ref<Song[]>([])
 const originalSongs = ref<Song[]>([])
 
+const listContainer = ref<HTMLElement | null>(null)
+
 const dragSourceIndex = ref<number | null>(null)
 const dragOverIndex = ref<number | null>(null)
 let dragItem: HTMLElement | null = null
 let isDragging = false
 let pointerId: number | null = null
+
+// ---- 自动滚动 ----
+// 拖到列表上下边缘时自己滚动，方便把歌拖到很长的列表之外的位置。
+let autoScrollSpeed = 0
+let autoScrollFrame: number | null = null
+// 拖拽过程中的最后指针位置。自动滚动的每一帧都要拿它重新算落点，
+// 因为滚动本身不会派发 pointermove。
+let lastPointerX = 0
+let lastPointerY = 0
+
+// 触发带要远小于列表高度，否则指针一进入列表就会触发滚动，和手动拖动打架。
+const AUTO_SCROLL_BAND = 56
+const AUTO_SCROLL_MAX_SPEED = 8
+
+function stopAutoScroll() {
+  if (autoScrollFrame !== null) cancelAnimationFrame(autoScrollFrame)
+  autoScrollFrame = null
+  autoScrollSpeed = 0
+}
+
+function runAutoScroll() {
+  autoScrollFrame = null
+  const container = listContainer.value
+  if (!container || autoScrollSpeed === 0) return
+  const before = container.scrollTop
+  container.scrollTop += autoScrollSpeed
+  if (container.scrollTop === before) {
+    // 到顶/到底后别空转 rAF。
+    stopAutoScroll()
+    return
+  }
+  // 列表滚过之后，指针底下换了一行，但不会再触发 pointermove，
+  // 必须在这里主动重算落点，否则只会滚、不会换位置。
+  handleDragOverAt(lastPointerX, lastPointerY)
+  autoScrollFrame = requestAnimationFrame(runAutoScroll)
+}
+
+function updateAutoScroll(clientY: number) {
+  const container = listContainer.value
+  if (!container) return
+  const rect = container.getBoundingClientRect()
+  const distToTop = clientY - rect.top
+  const distToBottom = rect.bottom - clientY
+  let speed = 0
+
+  if (distToTop < AUTO_SCROLL_BAND) {
+    const strength = 1 - Math.max(0, distToTop) / AUTO_SCROLL_BAND
+    speed = -Math.max(1, Math.round(AUTO_SCROLL_MAX_SPEED * strength))
+  } else if (distToBottom < AUTO_SCROLL_BAND) {
+    const strength = 1 - Math.max(0, distToBottom) / AUTO_SCROLL_BAND
+    speed = Math.max(1, Math.round(AUTO_SCROLL_MAX_SPEED * strength))
+  }
+
+  if (speed === 0) {
+    stopAutoScroll()
+  } else if (speed !== autoScrollSpeed || autoScrollFrame === null) {
+    autoScrollSpeed = speed
+    if (autoScrollFrame === null) autoScrollFrame = requestAnimationFrame(runAutoScroll)
+  }
+}
 
 onMounted(async () => {
   const id = appStore.getToBeSortedSongListIndex()
@@ -70,6 +138,13 @@ onMounted(async () => {
   customOrderSongs.value = [...originalSongs.value]
   applySort()
   hasUnsavedChanges.value = false
+})
+
+onUnmounted(() => {
+  stopAutoScroll()
+  document.removeEventListener('pointermove', onDragMove)
+  document.removeEventListener('pointerup', onDragEnd)
+  document.removeEventListener('pointercancel', onDragEnd)
 })
 
 function applySort() {
@@ -164,38 +239,49 @@ function onDragStart(e: PointerEvent, idx: number) {
   dragItem.setPointerCapture(e.pointerId)
   pointerId = e.pointerId
   isDragging = true
+  lastPointerX = e.clientX
+  lastPointerY = e.clientY
   document.addEventListener('pointermove', onDragMove)
   document.addEventListener('pointerup', onDragEnd)
   document.addEventListener('pointercancel', onDragEnd)
+}
+
+// 根据指针坐标判断落点并重排。抽成独立函数是因为自动滚动的每一帧
+// 也要在同一坐标上重新算一次，而那时并没有 pointermove 事件。
+function handleDragOverAt(clientX: number, clientY: number) {
+  if (!isDragging || dragSourceIndex.value === null) return
+  const elements = document.elementsFromPoint(clientX, clientY)
+  const targetRow = elements.find((el) => el.classList?.contains('song-row')) as HTMLElement
+  if (!targetRow || targetRow === dragItem) return
+  const overIdx = parseInt(targetRow.dataset.index || '-1')
+  if (overIdx === -1 || overIdx === dragOverIndex.value) return
+
+  dragOverIndex.value = overIdx
+  if (dragSourceIndex.value === overIdx) return
+  const newList = [...localSongs.value]
+  const [moved] = newList.splice(dragSourceIndex.value, 1)
+  newList.splice(overIdx, 0, moved)
+  localSongs.value = newList
+  customOrderSongs.value = [...newList]
+  dragSourceIndex.value = overIdx
+  dragItem = document.querySelector(`.song-row[data-index="${overIdx}"]`) as HTMLElement
+  hasUnsavedChanges.value = true
 }
 
 function onDragMove(e: PointerEvent) {
   if (!isDragging || dragSourceIndex.value === null) return
   if (e.pointerId !== pointerId) return
   e.preventDefault()
-  const elements = document.elementsFromPoint(e.clientX, e.clientY)
-  const targetRow = elements.find((el) => el.classList?.contains('song-row')) as HTMLElement
-  if (targetRow && targetRow !== dragItem) {
-    const overIdx = parseInt(targetRow.dataset.index || '-1')
-    if (overIdx !== -1 && overIdx !== dragOverIndex.value) {
-      dragOverIndex.value = overIdx
-      if (dragSourceIndex.value !== overIdx) {
-        const newList = [...localSongs.value]
-        const [moved] = newList.splice(dragSourceIndex.value, 1)
-        newList.splice(overIdx, 0, moved)
-        localSongs.value = newList
-        customOrderSongs.value = [...newList]
-        dragSourceIndex.value = overIdx
-        dragItem = document.querySelector(`.song-row[data-index="${overIdx}"]`) as HTMLElement
-        hasUnsavedChanges.value = true
-      }
-    }
-  }
+  lastPointerX = e.clientX
+  lastPointerY = e.clientY
+  handleDragOverAt(e.clientX, e.clientY)
+  updateAutoScroll(e.clientY)
 }
 
 function onDragEnd(e: PointerEvent) {
   if (!isDragging) return
   if (e.pointerId !== pointerId) return
+  stopAutoScroll()
   if (dragItem) {
     dragItem.classList.remove('dragging-source')
     if (dragItem.hasPointerCapture?.(pointerId!)) dragItem.releasePointerCapture(pointerId!)
@@ -229,7 +315,7 @@ function saveOrder() {
   router.back()
   toast.success(t('editor.saved'))
 }
-async function handleBackPress() {
+const backWithoutSave = async () => {
   if (hasUnsavedChanges.value) {
     const confirm = await showConfirm({
       title: t('editor.unsavedTitle'),
@@ -237,15 +323,11 @@ async function handleBackPress() {
       confirmText: t('editor.leave'),
       cancelText: t('editor.stay'),
     })
-    if (confirm) {
-      router.back()
-    }
-  } else {
-    router.back()
+    if (!confirm) return
+    // 这次离开已经确认过，不要再问一遍。
+    leaveConfirmed = true
   }
-}
-const backWithoutSave = () => {
-  handleBackPress()
+  router.back()
 }
 </script>
 

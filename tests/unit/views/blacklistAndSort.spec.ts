@@ -319,18 +319,17 @@ describe('SortSongsPage', () => {
     expect(store.getSongLists()[6].songCount).toBe(3)
   })
 
-  it('asks before leaving with unsaved changes', async () => {
+  it('leaves after confirming and only asks once', async () => {
     seedLikeList(2)
-    vi.mocked(showConfirm).mockResolvedValue(false)
+    vi.mocked(showConfirm).mockResolvedValue(true)
     const wrapper = mountPage(SortSongsPage)
     await nextTick()
 
     await wrapper.find('.sort-btn').trigger('click')
     await nextTick()
     await wrapper.find('.back-btn').trigger('click')
-
-    await vi.waitFor(() => expect(showConfirm).toHaveBeenCalled())
-    expect(router.back).not.toHaveBeenCalled()
+    await vi.waitFor(() => expect(router.back).toHaveBeenCalledTimes(1))
+    expect(showConfirm).toHaveBeenCalledTimes(1)
   })
 
   it('leaves when the unsaved-changes prompt is confirmed', async () => {
