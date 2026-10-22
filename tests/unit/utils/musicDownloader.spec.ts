@@ -10,7 +10,7 @@ import {
 } from '@/utils/musicDownloader'
 import { getSongInfoByPath } from '@/utils/audioScanner'
 import { useAppStore } from '@/stores/app'
-import type { DownloadTaskSnapshot, OnlineSong } from '@/utils/interface'
+import type { DownloadTaskSnapshot } from '@/utils/interface'
 import { emitNative, mockMethod, resetPlugins } from '../helpers/capacitor'
 import { makeOnlineSong, makeSong } from '../helpers/factories'
 import { freshPinia } from '../helpers/store'

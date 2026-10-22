@@ -5,7 +5,6 @@ import NowPlayingBar from '@/components/NowPlayingBar.vue'
 import PlaylistItem from '@/components/lists/PlaylistItem.vue'
 import PlaylistCoverImage from '@/components/lists/PlaylistCoverImage.vue'
 import { useAppStore } from '@/stores/app'
-import { audio } from '@/utils/createAudio'
 import { makePlaylist, makeSong, makeSongs } from '../helpers/factories'
 import { emitNative, resetPlugins } from '../helpers/capacitor'
 import { mountComponent } from '../helpers/mount'
@@ -96,7 +95,6 @@ describe('SongItem', () => {
     const song = makeSong()
     const store = useAppStore()
     const wrapper = mountComponent(SongItem, { props: { song } })
-    wrapper.vm.$.exposed // touch to keep the setup object referenced
 
     // The dropdown emits a select with the queue item.
     const dropdown = wrapper.findComponent({ name: 'DropdownButton' })

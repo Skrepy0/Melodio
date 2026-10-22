@@ -3,7 +3,7 @@ import { nextTick } from 'vue'
 import HomePage from '@/views/HomePage.vue'
 import { useAppStore } from '@/stores/app'
 import { makePlaylist, makeSongs } from '../helpers/factories'
-import { mockMethod, resetPlugins } from '../helpers/capacitor'
+import { resetPlugins } from '../helpers/capacitor'
 import { mountComponent } from '../helpers/mount'
 import { clearStorage, freshPinia } from '../helpers/store'
 
@@ -91,7 +91,7 @@ describe('HomePage', () => {
   })
 
   it('filters the song list as the user types', async () => {
-    const { store, wrapper } = await mountHome()
+    const { store } = await mountHome()
     store.setAllSongs(makeSongs(3))
     const fresh = mountComponent(HomePage)
     await nextTick()
@@ -105,7 +105,7 @@ describe('HomePage', () => {
   })
 
   it('filters playlists by description', async () => {
-    const { store, wrapper } = await mountHome()
+    const { store } = await mountHome()
     store.setSongLists([
       makePlaylist({ id: 1, name: 'A', description: 'highway' }),
       makePlaylist({ id: 2, name: 'B', description: 'calm' }),
@@ -126,7 +126,7 @@ describe('HomePage', () => {
   })
 
   it('opens a playlist', async () => {
-    const { store, wrapper } = await mountHome()
+    const { store } = await mountHome()
     store.setSongLists([makePlaylist({ id: 3, name: 'Road Trip' })])
     const fresh = mountComponent(HomePage)
     await nextTick()
@@ -227,7 +227,7 @@ describe('HomePage', () => {
   })
 
   it('plays a song', async () => {
-    const { store, wrapper } = await mountHome()
+    const { store } = await mountHome()
     const songs = makeSongs(2)
     store.setAllSongs(songs)
     const fresh = mountComponent(HomePage)
@@ -239,7 +239,7 @@ describe('HomePage', () => {
   })
 
   it('plays the visible list', async () => {
-    const { store, wrapper } = await mountHome()
+    const { store } = await mountHome()
     store.setAllSongs(makeSongs(2))
     const fresh = mountComponent(HomePage)
     await nextTick()
@@ -250,7 +250,7 @@ describe('HomePage', () => {
   })
 
   it('deletes selected songs after confirmation', async () => {
-    const { store, wrapper } = await mountHome()
+    const { store } = await mountHome()
     const songs = makeSongs(3)
     store.setAllSongs(songs)
     vi.mocked(showConfirm).mockResolvedValue(true)
@@ -263,7 +263,7 @@ describe('HomePage', () => {
   })
 
   it('removes a song from the library', async () => {
-    const { store, wrapper } = await mountHome()
+    const { store } = await mountHome()
     const songs = makeSongs(2)
     store.setAllSongs(songs)
     vi.mocked(showConfirm).mockResolvedValue(true)
@@ -275,7 +275,7 @@ describe('HomePage', () => {
   })
 
   it('bans selected songs', async () => {
-    const { store, wrapper } = await mountHome()
+    const { store } = await mountHome()
     const songs = makeSongs(3)
     store.setAllSongs(songs)
     const fresh = mountComponent(HomePage)
@@ -287,7 +287,7 @@ describe('HomePage', () => {
   })
 
   it('deletes playlists after confirmation', async () => {
-    const { store, wrapper } = await mountHome()
+    const { store } = await mountHome()
     store.setSongLists([makePlaylist({ id: 1 }), makePlaylist({ id: 2 })])
     vi.mocked(showConfirm).mockResolvedValue(true)
     const fresh = mountComponent(HomePage)
@@ -300,7 +300,7 @@ describe('HomePage', () => {
   })
 
   it('refuses to delete the liked list', async () => {
-    const { wrapper } = await mountHome()
+    await mountHome()
     const fresh = mountComponent(HomePage)
     await nextTick()
     fresh.findComponent({ name: 'HorizontalSelect' }).vm.$emit('update:modelValue', 'play-lists')

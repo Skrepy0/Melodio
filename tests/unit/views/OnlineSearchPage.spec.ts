@@ -58,7 +58,7 @@ function mountPage() {
 }
 
 /** Invoke the row menu handler directly with the row's identifier selected. */
-async function selectMenu(wrapper: any, index: number, value: string, songs: any[]) {
+async function selectMenu(wrapper: any, index: number, value: string) {
   const item = wrapper.findAllComponents(OnlineSongItemSelectable)[index]
   item.vm.$emit('update:dropdownOpen', true)
   await nextTick()
@@ -206,7 +206,7 @@ describe('OnlineSearchPage', () => {
     const wrapper = mountPage()
     await nextTick()
 
-    await selectMenu(wrapper, 0, 'download', songs)
+    await selectMenu(wrapper, 0, 'download')
     await vi.waitFor(() => expect(downloadMusic).toHaveBeenCalledWith(songs[0]))
     expect(toast.success).toHaveBeenCalled()
   })
@@ -217,7 +217,7 @@ describe('OnlineSearchPage', () => {
     const wrapper = mountPage()
     await nextTick()
 
-    await selectMenu(wrapper, 0, 'download', [])
+    await selectMenu(wrapper, 0, 'download')
     await vi.waitFor(() => expect(isSongDownloading).toHaveBeenCalled())
     expect(downloadMusic).not.toHaveBeenCalled()
   })
@@ -227,7 +227,7 @@ describe('OnlineSearchPage', () => {
     const wrapper = mountPage()
     await nextTick()
 
-    await selectMenu(wrapper, 0, 'download', [])
+    await selectMenu(wrapper, 0, 'download')
     await vi.waitFor(() => expect(toast.warning).toHaveBeenCalled())
     expect(downloadMusic).not.toHaveBeenCalled()
   })
@@ -241,7 +241,7 @@ describe('OnlineSearchPage', () => {
     const wrapper = mountPage()
     await nextTick()
 
-    await selectMenu(wrapper, 0, 'download', [])
+    await selectMenu(wrapper, 0, 'download')
     await vi.waitFor(() => expect(toast.error).toHaveBeenCalled())
     expect(downloadMusic).not.toHaveBeenCalled()
   })
@@ -252,7 +252,7 @@ describe('OnlineSearchPage', () => {
     const wrapper = mountPage()
     await nextTick()
 
-    await selectMenu(wrapper, 0, 'download', [])
+    await selectMenu(wrapper, 0, 'download')
     await vi.waitFor(() => expect(toast.error).toHaveBeenCalled())
   })
 
@@ -261,7 +261,7 @@ describe('OnlineSearchPage', () => {
     const wrapper = mountPage()
     await nextTick()
 
-    await selectMenu(wrapper, 0, 'like', songs)
+    await selectMenu(wrapper, 0, 'like')
     await vi.waitFor(() => expect(store.getLikeList().data).toHaveLength(1))
     expect(toast.success).toHaveBeenCalled()
     expect(songs).toHaveLength(1)
@@ -272,10 +272,10 @@ describe('OnlineSearchPage', () => {
     const wrapper = mountPage()
     await nextTick()
 
-    await selectMenu(wrapper, 0, 'like', songs)
+    await selectMenu(wrapper, 0, 'like')
     await vi.waitFor(() => expect(store.getLikeList().data).toHaveLength(1))
 
-    await selectMenu(wrapper, 0, 'like', songs)
+    await selectMenu(wrapper, 0, 'like')
     await vi.waitFor(() => expect(toast.warning).toHaveBeenCalled())
     expect(songs).toHaveLength(1)
   })
@@ -285,7 +285,7 @@ describe('OnlineSearchPage', () => {
     const wrapper = mountPage()
     await nextTick()
 
-    await selectMenu(wrapper, 0, 'detail', songs)
+    await selectMenu(wrapper, 0, 'detail')
     await vi.waitFor(() => expect(showSongInfo).toHaveBeenCalledWith(songs[0]))
   })
 
@@ -299,7 +299,7 @@ describe('OnlineSearchPage', () => {
     const wrapper = mountPage()
     await nextTick()
 
-    await selectMenu(wrapper, 0, 'addToPlaylist', [])
+    await selectMenu(wrapper, 0, 'addToPlaylist')
     await vi.waitFor(() => expect(store.getLikeList().data).toHaveLength(1))
   })
 
@@ -316,7 +316,7 @@ describe('OnlineSearchPage', () => {
     const wrapper = mountPage()
     await nextTick()
 
-    await selectMenu(wrapper, 0, 'addToPlaylist', [])
+    await selectMenu(wrapper, 0, 'addToPlaylist')
     await vi.waitFor(() => expect(store.getSongLists()[0].data).toHaveLength(1))
   })
 
