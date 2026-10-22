@@ -21,6 +21,8 @@ A smooth, minimalist music player built for Android. Developed with Ionic Vue an
 
 ### 🎵 Music Playback
 
+- **Synchronized lyrics** – Automatic search with provider fallback, configurable retries, cache management and native MediaSession lyric subtitles. See the [lyrics guide](docs/lyrics.md).
+
 - **Local Music Scanning** – Automatically scans audio files on device storage, supports FLAC, MP3, AAC, WAV, OGG and other mainstream formats
 - **Native Playback Engine** – Custom Capacitor plugin utilizing Android MediaPlayer + MediaSession for stable and smooth playback
 - **Online search** – Fetch online song data via backend requests, with support for multiple music sources.
@@ -85,16 +87,16 @@ A smooth, minimalist music player built for Android. Developed with Ionic Vue an
 
 ### Prerequisites
 
-- Node.js >= 18
+- Node.js >= 22
 - Android Studio (latest stable), VS Code
 - Android SDK (API 24+)
-- Java JDK 17+
+- Java JDK 21
 
 ### Development Steps
 
 ```bash
 # Install dependencies
-npm install
+npm ci
 
 # Sync Capacitor native project
 npx cap sync
@@ -112,6 +114,22 @@ npx cap open android
 # Or use the following one‑liner to build frontend and open in Android Studio
 npm run android:dev
 ```
+
+## Documentation
+
+- [Documentation index](docs/README.md)
+- [Lyrics: settings, providers, cache and MediaSession](docs/lyrics.md)
+- [中文歌词指南](docs/chinese/lyrics.md)
+
+## Validation
+
+```bash
+npm run lint
+npx vue-tsc --noEmit
+npm run test:unit -- --run
+```
+
+For Android checks, run `./gradlew :app:testDebugUnitTest :app:lintDebug` from `android/` (`.\gradlew.bat` in PowerShell). For browser tests, start `npm run dev` and run `npx cypress run` in another terminal.
 
 ## 📄 License
 

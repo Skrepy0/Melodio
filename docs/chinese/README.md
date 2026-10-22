@@ -1,6 +1,6 @@
 # Melodio
 
-[![License](https://img.shields.io/badge/License-Apache%202.0-pink.svg)](LICENSE) [![Android](https://img.shields.io/badge/Platform-Android-3DDC84?logo=android)](https://developer.android.com) ![Min SDK](<https://img.shields.io/badge/Min%20SDK-24%20(Android%207.0)-green>)
+[![License](https://img.shields.io/badge/License-Apache%202.0-pink.svg)](../../LICENSE) [![Android](https://img.shields.io/badge/Platform-Android-3DDC84?logo=android)](https://developer.android.com) ![Min SDK](<https://img.shields.io/badge/Min%20SDK-24%20(Android%207.0)-green>)
 
 一个流畅、简洁的音乐播放器，专为 Android 打造。基于 Ionic Vue 和 Capacitor 构建，支持离线播放本地音频文件，也支持在线播放和下载音乐(通过基于`musicdl`的[后端](https://github.com/Skrepy0/Melodio-Backend))，提供清爽的播放体验、锁屏媒体控件以及完善的后台播放能力。
 
@@ -83,16 +83,16 @@
 
 ### 环境要求
 
-- Node.js >= 18
+- Node.js >= 22
 - Android Studio (最新稳定版), VS Code
 - Android SDK (API 24+)
-- Java JDK 17+
+- Java JDK 21
 
 ### 开发步骤
 
 ```bash
 # 安装依赖
-npm install
+npm ci
 
 # 同步 Capacitor 原生项目
 npx cap sync
@@ -111,6 +111,23 @@ npx cap open android
 # 或者用下面这一行构建前端并在 Android Studio 中打开
 npm run android:dev
 ```
+
+## 歌词与文档
+
+支持同步歌词、公共 Meting 搜索与 LRCLIB 回退、可配置重试、缓存管理，以及后台 MediaSession 歌词同步。
+
+- [歌词使用与开发指南](lyrics.md)
+- [文档索引](../README.md)
+
+## 验证
+
+```bash
+npm run lint
+npx vue-tsc --noEmit
+npm run test:unit -- --run
+```
+
+Android 检查：在 `android/` 目录运行 `./gradlew :app:testDebugUnitTest :app:lintDebug`；PowerShell 使用 `.\gradlew.bat`。浏览器测试：先运行 `npm run dev`，再在另一个终端运行 `npx cypress run`。
 
 ## 📄 许可证
 
