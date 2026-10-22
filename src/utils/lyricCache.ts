@@ -1,6 +1,7 @@
 import { Capacitor, registerPlugin } from '@capacitor/core'
 import type { NativeAudioPlugin } from '@/plugins/native-audio/definitions'
 import type { Song } from '@/utils/interface'
+import { normalizeLyricIdentity as normalize, findLyricDuration } from '@/utils/lyricCacheIdentity'
 
 export interface LyricCacheEntry {
   id: string
@@ -9,93 +10,186 @@ export interface LyricCacheEntry {
   album: string
   duration: number
   lineCount: number
+  cachedAt?: number
+  source?: string
 }
-export const LYRICS_CACHE_KEY = 'syncedLyricsCache:v2:meting-first'
-const storageKeys = ['syncedLyricsCache', LYRICS_CACHE_KEY]
+export interface LyricCacheRecord {
+  version: 3
+  title: string
+  artist: string
+  album: string
+  duration: number
+  lyrics: string
+  cachedAt: number
+  source: string
+}
+export const LYRICS_CACHE_KEY = 'syncedLyricsCache:v3'
+const legacyKeys = ['syncedLyricsCache', 'syncedLyricsCache:v2:meting-first']
 const NativeAudio = registerPlugin<NativeAudioPlugin>('NativeAudio')
 const native = () => Capacitor.isNativePlatform() && Capacitor.getPlatform() === 'android'
 let version = 0
 export const getLyricsCacheVersion = () => version
-function read(storageKey = LYRICS_CACHE_KEY): Record<string, unknown> {
+function read(key: string): Record<string, unknown> {
+  const value: unknown = JSON.parse(localStorage.getItem(key) || '{}')
+  if (!value || typeof value !== 'object' || Array.isArray(value))
+    throw new Error('Invalid lyrics cache')
+  return value as Record<string, unknown>
+}
+function decode(key: string, value: unknown): LyricCacheRecord | null {
   try {
-    const value: unknown = JSON.parse(localStorage.getItem(storageKey) || '{}')
-    return value && typeof value === 'object' && !Array.isArray(value)
-      ? (value as Record<string, unknown>)
-      : {}
+    const identity = JSON.parse(key)
+    if (
+      !Array.isArray(identity) ||
+      typeof identity[0] !== 'string' ||
+      typeof identity[1] !== 'string'
+    )
+      return null
+    const row = value && typeof value === 'object' ? (value as Record<string, unknown>) : {}
+    const lyrics = typeof value === 'string' ? value : row.lyrics
+    if (typeof lyrics !== 'string' || !lyrics) return null
+    return {
+      version: 3,
+      title: typeof row.title === 'string' ? row.title : identity[0],
+      artist: typeof row.artist === 'string' ? row.artist : identity[1],
+      album: typeof row.album === 'string' ? row.album : '',
+      duration: Number.isFinite(Number(identity[2])) ? Math.max(0, Number(identity[2])) : 0,
+      lyrics,
+      cachedAt:
+        typeof row.cachedAt === 'number' && Number.isFinite(row.cachedAt) ? row.cachedAt : 0,
+      source: typeof row.source === 'string' ? row.source : 'unknown',
+    }
   } catch {
-    return {}
+    return null
   }
 }
-function text(value: unknown): string {
-  if (typeof value === 'string') return value
-  if (value && typeof value === 'object' && 'lyrics' in value && typeof value.lyrics === 'string')
-    return value.lyrics
-  return ''
+function identity(record: Pick<LyricCacheRecord, 'title' | 'artist' | 'duration'>) {
+  return JSON.stringify([normalize(record.title), normalize(record.artist), record.duration])
 }
-export function getCachedLyrics(key: string) {
-  return text(read()[key])
+function match(records: LyricCacheRecord[], song: Pick<Song, 'title' | 'artist' | 'duration'>) {
+  const peers = records.filter(
+    (row) =>
+      normalize(row.title) === normalize(song.title) &&
+      normalize(row.artist) === normalize(song.artist)
+  )
+  return peers[
+    findLyricDuration(
+      song.duration,
+      peers.map((row) => row.duration)
+    )
+  ]
 }
-export function cacheLyrics(key: string, song: Song, lyrics: string, expectedVersion: number) {
-  if (version !== expectedVersion) return
-  const entries = read()
-  delete entries[key]
-  entries[key] = {
-    title: song.title,
-    artist: song.artist,
-    album: song.album,
-    duration: song.duration,
-    lyrics,
-  }
+function merge(records: LyricCacheRecord[], incoming: LyricCacheRecord, preferIncoming = true) {
+  const existing = match(records, incoming)
+  if (!existing) records.push(incoming)
+  else if (
+    incoming.cachedAt > existing.cachedAt ||
+    (preferIncoming && incoming.cachedAt === existing.cachedAt)
+  )
+    Object.assign(existing, incoming, { duration: existing.duration })
+}
+function persist(records: LyricCacheRecord[]) {
   localStorage.setItem(
     LYRICS_CACHE_KEY,
-    JSON.stringify(Object.fromEntries(Object.entries(entries).slice(-100)))
+    JSON.stringify(Object.fromEntries(records.slice(-100).map((row) => [identity(row), row])))
   )
 }
-function webEntries(): LyricCacheEntry[] {
-  return storageKeys.flatMap((storageKey) =>
-    Object.entries(read(storageKey)).flatMap(([key, value]) => {
-      try {
-        const identity = JSON.parse(key)
-        if (
-          !Array.isArray(identity) ||
-          typeof identity[0] !== 'string' ||
-          typeof identity[1] !== 'string' ||
-          !text(value)
-        )
-          return []
-        const data = value && typeof value === 'object' ? (value as Record<string, unknown>) : {}
-        return [
-          {
-            id: JSON.stringify(['web', storageKey, key]),
-            title: typeof data.title === 'string' ? data.title : identity[0],
-            artist: typeof data.artist === 'string' ? data.artist : identity[1],
-            album: typeof data.album === 'string' ? data.album : '',
-            duration: Number(identity[2]) || 0,
-            lineCount: text(value)
-              .split(/\r?\n/)
-              .filter((row) => /\[\d+:\d{2}/.test(row)).length,
-          },
-        ]
-      } catch {
-        return []
-      }
-    })
-  )
+function webRecords(): LyricCacheRecord[] {
+  const records: LyricCacheRecord[] = []
+  try {
+    records.push(
+      ...Object.entries(read(LYRICS_CACHE_KEY)).flatMap(([id, value]) => {
+        const row = decode(id, value)
+        return row ? [row] : []
+      })
+    )
+  } catch {
+    /* Ignore malformed cache data. */
+  }
+  const migrated: string[] = []
+  for (const key of legacyKeys) {
+    try {
+      const rows = Object.entries(read(key)).flatMap(([id, value]) => {
+        const row = decode(id, value)
+        return row ? [row] : []
+      })
+      rows
+        .sort((a, b) => a.duration - b.duration || a.cachedAt - b.cachedAt)
+        .forEach((row) => merge(records, row, false))
+      if (
+        legacyKeys.includes(key) &&
+        localStorage.getItem(key) !== null &&
+        rows.length === Object.keys(read(key)).length
+      )
+        migrated.push(key)
+    } catch {
+      /* Preserve unreadable source data for recovery. */
+    }
+  }
+  if (migrated.length) {
+    persist(records) // Never remove legacy data before the replacement is durable.
+    migrated.forEach((key) => localStorage.removeItem(key))
+  }
+  return records
+}
+export function getCachedLyrics(key: string) {
+  try {
+    const [title, artist, duration] = JSON.parse(key)
+    return match(webRecords(), { title, artist, duration })?.lyrics || ''
+  } catch {
+    return ''
+  }
+}
+export function cacheLyrics(
+  _key: string,
+  song: Song,
+  lyrics: string,
+  expectedVersion: number,
+  source = 'unknown'
+) {
+  if (version !== expectedVersion) return
+  const records = webRecords()
+  merge(records, {
+    version: 3,
+    title: song.title,
+    artist: song.artist,
+    album: song.album || '',
+    duration: Math.max(0, song.duration || 0),
+    lyrics,
+    cachedAt: Date.now(),
+    source,
+  })
+  persist(records)
 }
 export async function listLyricCache(): Promise<LyricCacheEntry[]> {
-  const entries = webEntries()
+  const records = webRecords()
   if (native()) {
-    const result = await NativeAudio.listLyricsCache()
-    entries.push(
-      ...result.entries.map((entry) => ({ ...entry, id: JSON.stringify(['native', entry.id]) }))
-    )
+    if (records.length) {
+      await NativeAudio.importLyricsCache({ entries: records })
+      localStorage.removeItem(LYRICS_CACHE_KEY)
+      version++
+    }
+    return (await NativeAudio.listLyricsCache()).entries
+      .map((entry) => ({ ...entry, id: JSON.stringify(['native', entry.id]) }))
+      .sort((a, b) => a.title.localeCompare(b.title))
   }
-  return entries.sort((a, b) => a.title.localeCompare(b.title))
+  return records
+    .map((row) => ({
+      id: JSON.stringify(['web', LYRICS_CACHE_KEY, identity(row)]),
+      title: row.title,
+      artist: row.artist,
+      album: row.album,
+      duration: row.duration,
+      cachedAt: row.cachedAt,
+      source: row.source,
+      lineCount: row.lyrics.split(/\r?\n/).filter((line) => /\[\d+:\d{2}/.test(line)).length,
+    }))
+    .sort((a, b) => a.title.localeCompare(b.title))
 }
 export async function readLyricCache(id: string): Promise<string> {
   const [kind, key, entry] = JSON.parse(id)
   if (kind === 'native' && native()) return (await NativeAudio.readLyricsCache({ id: key })).lyrics
-  if (kind === 'web' && storageKeys.includes(key)) return text(read(key)[entry])
+  if (kind === 'web' && key === LYRICS_CACHE_KEY)
+    return webRecords().find((row) => identity(row) === entry)?.lyrics || ''
   throw new Error('Unknown lyrics cache entry')
 }
 export async function deleteLyricCache(id: string) {
@@ -104,14 +198,12 @@ export async function deleteLyricCache(id: string) {
     await NativeAudio.deleteLyricsCache({ id: key })
     return
   }
-  if (kind !== 'web' || !storageKeys.includes(key)) throw new Error('Unknown lyrics cache entry')
+  if (kind !== 'web' || key !== LYRICS_CACHE_KEY) throw new Error('Unknown lyrics cache entry')
   version++
-  const entries = read(key)
-  delete entries[entry]
-  localStorage.setItem(key, JSON.stringify(entries))
+  persist(webRecords().filter((row) => identity(row) !== entry))
 }
 export async function clearLyricCache() {
   if (native()) await NativeAudio.clearLyricsCache()
   version++
-  storageKeys.forEach((key) => localStorage.removeItem(key))
+  ;[...legacyKeys, LYRICS_CACHE_KEY].forEach((key) => localStorage.removeItem(key))
 }

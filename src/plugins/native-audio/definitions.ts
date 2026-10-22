@@ -1,4 +1,4 @@
-import type { LyricCacheEntry } from '@/utils/lyricCache'
+import type { LyricCacheEntry, LyricCacheRecord } from '@/utils/lyricCache'
 export interface SongItem {
   url: string
   title: string
@@ -24,6 +24,7 @@ export interface NativeLyricsOptions {
 }
 
 export interface NativeAudioPlugin {
+  importLyricsCache(options: { entries: LyricCacheRecord[] }): Promise<void>
   listLyricsCache(): Promise<{ entries: LyricCacheEntry[] }>
   readLyricsCache(options: { id: string }): Promise<{ lyrics: string }>
   deleteLyricsCache(options: { id: string }): Promise<void>

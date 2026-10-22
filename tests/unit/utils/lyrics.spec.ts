@@ -177,7 +177,7 @@ describe('online lyrics', () => {
     expect(fetch.mock.calls[1][0]).toContain('lrclib.net')
   })
 
-  it('ignores old LRCLIB-only cache entries and prefers supplied lyrics', async () => {
+  it('migrates old cached lyrics and still prefers supplied lyrics', async () => {
     localStorage.setItem(
       'syncedLyricsCache',
       JSON.stringify({ [JSON.stringify(['test', 'artist', 180000])]: '[00:01]Old' })
@@ -191,9 +191,12 @@ describe('online lyrics', () => {
     expect(await loadTrackLyrics({ ...song, lyric: '[00:00]Local' }, true, signal)).toEqual([
       { time: 0, text: 'Local' },
     ])
-    expect(await loadTrackLyrics({ ...song, lyric: null }, false, signal)).toEqual([])
+    expect(await loadTrackLyrics({ ...song, lyric: null }, false, signal)).toEqual([
+      { time: 1, text: 'Old' },
+    ])
     expect(fetch).not.toHaveBeenCalled()
-    expect(await searchOnlineLyrics(song, signal)).toEqual([{ time: 1, text: 'New' }])
+    expect(await searchOnlineLyrics(song, signal)).toEqual([{ time: 1, text: 'Old' }])
+    expect(fetch).not.toHaveBeenCalled()
   })
 
   it('does not cache network failures or empty matches', async () => {

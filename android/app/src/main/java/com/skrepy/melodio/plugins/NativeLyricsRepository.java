@@ -35,10 +35,12 @@ final class NativeLyricsRepository {
             this.source = source; this.duration = duration;
         }
         String key() {
-            return new JSONArray(Arrays.asList(title, artist, album, duration, source)).toString();
+            return new JSONArray(Arrays.asList(LyricCacheIdentity.normalize(title), LyricCacheIdentity.normalize(artist), duration)).toString();
         }
     }
     private static final class Job {
+        final Query query;
+        Job(Query query) { this.query = query; }
         final CompletableFuture<LyricTimeline> future = new CompletableFuture<>();
         volatile boolean cancelled;
         volatile Call call;
@@ -62,7 +64,7 @@ final class NativeLyricsRepository {
         String key = query.key() + online + retries + endpoint;
         Job existing = jobs.get(key);
         if (existing != null && !existing.cancelled) return existing.future;
-        Job job = new Job();
+        Job job = new Job(query);
         jobs.put(key, job);
         executor.submit(() -> {
             job.thread = Thread.currentThread();
@@ -99,45 +101,121 @@ final class NativeLyricsRepository {
     }
     void close() { cancelAll(); executor.shutdownNow(); }
 
+    private String recordKey(JSONObject row) {
+        return "v3:" + new JSONArray(Arrays.asList(LyricCacheIdentity.normalize(row.optString("title")),
+                LyricCacheIdentity.normalize(row.optString("artist")), row.optLong("duration", 0))).toString();
+    }
+    private JSONObject matchRecord(List<JSONObject> records, String title, String artist, long duration) {
+        List<JSONObject> peers = new ArrayList<>();
+        List<Long> durations = new ArrayList<>();
+        for (JSONObject row : records) {
+            if (LyricCacheIdentity.normalize(row.optString("title")).equals(LyricCacheIdentity.normalize(title))
+                    && LyricCacheIdentity.normalize(row.optString("artist")).equals(LyricCacheIdentity.normalize(artist))) {
+                peers.add(row); durations.add(row.optLong("duration", 0));
+            }
+        }
+        int index = LyricCacheIdentity.findDuration(duration, durations);
+        return index < 0 ? null : peers.get(index);
+    }
+    private void mergeRecord(List<JSONObject> records, JSONObject incoming, boolean preferIncoming) throws Exception {
+        JSONObject existing = matchRecord(records, incoming.optString("title"), incoming.optString("artist"), incoming.optLong("duration", 0));
+        if (existing == null) records.add(incoming);
+        else if (incoming.optLong("cachedAt", 0) > existing.optLong("cachedAt", 0)
+                || (preferIncoming && incoming.optLong("cachedAt", 0) == existing.optLong("cachedAt", 0))) {
+            incoming.put("duration", existing.optLong("duration", 0));
+            records.set(records.indexOf(existing), incoming);
+        }
+    }
+    private void persistRecords(List<JSONObject> records, List<String> legacy) {
+        SharedPreferences.Editor edit = cache.edit();
+        for (String key : cache.getAll().keySet()) if (key.startsWith("v3:")) edit.remove(key);
+        for (int i = Math.max(0, records.size() - 100); i < records.size(); i++) {
+            JSONObject row = records.get(i);
+            edit.putString(recordKey(row), row.toString());
+        }
+        // The replacement and legacy removal are one atomic preferences transaction.
+        for (String key : legacy) edit.remove(key);
+        if (!edit.commit()) throw new IllegalStateException("Cannot persist lyrics cache");
+    }
+    private synchronized List<JSONObject> records() {
+        List<JSONObject> rows = new ArrayList<>();
+        List<JSONObject> merged = new ArrayList<>();
+        List<String> migrated = new ArrayList<>();
+        for (Map.Entry<String, ?> entry : cache.getAll().entrySet()) {
+            if (!(entry.getValue() instanceof String)) continue;
+            try {
+                JSONObject row;
+                if (entry.getKey().startsWith("v3:")) row = new JSONObject((String) entry.getValue());
+                else if (entry.getKey().startsWith("v2:")) {
+                    JSONArray identity = new JSONArray(entry.getKey().substring(3));
+                    row = new JSONObject();
+                    row.put("title", identity.optString(0)); row.put("artist", identity.optString(1));
+                    row.put("album", identity.optString(2)); row.put("duration", identity.optLong(3));
+                    row.put("lyrics", entry.getValue()); row.put("cachedAt", 0); row.put("source", "unknown");
+
+                } else continue;
+                row.put("version", 3);
+                if (!LyricTimeline.parse(row.optString("lyrics")).lines.isEmpty()) {
+                    if (entry.getKey().startsWith("v3:")) merged.add(row);
+                    else rows.add(row);
+                    if (entry.getKey().startsWith("v2:")) migrated.add(entry.getKey());
+                }
+            } catch (Exception ignored) { }
+        }
+        rows.sort(java.util.Comparator.comparingLong((JSONObject row) -> row.optLong("duration", 0))
+                .thenComparingLong(row -> row.optLong("cachedAt", 0)).thenComparing(row -> row.toString()));
+        for (JSONObject row : rows) {
+            try { mergeRecord(merged, row, false); } catch (Exception ignored) { }
+        }
+        if (!migrated.isEmpty()) persistRecords(merged, migrated);
+        return merged;
+    }
+    synchronized void importCache(JSONArray entries) throws Exception {
+        List<JSONObject> rows = records();
+        for (int i = 0; i < entries.length(); i++) {
+            JSONObject row = entries.optJSONObject(i);
+            if (row == null || LyricTimeline.parse(row.optString("lyrics")).lines.isEmpty()) continue;
+            row.put("version", 3);
+            mergeRecord(rows, row, false); // Native wins legacy ties; newer timestamps win normally.
+        }
+        persistRecords(rows, java.util.Collections.emptyList());
+    }
     synchronized JSONArray listCache() {
         JSONArray result = new JSONArray();
-        for (Map.Entry<String, ?> entry : cache.getAll().entrySet()) {
-            if (!entry.getKey().startsWith("v2:") || !(entry.getValue() instanceof String)) continue;
+        for (JSONObject stored : records()) {
             try {
-                JSONArray identity = new JSONArray(entry.getKey().substring(3));
-                LyricTimeline timeline = LyricTimeline.parse((String) entry.getValue());
-                if (timeline.lines.isEmpty()) continue;
-                JSONObject row = new JSONObject();
-                row.put("id", entry.getKey());
-                row.put("title", identity.optString(0));
-                row.put("artist", identity.optString(1));
-                row.put("album", identity.optString(2));
-                row.put("duration", identity.optLong(3));
-                row.put("lineCount", timeline.lines.size());
-                result.put(row);
+                JSONObject row = new JSONObject(stored.toString());
+                row.put("id", recordKey(stored));
+                row.put("lineCount", LyricTimeline.parse(row.optString("lyrics")).lines.size());
+                row.remove("lyrics"); result.put(row);
             } catch (Exception ignored) { }
         }
         return result;
     }
     synchronized String readCache(String id) {
-        return id != null && id.startsWith("v2:") ? cache.getString(id, "") : "";
+        for (JSONObject row : records()) if (recordKey(row).equals(id)) return row.optString("lyrics");
+        return "";
     }
     synchronized void deleteCache(String id) {
-        if (id == null || !id.startsWith("v2:")) return;
-        String prefix = id.substring(3);
+        List<JSONObject> rows = records();
+        JSONObject target = null;
+        for (JSONObject row : rows) if (recordKey(row).equals(id)) target = row;
+        if (target == null) return;
+        JSONObject selected = target;
         List<Job> obsolete = new ArrayList<>();
         java.util.Iterator<Map.Entry<String, Job>> iterator = jobs.entrySet().iterator();
         while (iterator.hasNext()) {
             Map.Entry<String, Job> entry = iterator.next();
-            if (entry.getKey().startsWith(prefix)) { obsolete.add(entry.getValue()); iterator.remove(); }
+            Query query = entry.getValue().query;
+            if (matchRecord(rows, query.title, query.artist, query.duration) == selected) {
+                obsolete.add(entry.getValue()); iterator.remove();
+            }
         }
         for (Job job : obsolete) job.cancel();
-        cache.edit().remove(id).apply();
+        rows.remove(target);
+        persistRecords(rows, java.util.Collections.emptyList());
     }
-    synchronized void clearCache() {
-        cancelAll();
-        cache.edit().clear().apply();
-    }
+    synchronized void clearCache() { cancelAll(); if (!cache.edit().clear().commit()) throw new IllegalStateException("Cannot clear lyrics cache"); }
 
     private LyricTimeline resolve(Query query, boolean online, int retries, String endpoint, Job job) throws Exception {
         String raw = query.source;
@@ -148,8 +226,11 @@ final class NativeLyricsRepository {
                 if (!supplied.lines.isEmpty()) return supplied;
             } catch (Exception error) { job.check(); if (!online) throw error; }
         }
-        String cacheKey = "v2:" + query.key();
-        LyricTimeline stored = LyricTimeline.parse(cache.getString(cacheKey, ""));
+        LyricTimeline stored;
+        synchronized (this) {
+            JSONObject found = matchRecord(records(), query.title, query.artist, query.duration);
+            stored = LyricTimeline.parse(found == null ? "" : found.optString("lyrics"));
+        }
         if (!stored.lines.isEmpty()) return stored;
         if (!online || query.title.trim().isEmpty() || query.artist.trim().isEmpty()
                 || Arrays.asList("未知艺术家", "unknown", "unknown artist", "<unknown>").contains(normalize(query.artist))) return LyricTimeline.EMPTY;
@@ -165,10 +246,14 @@ final class NativeLyricsRepository {
                     if (result.lines.isEmpty()) continue;
                     synchronized (this) {
                         job.check();
-                        SharedPreferences.Editor edit = cache.edit();
-                        Map<String, ?> entries = cache.getAll();
-                        if (entries.size() >= 100 && !entries.containsKey(cacheKey)) edit.remove(entries.keySet().iterator().next());
-                        edit.putString(cacheKey, text).apply();
+                        JSONObject record = new JSONObject();
+                        record.put("version", 3); record.put("title", query.title); record.put("artist", query.artist);
+                        record.put("album", query.album); record.put("duration", query.duration);
+                        record.put("source", meting ? "meting" : "lrclib");
+                        record.put("lyrics", text); record.put("cachedAt", System.currentTimeMillis());
+                        List<JSONObject> rows = records();
+                        mergeRecord(rows, record, true);
+                        persistRecords(rows, java.util.Collections.emptyList());
                     }
                     return result;
                 } catch (Exception error) { job.check(); last = error; }

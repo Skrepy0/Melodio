@@ -218,7 +218,13 @@ export async function searchOnlineLyrics(
         if (!text) continue
         const lines = parseLyrics(text)
         try {
-          cacheLyrics(key, song, text, cacheVersion)
+          cacheLyrics(
+            key,
+            song,
+            text,
+            cacheVersion,
+            provider === searchMetingLyrics ? 'meting' : 'lrclib'
+          )
         } catch {
           // Storage may be full or disabled; the current result is still usable.
         }

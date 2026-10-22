@@ -117,6 +117,11 @@ onUnmounted(() => {
                 </div>
                 <div class="cache-meta">
                   {{ t('lyricsCache.lines', { count: entry.lineCount }) }}
+                  <template v-if="entry.duration > 0">
+                    · {{ Math.floor(entry.duration / 60000) }}:{{
+                      String(Math.floor(entry.duration / 1000) % 60).padStart(2, '0')
+                    }}</template
+                  >
                 </div>
               </div>
               <div class="cache-actions">

@@ -1050,6 +1050,15 @@ public class NativeAudioPlugin extends Plugin {
     }
 
     @PluginMethod
+    public void importLyricsCache(PluginCall call) {
+        try {
+            JSArray entries = call.getArray("entries");
+            if (entries == null) { call.reject("entries required"); return; }
+            lyricsRepository.importCache(entries);
+            call.resolve();
+        } catch (Exception error) { call.reject("Cache migration failed", error); }
+    }
+    @PluginMethod
     public void listLyricsCache(PluginCall call) {
         JSObject result = new JSObject();
         result.put("entries", lyricsRepository.listCache());
