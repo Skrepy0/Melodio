@@ -13,6 +13,7 @@ Thumbs.db
 UserInterfaceState.xcuserstate
 $RECYCLE.BIN/
 
+logs/
 *.log
 log.txt
 npm-debug.log*
@@ -32,3 +33,7 @@ npm-debug.log*
 /www
 /tests/e2e/screenshots/*
 .claude/*
+
+# Local environment overrides
+.env.local
+.env.*.local
