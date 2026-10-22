@@ -29,7 +29,9 @@ Matching checks exact normalized titles and artist aliases. Duration is checked 
 
 Open Settings → Accessibility → Lyrics cache. View/Hide expands the cached LRC. Delete and Clear all require confirmation. These actions remove cache records, not audio files or the lyrics already loaded for playback. A subsequent lookup can retrieve lyrics again. In-flight obsolete requests cannot restore records deleted during their lookup.
 
-Web cache records live in localStorage; Android uses a separate native SharedPreferences cache so background playback is independent of WebView. The manager includes older web records. Each active cache keeps at most 100 successful results; failures are not cached. Native cache data is separate from localStorage backup/export.
+Web cache records live in localStorage; Android uses a separate native SharedPreferences cache so background playback is independent of WebView. The manager migrates older records to v3; on Android it imports web records into the native cache before removing their web copy. Failed imports preserve the original data. Each active cache keeps at most 100 successful results; failures are not cached. Native cache data is separate from localStorage backup/export.
+
+Cache identity uses NFKC-normalized title and artist (case and repeated whitespace ignored). Album and provider are metadata. A known duration matches a unique candidate within 5 seconds; exact durations take precedence. Unknown durations only match other unknown durations. Version suffixes such as Live remain significant. Existing duration anchors stay fixed to prevent repeated small changes from merging different versions. Newer timestamps win; native records win timestamp ties during import. The manager shows duration to help distinguish versions.
 
 ## Android background synchronization
 
