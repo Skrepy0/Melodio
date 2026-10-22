@@ -51,5 +51,9 @@
         <receiver
             android:name="com.skrepy.melodio.plugins.TransportReceiver"
             android:exported="false" />
+        <service
+            android:name="com.skrepy.melodio.plugins.PlaybackService"
+            android:exported="false"
+            android:foregroundServiceType="mediaPlayback" />
     </application>
 </manifest>

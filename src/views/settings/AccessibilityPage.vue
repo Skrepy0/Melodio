@@ -1,11 +1,13 @@
 <script lang="ts" setup>
 import { useAppStore } from '@/stores/app'
 import { IonPage } from '@ionic/vue'
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import PageTitle from '@/components/PageTitle.vue'
 import FunctionSwitch from '@/components/settings/FunctionSwitch.vue'
+import InputBox from '@/components/settings/InputBox.vue'
+import { DEFAULT_LYRICS_RETRY_COUNT } from '@/utils/lyrics'
 import SettingsPageLink from '@/components/settings/SettingsPageLink.vue'
 import { clearCoverCache } from '@/utils/coverCache'
 import { audio } from '@/utils/createAudio'
@@ -25,6 +27,24 @@ const autoDelInvalidSongs = ref(appStore.getAutoDelInvalidSongs())
 const audioFocusPause = ref(appStore.getAudioFocusPause())
 const playQueueRepeat = ref(appStore.getPlayQueueRepeat())
 const canFetchCoverFromWeb = ref(appStore.getCanFetchCoverFromWeb())
+const lyricsRetryCount = computed({
+  get: () => appStore.getLyricsRetryCount(),
+  set: (value: string | number) => {
+    if (value !== '') appStore.setLyricsRetryCount(Number(value))
+  },
+})
+const searchLyricsOnline = ref(appStore.getSearchLyricsOnline())
+const toggleSearchLyricsOnline = (e: Event) => {
+  const target = e.target as HTMLInputElement
+  searchLyricsOnline.value = target.checked
+  appStore.setSearchLyricsOnline(searchLyricsOnline.value)
+}
+const showLyrics = ref(appStore.getShowLyrics())
+const toggleShowLyrics = (e: Event) => {
+  const target = e.target as HTMLInputElement
+  showLyrics.value = target.checked
+  appStore.setShowLyrics(showLyrics.value)
+}
 const pinyinSearch = ref(appStore.getPinyinSearch())
 const togglePinyinSearch = (e: Event) => {
   const target = e.target as HTMLInputElement
@@ -135,6 +155,36 @@ const clearCovers = async () => {
           :desc="$t('settings.accessibility.playQueueRepeatDesc')"
           :title="$t('settings.accessibility.playQueueRepeat')"
           icon="bi:arrow-repeat"
+        />
+        <FunctionSwitch
+          :change="toggleShowLyrics"
+          :checked="showLyrics"
+          :desc="$t('settings.accessibility.showLyricsDesc')"
+          :title="$t('settings.accessibility.showLyrics')"
+          icon="mdi:text"
+        />
+        <FunctionSwitch
+          :change="toggleSearchLyricsOnline"
+          :checked="searchLyricsOnline"
+          :desc="$t('settings.accessibility.searchLyricsOnlineDesc')"
+          :title="$t('settings.accessibility.searchLyricsOnline')"
+          icon="mdi:cloud-search-outline"
+        />
+        <InputBox
+          v-model="lyricsRetryCount"
+          :default-value="DEFAULT_LYRICS_RETRY_COUNT"
+          :min="0"
+          :max="10"
+          :title="$t('settings.accessibility.lyricsRetryCount')"
+          :desc="$t('settings.accessibility.lyricsRetryCountDesc')"
+          icon="mdi:reload"
+          type="integer"
+        />
+        <SettingsPageLink
+          :click="() => router.push('/settings/accessibility/lyrics-cache')"
+          :desc="$t('lyricsCache.desc')"
+          :title="$t('lyricsCache.title')"
+          icon="mdi:text-box-multiple-outline"
         />
         <SettingsPageLink
           :click="clearCovers"

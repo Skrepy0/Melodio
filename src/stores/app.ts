@@ -1,4 +1,9 @@
 import {
+  configureNativeLyrics,
+  DEFAULT_LYRICS_RETRY_COUNT,
+  normalizeLyricsRetryCount,
+} from '@/utils/lyrics'
+import {
   ClientKey,
   DownloadHistoryItem,
   DownloadTaskSnapshot,
@@ -63,6 +68,22 @@ function getSystemLanguage(): string {
 }
 export const useAppStore = defineStore('app', () => {
   const darkMode = ref(localStorage.getItem('darkMode') === 'true')
+  const lyricsRetryCount = ref(
+    normalizeLyricsRetryCount(
+      Number(localStorage.getItem('lyricsRetryCount') ?? DEFAULT_LYRICS_RETRY_COUNT)
+    )
+  )
+  const searchLyricsOnline = ref(localStorage.getItem('searchLyricsOnline') !== 'false')
+  const showLyrics = ref(localStorage.getItem('showLyrics') !== 'false')
+  watch(
+    [showLyrics, searchLyricsOnline, lyricsRetryCount],
+    ([enabled, online, retryCount]) => {
+      void configureNativeLyrics({ enabled, online, retryCount }).catch((error) =>
+        console.warn('Native lyrics settings failed', error)
+      )
+    },
+    { immediate: true }
+  )
   const pinyinSearch = ref(localStorage.getItem('pinyinSearch') === 'true')
   const playQueueRepeat = ref(true)
   const autoPauseOnDisconnect = ref(true)
@@ -695,6 +716,41 @@ export const useAppStore = defineStore('app', () => {
     return playQueueRepeat.value
   }
 
+  function initLyricsRetryCount() {
+    lyricsRetryCount.value = normalizeLyricsRetryCount(
+      Number(localStorage.getItem('lyricsRetryCount') ?? DEFAULT_LYRICS_RETRY_COUNT)
+    )
+  }
+  function getLyricsRetryCount() {
+    return lyricsRetryCount.value
+  }
+  function setLyricsRetryCount(value: number) {
+    lyricsRetryCount.value = normalizeLyricsRetryCount(value)
+    localStorage.setItem('lyricsRetryCount', String(lyricsRetryCount.value))
+  }
+
+  function initSearchLyricsOnline() {
+    searchLyricsOnline.value = localStorage.getItem('searchLyricsOnline') !== 'false'
+  }
+  function getSearchLyricsOnline() {
+    return searchLyricsOnline.value
+  }
+  function setSearchLyricsOnline(val: boolean) {
+    searchLyricsOnline.value = val
+    localStorage.setItem('searchLyricsOnline', String(val))
+  }
+
+  function initShowLyrics() {
+    showLyrics.value = localStorage.getItem('showLyrics') !== 'false'
+  }
+  function getShowLyrics() {
+    return showLyrics.value
+  }
+  function setShowLyrics(val: boolean) {
+    showLyrics.value = val
+    localStorage.setItem('showLyrics', String(val))
+  }
+
   function setPinyinSearch(val: boolean) {
     pinyinSearch.value = val
     localStorage.setItem('pinyinSearch', String(pinyinSearch.value))
@@ -899,6 +955,8 @@ export const useAppStore = defineStore('app', () => {
         title: s.title,
         artist: s.artist || 'Unknown',
         album: s.album || '',
+        lyric: s.lyric,
+        duration: s.duration,
         // Native cannot decode albumart URIs. `resolveNativeCoverUrl` hands over
         // a real file/data/https URL: web cache first, then the stored
         // file:/data: reference, then the artwork extracted from the audio file.
@@ -1061,6 +1119,8 @@ export const useAppStore = defineStore('app', () => {
           title: s.title,
           artist: s.artist || 'Unknown',
           album: s.album || '',
+          lyric: s.lyric,
+          duration: s.duration,
           coverUrl: getNativeCoverUrl(s, canFetchCoverFromWeb.value),
         }))
         await audio.setPlaylist(fallbackList)
@@ -1293,6 +1353,9 @@ export const useAppStore = defineStore('app', () => {
   }
 
   function initSettings() {
+    initLyricsRetryCount()
+    initShowLyrics()
+    initSearchLyricsOnline()
     initLanguage()
     initThemeColor()
     loadInitialDarkMode()
@@ -1724,6 +1787,15 @@ export const useAppStore = defineStore('app', () => {
     darkMode,
     toggleDarkMode,
     loadInitialDarkMode,
+    initLyricsRetryCount,
+    getLyricsRetryCount,
+    setLyricsRetryCount,
+    initSearchLyricsOnline,
+    getSearchLyricsOnline,
+    setSearchLyricsOnline,
+    initShowLyrics,
+    getShowLyrics,
+    setShowLyrics,
     setPinyinSearch,
     getPinyinSearch,
     setAutoPauseOnDisconnect,

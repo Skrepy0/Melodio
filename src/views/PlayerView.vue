@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 defineOptions({ name: 'PlayerView' })
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { Icon } from '@iconify/vue'
 import DropdownButton from '@/components/button/DropdownButton.vue'
 import { useCoverColor } from '@/composables/useCoverColor'
@@ -18,6 +18,7 @@ import {
   isSafeCoverSource,
 } from '@/utils/functions'
 import router from '@/router'
+import { loadTrackLyrics, type LyricLine } from '@/utils/lyrics'
 
 const { t } = useI18n()
 const appStore = useAppStore()
@@ -52,7 +53,156 @@ watch(
   { deep: true }
 )
 
+const currentSongOverride = ref<Song | null>(null)
 const currentSong = computed(() => currentSongOverride.value || appStore.currentSong)
+const showLyrics = computed(() => appStore.getShowLyrics())
+const searchLyricsOnline = computed(() => appStore.getSearchLyricsOnline())
+const lyricsRetryCount = computed(() => appStore.getLyricsRetryCount())
+const lyricsLoading = ref(false)
+const lyricsError = ref(false)
+const lyricsRetry = ref(0)
+const lyricLines = ref<LyricLine[]>([])
+const lyricsContainer = ref<HTMLElement | null>(null)
+const activeLyricIndex = computed(() => {
+  let index = -1
+  for (let i = 0; i < lyricLines.value.length; i++) {
+    if (lyricLines.value[i].time > mockCurrentTime.value) break
+    index = i
+  }
+  return index
+})
+watch(
+  [showLyrics, searchLyricsOnline, currentSong, lyricsRetry, lyricsRetryCount],
+  async ([enabled, online, song, , retryCount], _previous, onCleanup) => {
+    lyricLines.value = []
+    lyricsLoading.value = false
+    lyricsError.value = false
+    if (!enabled || !song) return
+    lyricsLoading.value = true
+    const controller = new AbortController()
+    let stale = false
+    onCleanup(() => {
+      stale = true
+      controller.abort()
+    })
+    try {
+      const lines = await loadTrackLyrics(song, online, controller.signal, retryCount)
+      if (!controller.signal.aborted) lyricLines.value = lines
+    } catch {
+      if (!stale) lyricsError.value = true
+    } finally {
+      if (!stale) lyricsLoading.value = false
+    }
+  },
+  { immediate: true }
+)
+// Keep scrolling local to the lyrics viewport; scrollIntoView can move the player itself.
+let lyricsResumeTimer: ReturnType<typeof setTimeout> | undefined
+let lyricsPointerId: number | null = null
+let lyricsFollowPaused = false
+let lyricsDisposed = false
+
+const centerActiveLyric = async (smooth = true) => {
+  await nextTick()
+  const container = lyricsContainer.value
+  if (lyricsDisposed || lyricsFollowPaused || !container || container.clientHeight === 0) return
+  const line = container.querySelector<HTMLElement>('.lyric-line.active')
+  if (!line) {
+    container.scrollTop = 0
+    return
+  }
+  const viewport = container.getBoundingClientRect()
+  const bounds = line.getBoundingClientRect()
+  const top = Math.max(
+    0,
+    Math.min(
+      container.scrollHeight - container.clientHeight,
+      container.scrollTop +
+        bounds.top -
+        viewport.top +
+        bounds.height / 2 -
+        container.clientHeight / 2
+    )
+  )
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  if (container.scrollTo)
+    container.scrollTo({ top, behavior: smooth && !reducedMotion ? 'smooth' : 'auto' })
+  else container.scrollTop = top
+}
+
+const scheduleLyricsResume = () => {
+  clearTimeout(lyricsResumeTimer)
+  if (lyricsPointerId !== null) return
+  lyricsResumeTimer = setTimeout(() => {
+    lyricsResumeTimer = undefined
+    lyricsFollowPaused = false
+    void centerActiveLyric()
+  }, 3000)
+}
+const pauseLyricsFollow = () => {
+  if (!lyricsFollowPaused) {
+    const container = lyricsContainer.value
+    // Cancel any in-flight smooth scroll before handing control to the reader.
+    container?.scrollTo?.({ top: container.scrollTop, behavior: 'auto' })
+  }
+  lyricsFollowPaused = true
+  scheduleLyricsResume()
+}
+const onLyricsPointerDown = (event: PointerEvent) => {
+  lyricsPointerId = event.pointerId
+  pauseLyricsFollow()
+  document.addEventListener('pointerup', onLyricsPointerEnd)
+  document.addEventListener('pointercancel', onLyricsPointerEnd)
+}
+const onLyricsPointerEnd = (event: PointerEvent) => {
+  if (event.pointerId !== lyricsPointerId) return
+  lyricsPointerId = null
+  document.removeEventListener('pointerup', onLyricsPointerEnd)
+  document.removeEventListener('pointercancel', onLyricsPointerEnd)
+  scheduleLyricsResume()
+}
+const onLyricsScroll = () => {
+  // Native momentum scrolling extends the pause; automatic scrolling does not.
+  if (lyricsFollowPaused) scheduleLyricsResume()
+}
+const onLyricsKeydown = (event: KeyboardEvent) => {
+  if (['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End', ' '].includes(event.key))
+    pauseLyricsFollow()
+}
+watch(
+  activeLyricIndex,
+  () => {
+    void centerActiveLyric()
+  },
+  { flush: 'post' }
+)
+watch(
+  [lyricLines, lyricsContainer],
+  () => {
+    clearTimeout(lyricsResumeTimer)
+    lyricsFollowPaused = false
+    void centerActiveLyric(false)
+  },
+  { flush: 'post' }
+)
+watch(
+  lyricsContainer,
+  (container, _previous, onCleanup) => {
+    if (!container || typeof ResizeObserver === 'undefined') return
+    const observer = new ResizeObserver(() => {
+      void centerActiveLyric(false)
+    })
+    observer.observe(container)
+    onCleanup(() => observer.disconnect())
+  },
+  { flush: 'post' }
+)
+onUnmounted(() => {
+  lyricsDisposed = true
+  clearTimeout(lyricsResumeTimer)
+  document.removeEventListener('pointerup', onLyricsPointerEnd)
+  document.removeEventListener('pointercancel', onLyricsPointerEnd)
+})
 
 let timeUpdateHandler: (() => void) | null = null
 
@@ -300,7 +450,6 @@ const runAutoScroll = () => {
   }
   autoScrollFrame = requestAnimationFrame(runAutoScroll)
 }
-const currentSongOverride = ref<Song | null>(null)
 const dragCurrentIndex = ref<number | null>(null)
 
 const startDrag = (e: PointerEvent, idx: number) => {
@@ -612,7 +761,7 @@ const onHeaderPointerDown = (e: PointerEvent) => {
 
   const target = e.target as HTMLElement | null
   if (!target) return
-  if (target.closest('.queue-container') || target.closest('.progress-bar-container')) return
+  if (target.closest('.queue-container, .progress-bar-container, .lyrics')) return
 
   cancelHeaderMotion()
   headerGestureId = e.pointerId
@@ -887,6 +1036,46 @@ onUnmounted(() => {
         <div class="song-artist">{{ currentSong?.artist || $t('player.unknownArtist') }}</div>
       </div>
 
+      <div
+        v-if="showLyrics"
+        ref="lyricsContainer"
+        class="lyrics"
+        :aria-label="t('settings.accessibility.showLyrics')"
+        role="region"
+        tabindex="0"
+        @pointerdown.stop="onLyricsPointerDown"
+        @wheel.stop.passive="pauseLyricsFollow"
+        @touchmove.stop.passive="pauseLyricsFollow"
+        @scroll.passive="onLyricsScroll"
+        @keydown="onLyricsKeydown"
+      >
+        <p v-if="lyricsLoading" class="lyrics-empty" role="status">
+          {{ t('player.lyricsLoading') }}
+        </p>
+        <p v-else-if="!lyricLines.length" class="lyrics-empty" role="status">
+          {{ t(lyricsError ? 'player.lyricsError' : 'player.noLyrics') }}
+        </p>
+        <button
+          v-if="!lyricsLoading && !lyricLines.length && searchLyricsOnline && currentSong"
+          type="button"
+          class="lyrics-retry"
+          @click="lyricsRetry++"
+        >
+          {{ t('player.retryLyrics') }}
+        </button>
+        <div v-if="lyricLines.length" class="lyrics-lines">
+          <p
+            v-for="(line, index) in lyricLines"
+            :key="index"
+            class="lyric-line"
+            :class="{ active: index === activeLyricIndex }"
+            :aria-current="index === activeLyricIndex ? 'true' : undefined"
+          >
+            {{ line.text || '\u00a0' }}
+          </p>
+        </div>
+      </div>
+
       <div class="progress-section">
         <div class="time-row">
           <span class="time tabular">{{ formatTime(mockCurrentTime) }}</span>
@@ -1136,7 +1325,14 @@ onUnmounted(() => {
     calc(var(--space-4) - (var(--space-4) - var(--space-2)) * var(--p));
   flex-shrink: 0;
   overflow: hidden;
-  // Same as the top bar: the header gesture must win over native scrolling.
+  // Leave native panning available for the nested lyrics viewport.
+  touch-action: auto;
+}
+
+.album-cover,
+.song-info,
+.progress-section,
+.controls {
   touch-action: none;
 }
 
@@ -1166,6 +1362,48 @@ onUnmounted(() => {
     color: var(--text-tertiary);
     box-shadow: inset 0 0 0 1px var(--hairline);
     animation: none;
+  }
+}
+
+.lyrics {
+  position: relative;
+  height: calc(120px * (1 - var(--p)));
+  overflow: hidden;
+  overflow-y: auto;
+  text-align: center;
+  color: var(--text-secondary);
+  scrollbar-width: thin;
+  touch-action: pan-y;
+  overscroll-behavior-y: contain;
+  overflow-anchor: none;
+  .lyrics-lines {
+    padding-block: calc(60px * (1 - var(--p)));
+  }
+  &:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: -2px;
+  }
+  .lyrics-retry {
+    color: var(--primary-color);
+    background: transparent;
+    border: 1px solid currentColor;
+    border-radius: var(--radius-md);
+    padding: 6px 12px;
+    cursor: pointer;
+  }
+  .lyric-line {
+    margin: 0;
+    padding: 8px 12px;
+    color: var(--text-color);
+    line-height: 1.6;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+    opacity: 0.6;
+    &.active {
+      color: var(--primary-color);
+      opacity: 1;
+      font-weight: 600;
+    }
   }
 }
 

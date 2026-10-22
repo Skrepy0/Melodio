@@ -1,3 +1,4 @@
+import { Capacitor } from '@capacitor/core'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useAppStore } from '@/stores/app'
 import type { DownloadTaskSnapshot } from '@/utils/interface'
@@ -1084,5 +1085,102 @@ describe('search', () => {
     expect(store.hasSearched).toBe(false)
     expect(store.searchError).toBeNull()
     expect(store.isLoading).toBe(false)
+  })
+})
+
+describe('showLyrics', () => {
+  it('defaults to true and persists both values', () => {
+    const store = useAppStore()
+    expect(store.getShowLyrics()).toBe(true)
+    store.setShowLyrics(true)
+    expect(store.getShowLyrics()).toBe(true)
+    expect(localStorage.getItem('showLyrics')).toBe('true')
+    freshPinia()
+    const restored = useAppStore()
+    expect(restored.getShowLyrics()).toBe(true)
+    restored.setShowLyrics(false)
+    expect(localStorage.getItem('showLyrics')).toBe('false')
+    localStorage.setItem('showLyrics', 'true')
+    restored.initShowLyrics()
+    expect(restored.getShowLyrics()).toBe(true)
+  })
+})
+
+describe('searchLyricsOnline', () => {
+  it('defaults on and restores an explicit disabled preference', () => {
+    const store = useAppStore()
+    expect(store.getSearchLyricsOnline()).toBe(true)
+    store.setSearchLyricsOnline(false)
+    expect(localStorage.getItem('searchLyricsOnline')).toBe('false')
+    freshPinia()
+    const restored = useAppStore()
+    expect(restored.getSearchLyricsOnline()).toBe(false)
+    restored.initSearchLyricsOnline()
+    expect(restored.getSearchLyricsOnline()).toBe(false)
+    restored.setShowLyrics(false)
+    freshPinia()
+    expect(useAppStore().getShowLyrics()).toBe(false)
+  })
+})
+
+describe('lyrics retry count', () => {
+  it('defaults to two, persists zero, and restores the configured count', () => {
+    const store = useAppStore()
+    expect(store.getLyricsRetryCount()).toBe(2)
+    store.setLyricsRetryCount(0)
+    expect(localStorage.getItem('lyricsRetryCount')).toBe('0')
+    freshPinia()
+    const restored = useAppStore()
+    expect(restored.getLyricsRetryCount()).toBe(0)
+    localStorage.setItem('lyricsRetryCount', '10')
+    restored.initLyricsRetryCount()
+    expect(restored.getLyricsRetryCount()).toBe(10)
+  })
+
+  it.each([
+    [-1, 0],
+    [11, 10],
+    [3.9, 3],
+    [NaN, 2],
+    [Infinity, 2],
+  ])('normalizes %s to %i', (input, expected) => {
+    const store = useAppStore()
+    store.setLyricsRetryCount(input)
+    expect(store.getLyricsRetryCount()).toBe(expected)
+    expect(localStorage.getItem('lyricsRetryCount')).toBe(String(expected))
+    freshPinia()
+    expect(useAppStore().getLyricsRetryCount()).toBe(expected)
+  })
+
+  it('sanitizes invalid stored values during initialization', () => {
+    const store = useAppStore()
+    localStorage.setItem('lyricsRetryCount', 'broken')
+    store.initLyricsRetryCount()
+    expect(store.getLyricsRetryCount()).toBe(2)
+    localStorage.setItem('lyricsRetryCount', '200')
+    store.initLyricsRetryCount()
+    expect(store.getLyricsRetryCount()).toBe(10)
+  })
+})
+
+describe('native lyric settings synchronization', () => {
+  it('sends lyric visibility, online setting and retry count to MediaSession playback', async () => {
+    vi.spyOn(Capacitor, 'isNativePlatform').mockReturnValue(true)
+    vi.spyOn(Capacitor, 'getPlatform').mockReturnValue('android')
+    const configure = native('configureLyrics')
+    const store = useAppStore()
+    await vi.waitFor(() =>
+      expect(configure).toHaveBeenCalledWith(
+        expect.objectContaining({ enabled: true, online: true, retryCount: 2 })
+      )
+    )
+    store.setShowLyrics(false)
+    store.setSearchLyricsOnline(false)
+    store.setLyricsRetryCount(7)
+    await vi.waitFor(() =>
+      expect(configure).toHaveBeenLastCalledWith(
+        expect.objectContaining({ enabled: false, online: false, retryCount: 7 })
+      )
+    )
   })
 })

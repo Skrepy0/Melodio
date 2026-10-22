@@ -131,6 +131,7 @@ export async function getSongInfoByPath(
       track: media.track ?? 0,
       year: media.year ?? 0,
       albumArtUri,
+      ...(originalSong.lyric ? { lyric: originalSong.lyric } : {}),
     }
   } catch (error) {
     console.error('获取歌曲信息失败:', error)

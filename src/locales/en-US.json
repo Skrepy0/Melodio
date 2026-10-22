@@ -1,4 +1,23 @@
 {
+  "lyricsCache": {
+    "title": "Lyrics cache",
+    "desc": "View and delete cached lyrics. Playback continues; lyrics will be fetched again on the next load.",
+    "count": "{count} cached songs",
+    "lines": "{count} synchronized lines",
+    "delete": "Delete",
+    "deleteSong": "Delete cached lyrics for {title}",
+    "deleteConfirm": "Delete cached lyrics for {title}?",
+    "clear": "Clear all",
+    "clearConfirm": "Clear all cached lyrics? Song files will remain.",
+    "collapse": "Hide",
+    "collapseSong": "Hide cached lyrics for {title}",
+    "preview": "View",
+    "previewSong": "View cached lyrics for {title}",
+    "refresh": "Refresh",
+    "loading": "Loading cache…",
+    "empty": "No cached lyrics",
+    "error": "Could not manage the cache. Refresh and try again."
+  },
   "home": {
     "libraryTitle": "Library",
     "searchPlaceholder": "Search",
@@ -51,6 +70,10 @@
   "player": {
     "unknownTitle": "Not playing",
     "unknownArtist": "Unknown Artist",
+    "lyricsLoading": "Searching for lyrics…",
+    "lyricsError": "Could not load lyrics. Check your connection and retry.",
+    "retryLyrics": "Search lyrics again",
+    "noLyrics": "No synchronized lyrics available",
     "nowPlaying": "Now playing",
     "speed": "Playback speed",
     "playMode": {
@@ -280,6 +303,12 @@
     "accessibility": {
       "title": "Accessibility",
       "desc": "Switches for related features provided by the app.",
+      "lyricsRetryCount": "Automatic lyrics search retries",
+      "lyricsRetryCountDesc": "Retry failed or empty searches 0–10 times. Set 0 to disable. Excludes the initial search.",
+      "searchLyricsOnline": "Search lyrics online",
+      "searchLyricsOnlineDesc": "Search public Meting first, with LRCLIB as a fallback, and cache synchronized lyrics",
+      "showLyrics": "Show lyrics",
+      "showLyricsDesc": "Show synchronized lyrics on the playback screen",
       "pinyinSearch": "Pinyin Search",
       "pinyinSearchDesc": "When enabled, all searches will support fuzzy Pinyin matching.",
       "autoPauseOnDisconnect": "Auto-pause on device disconnect",

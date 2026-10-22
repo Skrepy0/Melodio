@@ -57,6 +57,7 @@ export interface DownloadTaskStatus {
 }
 
 export interface DownloadTaskSnapshot {
+  lyric?: string | null
   taskId: string
   songIdentifier: string
   source: string
@@ -108,6 +109,8 @@ export interface DownloadTaskResult {
 }
 
 export interface Song {
+  /** LRC text or an HTTP(S) URL supplied by the online source. */
+  lyric?: string | null
   id: string
   displayName: string
   uri: string

@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import * as lyrics from '@/utils/lyrics'
 import { nextTick } from 'vue'
 import PlayerView from '@/views/PlayerView.vue'
 import { useAppStore } from '@/stores/app'
@@ -30,9 +31,13 @@ beforeEach(() => {
   clearStorage()
   freshPinia()
   vi.clearAllMocks()
+  vi.spyOn(lyrics, 'loadTrackLyrics').mockImplementation(async (song) =>
+    lyrics.parseLyrics(song.lyric || '')
+  )
 })
 
 afterEach(() => {
+  vi.useRealTimers()
   vi.restoreAllMocks()
 })
 
@@ -46,6 +51,134 @@ function seedQueue() {
 }
 
 describe('PlayerView', () => {
+  it('passes the retry setting and cancels work when online lyrics are disabled', async () => {
+    const { store } = seedQueue()
+    store.setLyricsRetryCount(7)
+    const wrapper = mountComponent(PlayerView)
+    expect(vi.mocked(lyrics.loadTrackLyrics).mock.calls[0][3]).toBe(7)
+    const signal = vi.mocked(lyrics.loadTrackLyrics).mock.calls[0][2]
+    store.setSearchLyricsOnline(false)
+    await nextTick()
+    expect(signal.aborted).toBe(true)
+    const latest = vi.mocked(lyrics.loadTrackLyrics).mock.calls.at(-1)!
+    expect(latest[1]).toBe(false)
+    expect(latest[3]).toBe(7)
+    wrapper.unmount()
+  })
+
+  it('keeps lyric swipes out of the player collapse gesture', async () => {
+    seedQueue()
+    const wrapper = mountComponent(PlayerView)
+    await wrapper
+      .find('.lyrics')
+      .trigger('pointerdown', { pointerId: 42, pointerType: 'touch', clientY: 200 })
+    const move = new Event('pointermove', { bubbles: true, cancelable: true })
+    Object.assign(move, { pointerId: 42, clientY: 100 })
+    document.dispatchEvent(move)
+    expect(move.defaultPrevented).toBe(false)
+    expect((wrapper.element as HTMLElement).style.getPropertyValue('--p')).toBe('')
+    document.dispatchEvent(Object.assign(new Event('pointercancel'), { pointerId: 42 }))
+    wrapper.unmount()
+  })
+
+  it('centers the active lyric within its own scroll container', async () => {
+    const { store } = seedQueue()
+    vi.mocked(lyrics.loadTrackLyrics).mockResolvedValueOnce([
+      { time: 0, text: 'First' },
+      { time: 10, text: 'Next' },
+    ])
+    const wrapper = mountComponent(PlayerView)
+    await vi.waitFor(() => expect(wrapper.findAll('.lyric-line')).toHaveLength(2))
+    const container = wrapper.find('.lyrics').element as HTMLElement
+    const line = wrapper.findAll('.lyric-line')[1].element as HTMLElement
+    container.scrollTop = 40
+    Object.defineProperty(container, 'clientHeight', { value: 120 })
+    Object.defineProperty(container, 'scrollHeight', { value: 500 })
+    vi.spyOn(container, 'getBoundingClientRect').mockReturnValue({ top: 200 } as DOMRect)
+    vi.spyOn(line, 'getBoundingClientRect').mockReturnValue({ top: 310, height: 32 } as DOMRect)
+    const scrollTo = vi.fn()
+    container.scrollTo = scrollTo
+    store.setMockCurrentTime(11)
+    await nextTick()
+    await nextTick()
+    expect(scrollTo).toHaveBeenLastCalledWith({ top: 106, behavior: 'smooth' })
+
+    vi.useFakeTimers()
+    await wrapper.find('.lyrics').trigger('wheel', { deltaY: 50 })
+    scrollTo.mockClear()
+    store.setMockCurrentTime(0)
+    await nextTick()
+    await nextTick()
+    expect(scrollTo).not.toHaveBeenCalled()
+    await vi.advanceTimersByTimeAsync(2999)
+    expect(scrollTo).not.toHaveBeenCalled()
+    await vi.advanceTimersByTimeAsync(1)
+    expect(scrollTo).toHaveBeenCalledTimes(1)
+
+    vi.spyOn(window, 'matchMedia').mockReturnValue({ matches: true } as MediaQueryList)
+    store.setMockCurrentTime(11)
+    await nextTick()
+    await nextTick()
+    expect(scrollTo).toHaveBeenLastCalledWith({ top: 106, behavior: 'auto' })
+    wrapper.unmount()
+  })
+
+  it('loads online lyrics by default and clears old requests on track changes', async () => {
+    const { store } = seedQueue()
+    let finish: (lines: lyrics.LyricLine[]) => void = () => {}
+    vi.mocked(lyrics.loadTrackLyrics)
+      .mockImplementationOnce(
+        (_song, _online, signal) =>
+          new Promise((resolve) => {
+            finish = resolve
+            expect(signal.aborted).toBe(false)
+          })
+      )
+      .mockResolvedValueOnce([{ time: 0, text: 'Next song' }])
+    const wrapper = mountComponent(PlayerView)
+    expect(wrapper.find('.lyrics-empty').text()).toBeTruthy()
+    store.getPlayData().currentIndex = 1
+    await vi.waitFor(() => expect(wrapper.find('.lyric-line').text()).toBe('Next song'))
+    finish([{ time: 0, text: 'Stale song' }])
+    await nextTick()
+    expect(wrapper.find('.lyric-line').text()).toBe('Next song')
+    wrapper.unmount()
+  })
+
+  it('shows failure and lets the user retry', async () => {
+    seedQueue()
+    vi.mocked(lyrics.loadTrackLyrics)
+      .mockRejectedValueOnce(new Error('offline'))
+      .mockResolvedValueOnce([{ time: 0, text: 'Found' }])
+    const wrapper = mountComponent(PlayerView)
+    await vi.waitFor(() => expect(wrapper.find('.lyrics-retry').exists()).toBe(true))
+    await wrapper.find('.lyrics-retry').trigger('click')
+    await vi.waitFor(() => expect(wrapper.find('.lyric-line').text()).toBe('Found'))
+    wrapper.unmount()
+  })
+
+  it('toggles lyrics and follows playback and backward seeks', async () => {
+    const { store, songs } = seedQueue()
+    store.setShowLyrics(false)
+    songs[0].lyric = '[00:01]First\n[00:05]Second'
+    store.setPlayQueue(songs)
+    const wrapper = mountComponent(PlayerView)
+    expect(wrapper.find('.lyrics').exists()).toBe(false)
+    store.setShowLyrics(true)
+    await vi.waitFor(() => expect(wrapper.findAll('.lyric-line')).toHaveLength(2))
+    expect(wrapper.find('.lyric-line.active').exists()).toBe(false)
+    store.setMockCurrentTime(6)
+    await nextTick()
+    expect(wrapper.find('.lyric-line.active').text()).toBe('Second')
+    store.setMockCurrentTime(2)
+    await nextTick()
+    expect(wrapper.find('.lyric-line.active').text()).toBe('First')
+    store.setShowLyrics(false)
+    await nextTick()
+    expect(wrapper.find('.lyrics').exists()).toBe(false)
+    wrapper.unmount()
+  })
+
   it('renders the current track and queue', async () => {
     const { songs } = seedQueue()
     const wrapper = mountComponent(PlayerView)

@@ -1,8 +1,11 @@
+import type { LyricCacheEntry } from '@/utils/lyricCache'
 export interface SongItem {
   url: string
   title: string
   artist: string
   album: string
+  lyric?: string | null
+  duration?: number
   coverUrl: string | any
 }
 
@@ -13,7 +16,23 @@ export interface PlaybackStateSnapshot {
   duration: number
 }
 
+export interface NativeLyricsOptions {
+  enabled: boolean
+  online: boolean
+  retryCount: number
+  metingApi: string
+}
+
 export interface NativeAudioPlugin {
+  listLyricsCache(): Promise<{ entries: LyricCacheEntry[] }>
+  readLyricsCache(options: { id: string }): Promise<{ lyrics: string }>
+  deleteLyricsCache(options: { id: string }): Promise<void>
+  clearLyricsCache(): Promise<void>
+  configureLyrics(options: NativeLyricsOptions): Promise<void>
+  lookupLyrics(
+    options: Omit<NativeLyricsOptions, 'enabled'> & { song: Omit<SongItem, 'coverUrl'> }
+  ): Promise<{ lines: Array<{ time: number; text: string }> }>
+
   load(options: { url: string }): Promise<void>
   play(): Promise<void>
   pause(): Promise<void>

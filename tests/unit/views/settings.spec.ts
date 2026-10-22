@@ -1,3 +1,5 @@
+import LyricsCachePage from '@/views/settings/LyricsCachePage.vue'
+import { LYRICS_CACHE_KEY } from '@/utils/lyricCache'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { nextTick } from 'vue'
 import SettingsPage from '@/views/SettingsPage.vue'
@@ -251,6 +253,29 @@ describe('AboutPage', () => {
 })
 
 describe('AccessibilityPage', () => {
+  it('edits, validates and resets the lyric retry count with InputBox', async () => {
+    const store = useAppStore()
+    store.setLyricsRetryCount(4)
+    const wrapper = mountPage(AccessibilityPage)
+    const box = wrapper.findComponent(InputBox)
+    expect(box.props('modelValue')).toBe(4)
+    expect(box.props('min')).toBe(0)
+    expect(box.props('max')).toBe(10)
+    expect(box.props('type')).toBe('integer')
+    const input = box.find('input')
+    await input.setValue('10')
+    expect(store.getLyricsRetryCount()).toBe(10)
+    expect(localStorage.getItem('lyricsRetryCount')).toBe('10')
+    for (const invalid of ['11', '-1', '2.5', '-', '']) {
+      await input.setValue(invalid)
+      expect(store.getLyricsRetryCount()).toBe(10)
+    }
+    await input.setValue('0')
+    expect(store.getLyricsRetryCount()).toBe(0)
+    await box.find('.reset-btn').trigger('click')
+    expect(store.getLyricsRetryCount()).toBe(2)
+  })
+
   it('renders every switch with its stored value', async () => {
     const store = useAppStore()
     store.setPinyinSearch(true)
@@ -265,7 +290,7 @@ describe('AccessibilityPage', () => {
     await nextTick()
 
     const switches = wrapper.findAllComponents(FunctionSwitch)
-    expect(switches).toHaveLength(7)
+    expect(switches).toHaveLength(9)
     expect(switches.map((s: any) => s.props('checked'))).toEqual([
       true,
       false,
@@ -274,6 +299,8 @@ describe('AccessibilityPage', () => {
       false,
       false,
       false,
+      true,
+      true,
     ])
   })
 
@@ -290,6 +317,18 @@ describe('AccessibilityPage', () => {
       await toggles[index].trigger('change')
       await nextTick()
     }
+
+    await flip(7)
+    expect(store.getShowLyrics()).toBe(false)
+    expect(localStorage.getItem('showLyrics')).toBe('false')
+    await flip(7)
+    expect(store.getShowLyrics()).toBe(true)
+    expect(localStorage.getItem('showLyrics')).toBe('true')
+    await flip(8)
+    expect(store.getSearchLyricsOnline()).toBe(false)
+    expect(localStorage.getItem('searchLyricsOnline')).toBe('false')
+    await flip(8)
+    expect(store.getSearchLyricsOnline()).toBe(true)
 
     await flip(0)
     expect(store.getPinyinSearch()).toBe(true)
@@ -825,5 +864,51 @@ describe('InterfaceSettingsPage', () => {
     await nextTick()
     wrapper.findComponent(PageTitle).props('goBack')()
     expect(router.back).toHaveBeenCalled()
+  })
+})
+
+describe('LyricsCachePage', () => {
+  function seedCache() {
+    localStorage.setItem(
+      LYRICS_CACHE_KEY,
+      JSON.stringify({
+        [JSON.stringify(['song', 'artist', 10000])]: {
+          title: 'Song',
+          artist: 'Artist',
+          album: 'Album',
+          lyrics: '[00:01]Cached line',
+        },
+        [JSON.stringify(['other', 'artist', 10000])]: '[00:01]Other line',
+      })
+    )
+  }
+  it('opens the cache manager from accessibility settings', async () => {
+    const wrapper = mountPage(AccessibilityPage)
+    link(wrapper, t('lyricsCache.title')).props('click')()
+    expect(router.push).toHaveBeenCalledWith('/settings/accessibility/lyrics-cache')
+  })
+  it('previews lyrics and deletes only the chosen cache after confirmation', async () => {
+    seedCache()
+    const wrapper = mountPage(LyricsCachePage)
+    await vi.waitFor(() => expect(wrapper.findAll('.cache-entry')).toHaveLength(2))
+    const row = wrapper.findAll('.cache-entry').find((entry: any) => entry.text().includes('Song'))!
+    await row.findAll('button')[0].trigger('click')
+    await vi.waitFor(() => expect(wrapper.find('.cache-preview').text()).toContain('Cached line'))
+    await row.findAll('button')[1].trigger('click')
+    await vi.waitFor(() => expect(wrapper.findAll('.cache-entry')).toHaveLength(1))
+    expect(wrapper.text()).toContain('other')
+    expect(showConfirm).toHaveBeenCalled()
+  })
+  it('preserves caches when cancelled, and clears all after confirmation', async () => {
+    seedCache()
+    const wrapper = mountPage(LyricsCachePage)
+    await vi.waitFor(() => expect(wrapper.findAll('.cache-entry')).toHaveLength(2))
+    vi.mocked(showConfirm).mockResolvedValueOnce(false)
+    await wrapper.findAll('.cache-toolbar button')[1].trigger('click')
+    await nextTick()
+    expect(wrapper.findAll('.cache-entry')).toHaveLength(2)
+    await wrapper.findAll('.cache-toolbar button')[1].trigger('click')
+    await vi.waitFor(() => expect(wrapper.findAll('.cache-entry')).toHaveLength(0))
+    expect(wrapper.find('.cache-status').text()).toBe(t('lyricsCache.empty'))
   })
 })

@@ -116,6 +116,16 @@ public class NativeAudioPlugin extends Plugin {
     private volatile boolean loading = false;
     private Handler progressHandler;
     private Runnable progressRunnable;
+    private NativeLyricsRepository lyricsRepository;
+    private LyricTimeline lyricTimeline = LyricTimeline.EMPTY;
+    private int lyricsGeneration;
+    private boolean lyricsEnabled = true;
+    private boolean lyricsOnline = true;
+    private int lyricsRetries = 2;
+    private String lyricsEndpoint = "https://api.qijieya.cn/meting/";
+    private String currentLyric = "";
+    private MediaMetadataCompat baseMetadata;
+    private Runnable lyricsRunnable;
     private String title = "";
     private String artist = "";
     private String album = "";
@@ -196,9 +206,8 @@ public class NativeAudioPlugin extends Plugin {
     public static void onWebViewRendererDestroyed() {
         webViewDestroyed = true;
         if (instance != null) {
-            // Progress events stop here, so snapshot the position now.
+            // Keep the native playback/lyrics clocks alive; only JS events are suppressed.
             instance.persistPlaybackState();
-            instance.stopProgress();
         }
         Log.w(TAG, "WebView renderer destroyed - suppressing all native-to-JS events");
     }
@@ -209,6 +218,12 @@ public class NativeAudioPlugin extends Plugin {
         instance = this;
         webViewDestroyed = false;
         coverCache = new CoverBitmapCache(getContext().getCacheDir());
+        lyricsRepository = new NativeLyricsRepository(getContext().getSharedPreferences("melodio_lyrics_cache", Context.MODE_PRIVATE));
+        android.content.SharedPreferences lyricSettings = getContext().getSharedPreferences("melodio_lyrics_settings", Context.MODE_PRIVATE);
+        lyricsEnabled = lyricSettings.getBoolean("enabled", true);
+        lyricsOnline = lyricSettings.getBoolean("online", true);
+        lyricsRetries = lyricSettings.getInt("retries", 2);
+        lyricsEndpoint = lyricSettings.getString("endpoint", lyricsEndpoint);
         initPlayer();
         initSession();
         createChannel();
@@ -255,8 +270,10 @@ public class NativeAudioPlugin extends Plugin {
 
     private void initPlayer() {
         mediaPlayer = new MediaPlayer();
+        mediaPlayer.setWakeMode(getContext(), android.os.PowerManager.PARTIAL_WAKE_LOCK);
         mediaPlayer.setAudioAttributes(new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA).setContentType(AudioAttributes.CONTENT_TYPE_MUSIC).build());
 
+        mediaPlayer.setOnSeekCompleteListener(mp -> updateCurrentLyric(currentPositionMs()));
         mediaPlayer.setOnCompletionListener(mp -> {
             if (repeatOne) {
                 mediaPlayer.seekTo(0);
@@ -433,7 +450,10 @@ public class NativeAudioPlugin extends Plugin {
 
             @Override
             public void onSeekTo(long pos) {
-                if (prepared) mediaPlayer.seekTo((int) pos);
+                if (prepared) {
+                    mediaPlayer.seekTo((int) pos);
+                    updateCurrentLyric(pos);
+                }
             }
         });
         Log.d(TAG, "MediaSession initialized");
@@ -481,6 +501,8 @@ public class NativeAudioPlugin extends Plugin {
                 s.artist = o.optString("artist", "");
                 s.album = o.optString("album", "");
                 s.cover = o.optString("coverUrl", "");
+                s.lyric = o.isNull("lyric") ? "" : o.optString("lyric", "");
+                s.duration = o.optLong("duration", 0);
                 Log.d(TAG, "s.cover:" + s.cover);
                 playlist.add(s);
             } catch (Exception e) {
@@ -499,6 +521,8 @@ public class NativeAudioPlugin extends Plugin {
             // Supersede any load still in flight so its onPrepared callback
             // cannot start a track that is no longer in the queue.
             loadGeneration++;
+            resetLyrics(null);
+            baseMetadata = null;
             metadataGeneration.next();
             rejectPendingCall("playlist cleared");
             if (prepared && mediaPlayer != null) {
@@ -708,6 +732,7 @@ public class NativeAudioPlugin extends Plugin {
 
         loading = true;
         SongItem song = playlist.get(index);
+        resetLyrics(song);
         Log.d(TAG, "loadAndPlay: loading index=" + index + " url=" + song.url + " autoPlay=" + autoPlay);
 
         loadGeneration++;
@@ -775,6 +800,7 @@ public class NativeAudioPlugin extends Plugin {
                         album = song.album;
 
                         updateMetadata(song);
+                        requestCurrentLyrics(song);
 
                         if (autoPlay) {
                             mp.start();
@@ -873,6 +899,7 @@ public class NativeAudioPlugin extends Plugin {
             pendingFocusPlayback = false;
             updateState(true);
             startProgress();
+            if (lyricsEnabled && lyricTimeline.lines.isEmpty() && currentIndex >= 0 && currentIndex < playlist.size()) requestCurrentLyrics(playlist.get(currentIndex));
             notifyPlayState(true);
             showNotification(true);
             Log.d(TAG, "playInternal: started playback");
@@ -956,6 +983,7 @@ public class NativeAudioPlugin extends Plugin {
         Log.d(TAG, "seek to " + timeSec + "s (" + msec + "ms)");
         if (prepared) {
             mediaPlayer.seekTo(msec);
+            updateCurrentLyric(msec);
             call.resolve();
         } else {
             call.reject("Player not ready");
@@ -975,6 +1003,7 @@ public class NativeAudioPlugin extends Plugin {
         updateState(false);
         stopProgress();
         abandonAudioFocus();
+        resetLyrics(null);
         cancelNotification();
         call.resolve();
     }
@@ -1018,6 +1047,119 @@ public class NativeAudioPlugin extends Plugin {
                 playbackSpeed);
         stateBuilder.setActions(PlaybackStateCompat.ACTION_PLAY | PlaybackStateCompat.ACTION_PAUSE | PlaybackStateCompat.ACTION_SKIP_TO_NEXT | PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS | PlaybackStateCompat.ACTION_SEEK_TO);
         mediaSession.setPlaybackState(stateBuilder.build());
+    }
+
+    @PluginMethod
+    public void listLyricsCache(PluginCall call) {
+        JSObject result = new JSObject();
+        result.put("entries", lyricsRepository.listCache());
+        call.resolve(result);
+    }
+    @PluginMethod
+    public void readLyricsCache(PluginCall call) {
+        JSObject result = new JSObject();
+        result.put("lyrics", lyricsRepository.readCache(call.getString("id")));
+        call.resolve(result);
+    }
+    @PluginMethod
+    public void deleteLyricsCache(PluginCall call) {
+        lyricsRepository.deleteCache(call.getString("id"));
+        call.resolve();
+    }
+    @PluginMethod
+    public void clearLyricsCache(PluginCall call) {
+        lyricsRepository.clearCache();
+        call.resolve();
+    }
+
+    @PluginMethod
+    public void configureLyrics(PluginCall call) {
+        boolean enabled = Boolean.TRUE.equals(call.getBoolean("enabled", true));
+        boolean online = Boolean.TRUE.equals(call.getBoolean("online", true));
+        int retries = Math.max(0, Math.min(10, call.getInt("retryCount", 2)));
+        String endpoint = call.getString("metingApi", lyricsEndpoint);
+        new Handler(Looper.getMainLooper()).post(() -> {
+            boolean changed = enabled != lyricsEnabled || online != lyricsOnline || retries != lyricsRetries || !Objects.equals(endpoint, lyricsEndpoint);
+            lyricsEnabled = enabled;
+            lyricsOnline = online;
+            lyricsRetries = retries;
+            lyricsEndpoint = endpoint;
+            getContext().getSharedPreferences("melodio_lyrics_settings", Context.MODE_PRIVATE).edit()
+                    .putBoolean("enabled", enabled).putBoolean("online", online)
+                    .putInt("retries", retries).putString("endpoint", endpoint).apply();
+            if (changed) {
+                lyricsRepository.cancelAll();
+                SongItem song = prepared && currentIndex >= 0 && currentIndex < playlist.size() ? playlist.get(currentIndex) : null;
+                resetLyrics(song);
+                if (song != null && enabled) requestCurrentLyrics(song);
+            }
+            call.resolve();
+        });
+    }
+
+    @PluginMethod
+    public void lookupLyrics(PluginCall call) {
+        JSObject song = call.getObject("song");
+        if (song == null) { call.reject("song required"); return; }
+        NativeLyricsRepository.Query query = new NativeLyricsRepository.Query(
+                song.optString("url", ""), song.optString("title", ""), song.optString("artist", ""),
+                song.optString("album", ""), song.isNull("lyric") ? "" : song.optString("lyric", ""), song.optLong("duration", 0));
+        lyricsRepository.load(query, Boolean.TRUE.equals(call.getBoolean("online", true)),
+                call.getInt("retryCount", 2), call.getString("metingApi", lyricsEndpoint)).whenComplete((timeline, error) -> {
+            if (isWebViewDestroyed()) return;
+            if (error != null) { call.reject("Lyrics lookup failed", new Exception(error)); return; }
+            JSArray lines = new JSArray();
+            for (LyricTimeline.Line line : timeline.lines) {
+                JSObject row = new JSObject();
+                row.put("time", line.timeMs / 1000.0);
+                row.put("text", line.text);
+                lines.put(row);
+            }
+            JSObject result = new JSObject();
+            result.put("lines", lines);
+            call.resolve(result);
+        });
+    }
+
+    private void resetLyrics(SongItem song) {
+        lyricsGeneration++;
+        if (song == null) lyricsRepository.cancelAll();
+        else lyricsRepository.cancelExcept(song.lyricQuery());
+        lyricTimeline = LyricTimeline.EMPTY;
+        currentLyric = "";
+        if (baseMetadata != null) publishLyricsMetadata();
+    }
+
+    private void requestCurrentLyrics(SongItem song) {
+        if (!lyricsEnabled) return;
+        final int generation = lyricsGeneration;
+        lyricsRepository.load(song.lyricQuery(), lyricsOnline, lyricsRetries, lyricsEndpoint).whenComplete((timeline, error) ->
+                new Handler(Looper.getMainLooper()).post(() -> {
+                    if (generation != lyricsGeneration || !lyricsEnabled || !prepared || error != null) return;
+                    lyricTimeline = timeline;
+                    updateCurrentLyric(currentPositionMs());
+                }));
+    }
+
+    private void updateCurrentLyric(long positionMs) {
+        String next = lyricsEnabled ? lyricTimeline.textAt(positionMs) : "";
+        if (Objects.equals(next, currentLyric)) return;
+        currentLyric = next;
+        publishLyricsMetadata();
+    }
+
+    private void publishLyricsMetadata() {
+        if (mediaSession == null || baseMetadata == null) return;
+        String subtitle = currentLyric.isEmpty() ? artist : currentLyric;
+        mediaSession.setMetadata(new MediaMetadataCompat.Builder(baseMetadata)
+                .putString(MediaMetadataCompat.METADATA_KEY_TITLE, title)
+                .putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_TITLE, title)
+                .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, subtitle)
+                .putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_SUBTITLE, subtitle)
+                .putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_DESCRIPTION, album)
+                .putString("com.skrepy.melodio.ORIGINAL_ARTIST", artist)
+                .build());
+        showNotification(isPlaying);
     }
 
     /**
@@ -1065,6 +1207,11 @@ public class NativeAudioPlugin extends Plugin {
                 .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, song.artist)
                 .putString(MediaMetadataCompat.METADATA_KEY_ALBUM, song.album)
                 .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, durationSec * 1000L);
+        // Publish text immediately; slow artwork must not delay a lyric/track change.
+        currentAlbumArt = null;
+        baseMetadata = b.build();
+        publishLyricsMetadata();
+
 
         // The JS layer already resolved the cover (local artwork or a web
         // result); anything unusable falls back to the default icon.
@@ -1174,8 +1321,8 @@ public class NativeAudioPlugin extends Plugin {
             builder.putBitmap(MediaMetadataCompat.METADATA_KEY_ART, bitmap);
         }
         currentAlbumArt = bitmap;
-        mediaSession.setMetadata(builder.build());
-        showNotification(isPlaying);
+        baseMetadata = builder.build();
+        publishLyricsMetadata();
     }
 
     /**
@@ -1218,7 +1365,7 @@ public class NativeAudioPlugin extends Plugin {
                 .setSmallIcon(R.drawable.ic_stat_music)
                 .setLargeIcon(art)
                 .setContentTitle(title)
-                .setContentText(artist)
+                .setContentText(currentLyric.isEmpty() ? artist : currentLyric)
                 .setContentIntent(pi)
                 .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
                 .setPriority(NotificationCompat.PRIORITY_LOW)
@@ -1243,8 +1390,10 @@ public class NativeAudioPlugin extends Plugin {
         android.app.Notification n = builder.build();
         try {
             NotificationManagerCompat.from(getContext()).notify(NOTIF_ID, n);
-        } catch (SecurityException e) {
-            Log.e(TAG, "Notification failed", e);
+            if (isPlaying) PlaybackService.publish(getContext(), n);
+            else PlaybackService.update(n);
+        } catch (SecurityException | IllegalStateException e) {
+            Log.e(TAG, "Notification/foreground service failed", e);
         }
     }
 
@@ -1259,6 +1408,7 @@ public class NativeAudioPlugin extends Plugin {
     }
 
     private void cancelNotification() {
+        PlaybackService.stop(getContext());
         try {
             NotificationManagerCompat.from(getContext()).cancel(NOTIF_ID);
         } catch (Exception e) {
@@ -1466,6 +1616,14 @@ public class NativeAudioPlugin extends Plugin {
             }
         };
         progressHandler.post(progressRunnable);
+        lyricsRunnable = new Runnable() {
+            @Override public void run() {
+                if (!prepared || !isPlaying) return;
+                if (lyricsEnabled) updateCurrentLyric(currentPositionMs());
+                progressHandler.postDelayed(this, 200);
+            }
+        };
+        progressHandler.post(lyricsRunnable);
         Log.d(TAG, "Progress updates started");
     }
 
@@ -1474,6 +1632,7 @@ public class NativeAudioPlugin extends Plugin {
             progressHandler.removeCallbacksAndMessages(null);
         }
         progressRunnable = null;
+        lyricsRunnable = null;
     }
 
     private void createChannel() {
@@ -1499,6 +1658,8 @@ public class NativeAudioPlugin extends Plugin {
         rejectPendingCall("plugin destroyed");
         stopProgress();
         progressHandler = null;
+        if (lyricsRepository != null) lyricsRepository.close();
+        lyricsGeneration++;
         networkExecutor.shutdownNow();
         coverExecutor.shutdownNow();
         if (mediaPlayer != null) {
@@ -1641,6 +1802,10 @@ public class NativeAudioPlugin extends Plugin {
     }
 
     static class SongItem {
-        String url, title, artist, album, cover;
+        String url, title, artist, album, cover, lyric;
+        long duration;
+        NativeLyricsRepository.Query lyricQuery() {
+            return new NativeLyricsRepository.Query(url, title, artist, album, lyric == null ? "" : lyric, duration);
+        }
     }
 }

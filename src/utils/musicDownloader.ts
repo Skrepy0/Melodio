@@ -47,6 +47,7 @@ function createDownloadSnapshot(song: OnlineSong, taskId: string): DownloadTaskS
     album: song.album,
     ext: song.ext,
     coverUrl: song.cover_url,
+    lyric: song.lyric,
     fileSizeBytes: song.file_size_bytes,
     duration: song.duration,
     downloadUrl: song.download_url,
@@ -77,7 +78,7 @@ function getSongFromTaskSnapshot(task: DownloadTaskSnapshot): OnlineSong | null 
     ext: sanitizeText(task.ext),
     file_size_bytes: Number(task.fileSizeBytes) || 0,
     duration: Number(task.duration) || 0,
-    lyric: null,
+    lyric: task.lyric ?? null,
     cover_url: task.coverUrl,
     download_url: downloadUrl,
     download_url_status: task.downloadUrlStatus || {

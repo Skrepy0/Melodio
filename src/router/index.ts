@@ -1,3 +1,4 @@
+import LyricsCachePage from '@/views/settings/LyricsCachePage.vue'
 import { createRouter, createWebHistory } from '@ionic/vue-router'
 import { RouteRecordRaw } from 'vue-router'
 import HomePage from '../views/HomePage.vue'
@@ -38,6 +39,11 @@ const routes: Array<RouteRecordRaw> = [
     path: '/settings/online_search/music_client',
     name: 'Music Client Settings',
     component: MusicClientSettingsPage,
+  },
+  {
+    path: '/settings/accessibility/lyrics-cache',
+    name: 'Lyrics Cache',
+    component: LyricsCachePage,
   },
   { path: '/settings/accessibility', name: 'Accessibility', component: AccessibilityPage },
   { path: '/settings/other', name: 'Other', component: OtherSettingsPage },
