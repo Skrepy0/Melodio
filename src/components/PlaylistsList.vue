@@ -118,7 +118,7 @@ const onMenuSelect = (action: string, playlist: Playlist) => {
   position: relative;
   height: 100%;
   overflow-y: auto;
-  padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+  padding-bottom: calc(96px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
   @include custom-scrollbar(3px);
 }
 
@@ -136,7 +136,7 @@ const onMenuSelect = (action: string, playlist: Playlist) => {
   background: var(--bottom-actions-bg);
   border-top: 1px solid var(--bottom-actions-border);
   z-index: 200;
-  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
   animation: sheetIn var(--duration-normal) var(--ease-out-expo);
 }
 

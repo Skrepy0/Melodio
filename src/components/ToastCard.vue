@@ -44,7 +44,7 @@ defineExpose({ show })
 // reads over any page, and only the icon carries the outcome colour.
 .toast {
   position: fixed;
-  bottom: calc(env(safe-area-inset-bottom, 0px) + 80px);
+  bottom: calc(var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)) + 80px);
   left: 50%;
   transform: translateX(-50%);
   display: flex;

@@ -19,6 +19,8 @@
     "error": "缓存操作失败，请刷新后重试。"
   },
   "home": {
+    "onlineSearchHint": "曲库中没有找到，试试在线搜索？",
+    "onlineSearchButton": "在线搜索",
     "libraryTitle": "曲库",
     "searchPlaceholder": "搜索",
     "categories": {

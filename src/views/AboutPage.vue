@@ -105,7 +105,7 @@ const openUrl = async (url: string) => {
 .about-content {
   flex: 1;
   overflow-y: auto;
-  padding: 0 0 calc(40px + env(safe-area-inset-bottom, 0px));
+  padding: 0 0 calc(40px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
   @include custom-scrollbar(3px);
 }
 

@@ -409,7 +409,7 @@ const backWithoutSave = async () => {
   display: flex;
   flex-direction: column;
   height: 100dvh;
-  padding-top: env(safe-area-inset-top, 0px);
+  padding-top: var(--safe-area-inset-top, env(safe-area-inset-top, 0px));
   background-color: var(--bg-color);
 }
 
@@ -531,7 +531,7 @@ const backWithoutSave = async () => {
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  padding-bottom: calc(var(--space-6) + env(safe-area-inset-bottom, 0px));
+  padding-bottom: calc(var(--space-6) + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
   @include custom-scrollbar(3px);
 }
 

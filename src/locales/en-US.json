@@ -19,6 +19,8 @@
     "error": "Could not manage the cache. Refresh and try again."
   },
   "home": {
+    "onlineSearchHint": "No matches in your library. Try searching online.",
+    "onlineSearchButton": "Search online",
     "libraryTitle": "Library",
     "searchPlaceholder": "Search",
     "categories": {

@@ -129,7 +129,7 @@ const clearHistory = async () => {
   position: relative;
   height: 100%;
   overflow-y: auto;
-  padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+  padding-bottom: calc(96px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
   background-color: var(--bg-color);
   @include custom-scrollbar(3px);
 }

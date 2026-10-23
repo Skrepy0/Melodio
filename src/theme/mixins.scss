@@ -335,7 +335,7 @@
   background: var(--bottom-actions-bg);
   border-top: 1px solid var(--bottom-actions-border);
   padding: var(--space-2) var(--space-3);
-  padding-bottom: calc(var(--space-2) + env(safe-area-inset-bottom, 0px));
+  padding-bottom: calc(var(--space-2) + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
   z-index: 100;
 
   .actions-container {
@@ -443,7 +443,7 @@
 // ===== Safe Area Padding =====
 // Add env(safe-area-inset-*) to specified side
 @mixin safe-area($side: bottom, $base: 0px) {
-  padding-#{$side}: calc(#{$base} + env(safe-area-inset-#{$side}, 0px));
+  padding-#{$side}: calc(#{$base} + var(--safe-area-inset-#{$side}, env(safe-area-inset-#{$side}, 0px)));
 }
 
 // ===== Focus Ring =====

@@ -60,6 +60,17 @@ async function mountHome() {
 }
 
 describe('HomePage', () => {
+  it('offers online search with the library keyword when no songs match', async () => {
+    const { wrapper } = await mountHome()
+    const search = wrapper.findComponent(SearchBox)
+    search.vm.$emit('update:modelValue', 'Hello 世界')
+    await nextTick()
+    search.vm.$emit('search')
+    await nextTick()
+    await wrapper.get('.online-search-btn').trigger('click')
+    expect(push).toHaveBeenCalledWith({ path: '/search', query: { keyword: 'Hello 世界' } })
+  })
+
   it('renders the library and song list', async () => {
     const { store, wrapper } = await mountHome()
     const songs = makeSongs(3)

@@ -371,7 +371,7 @@ const onSearch = () => {
 // cover + title pair, and the list scrolls beneath them.
 .page-top {
   flex-shrink: 0;
-  padding-top: env(safe-area-inset-top, 0px);
+  padding-top: var(--safe-area-inset-top, env(safe-area-inset-top, 0px));
   background-color: var(--bg-color);
 }
 
@@ -487,7 +487,7 @@ const onSearch = () => {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+  padding-bottom: calc(96px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
   @include custom-scrollbar(3px);
 }
 

@@ -265,7 +265,7 @@ const handleSongClick = (song: Song) => {
   background: var(--bottom-actions-bg);
   border-top: 1px solid var(--bottom-actions-border);
   z-index: 200;
-  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
   animation: sheetIn var(--duration-normal) var(--ease-out-expo);
 }
 

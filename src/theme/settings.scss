@@ -31,7 +31,7 @@
   height: 52px;
   box-sizing: content-box;
   padding: 0 8px;
-  padding-top: env(safe-area-inset-top, 0px);
+  padding-top: var(--safe-area-inset-top, env(safe-area-inset-top, 0px));
   background-color: var(--bg-color);
   gap: 4px;
   flex-shrink: 0;

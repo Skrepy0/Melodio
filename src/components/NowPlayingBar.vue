@@ -179,7 +179,7 @@ onUnmounted(() => {
   background: var(--bg-bar);
   border-top: 1px solid var(--hairline);
   z-index: 100;
-  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
 }
 
 .progress-line {

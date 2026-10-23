@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { nextTick } from 'vue'
+import { flushPromises } from '@vue/test-utils'
 import OnlineSearchPage from '@/views/OnlineSearchPage.vue'
 import OnlineSongItemSelectable from '@/components/song/OnlineSongItemSelectable.vue'
 import SearchBox from '@/components/SearchBox.vue'
@@ -25,9 +26,17 @@ vi.mock('@/utils/musicDownloader', () => ({
 }))
 vi.mock('@/utils/createPlaylistSelector', () => ({ showPlaylistSelector: vi.fn() }))
 vi.mock('@/utils/createInfo', () => ({ showSongInfo: vi.fn() }))
-vi.mock('@/router', () => ({
-  default: { back: vi.fn(), push: vi.fn(async () => {}) },
-}))
+vi.mock('@/router', async () => {
+  const { ref } = await import('vue')
+  return {
+    default: {
+      currentRoute: ref({ path: '/search', query: {}, hash: '' }),
+      replace: vi.fn(async () => {}),
+      back: vi.fn(),
+      push: vi.fn(async () => {}),
+    },
+  }
+})
 
 import toast from '@/utils/createToast'
 import { downloadMusic, downloadMultipleSongs, isSongDownloading } from '@/utils/musicDownloader'
@@ -41,6 +50,7 @@ beforeEach(() => {
   resetPlugins()
   clearStorage()
   freshPinia()
+  router.currentRoute.value = { path: '/search', query: {}, hash: '' } as any
   vi.clearAllMocks()
   vi.mocked(isSongDownloading).mockReturnValue(false)
 })
@@ -78,6 +88,27 @@ function seedResults(
 }
 
 describe('OnlineSearchPage', () => {
+  it('fills and searches a keyword passed from the library', async () => {
+    router.currentRoute.value = {
+      path: '/search',
+      query: { keyword: 'Hello 世界' },
+      hash: '',
+    } as any
+    const search = vi.spyOn(useAppStore(), 'search').mockResolvedValue(undefined)
+    const wrapper = mountPage()
+    await flushPromises()
+    expect(wrapper.findComponent(SearchBox).props('modelValue')).toBe('Hello 世界')
+    expect(search).toHaveBeenCalledWith(
+      'Hello 世界',
+      expect.anything(),
+      expect.anything(),
+      expect.anything(),
+      expect.anything(),
+      expect.any(Function)
+    )
+    expect(router.replace).toHaveBeenCalledWith({ path: '/search', query: {}, hash: '' })
+  })
+
   it('shows the initial hint before searching', () => {
     const wrapper = mountPage()
     expect(wrapper.find('.status-placeholder').exists()).toBe(true)

@@ -362,6 +362,27 @@ watch(keyword, (newVal) => {
   }
 })
 
+// Consume the request so returning from the player does not search again.
+// Watching the route also supports Ionic's cached pages.
+watch(
+  () => router.currentRoute.value,
+  async (route) => {
+    const query = route.query.keyword
+    if (route.path !== '/search' || typeof query !== 'string' || !query.trim()) return
+    if (isLoading.value) {
+      MusicSigner.cancelSearch()
+      appStore.resetSearch()
+    }
+    keyword.value = query.trim()
+    await nextTick()
+    const remainingQuery = { ...route.query }
+    delete remainingQuery.keyword
+    await router.replace({ path: route.path, query: remainingQuery, hash: route.hash })
+    await onSearch()
+  },
+  { immediate: true }
+)
+
 onBeforeUnmount(() => {
   // ignore
 })
@@ -507,7 +528,7 @@ onBeforeUnmount(() => {
   height: 100%;
   overflow-y: auto;
   background-color: var(--bg-color);
-  padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+  padding-bottom: calc(96px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
   @include custom-scrollbar(3px);
 }
 
@@ -515,7 +536,8 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  padding: calc(var(--space-2) + env(safe-area-inset-top, 0px)) var(--space-3) var(--space-2);
+  padding: calc(var(--space-2) + var(--safe-area-inset-top, env(safe-area-inset-top, 0px)))
+    var(--space-3) var(--space-2);
 
   .header-back {
     @include header-back;
@@ -649,7 +671,7 @@ onBeforeUnmount(() => {
   background: var(--bottom-actions-bg);
   border-top: 1px solid var(--bottom-actions-border);
   z-index: 200;
-  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
   animation: sheetIn var(--duration-normal) var(--ease-out-expo);
 }
 

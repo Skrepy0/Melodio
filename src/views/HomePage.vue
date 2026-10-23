@@ -24,6 +24,10 @@ const { t } = useI18n()
 const appStore = useAppStore()
 const router = useRouter()
 const keyword = ref('')
+const searchOnline = () => {
+  const query = keyword.value.trim()
+  if (query) router.push({ path: '/search', query: { keyword: query } })
+}
 
 const playShownSongs = async () => {
   if (showSongsList.value.length === 0) return
@@ -355,7 +359,10 @@ watch(selectedCategory, () => {
     </div>
 
     <div class="body">
-      <div v-if="selectedCategory === 'tracks' && songsList.length === 0" class="empty-state">
+      <div
+        v-if="selectedCategory === 'tracks' && songsList.length === 0 && !keyword.trim()"
+        class="empty-state"
+      >
         <Icon :width="32" class="empty-icon" icon="mdi:music-note-off-outline" />
         <p>{{ $t('songList.empty') }}</p>
       </div>
@@ -365,6 +372,12 @@ watch(selectedCategory, () => {
       >
         <Icon :width="32" class="empty-icon" icon="mdi:magnify-close" />
         <p>{{ $t('songList.notFound') }}</p>
+        <template v-if="keyword.trim()">
+          <p>{{ $t('home.onlineSearchHint') }}</p>
+          <button class="online-search-btn" @click="searchOnline">
+            {{ $t('home.onlineSearchButton') }}
+          </button>
+        </template>
       </div>
       <PlayList
         v-else-if="selectedCategory === 'tracks'"
@@ -392,7 +405,7 @@ watch(selectedCategory, () => {
 .top {
   flex-shrink: 0;
   background-color: var(--bg-color);
-  padding-top: env(safe-area-inset-top, 0px);
+  padding-top: var(--safe-area-inset-top, env(safe-area-inset-top, 0px));
   padding-bottom: var(--space-2);
 }
 
@@ -459,6 +472,16 @@ watch(selectedCategory, () => {
   background-color: var(--bg-color);
   -webkit-overflow-scrolling: touch;
   @include custom-scrollbar(3px);
+}
+
+.online-search-btn {
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  color: var(--ion-color-primary);
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
 }
 
 .empty-state {

@@ -1228,7 +1228,7 @@ onUnmounted(() => {
   background-color: var(--bg-color);
   position: relative;
   isolation: isolate;
-  padding-top: env(safe-area-inset-top, 0px);
+  padding-top: var(--safe-area-inset-top, env(safe-area-inset-top, 0px));
   // A pull past an edge translates the content below; crop the spill so the
   // layout does not grow scrollbars or bleed over the safe area.
   overflow: hidden;
