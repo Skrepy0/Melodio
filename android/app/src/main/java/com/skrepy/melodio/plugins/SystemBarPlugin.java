@@ -27,7 +27,7 @@ public class SystemBarPlugin extends Plugin {
     }
 
     /**
-     * Make both system bars transparent and lay the WebView out edge-to-edge.
+     * Make both system bars transparent while preserving the activity inset policy.
      * <p>
      * The bar backgrounds are now painted by the page itself (the wallpaper
      * composite at --bg-page); this plugin only controls the icon/button
@@ -66,10 +66,9 @@ public class SystemBarPlugin extends Plugin {
             // page background shows through instead of a solid black/white slab.
             window.getDecorView().setBackgroundColor(Color.TRANSPARENT);
 
-            // Edge-to-edge on every API level. Android 15 (API 35) enforces this
-            // anyway; doing it ourselves keeps the layout identical below 35 so
-            // the same safe-area-inset CSS applies everywhere.
-            WindowCompat.setDecorFitsSystemWindows(window, false);
+            // Keep the same inset policy as MainActivity when changing themes.
+            WindowCompat.setDecorFitsSystemWindows(
+                    window, Build.VERSION.SDK_INT < Build.VERSION_CODES.VANILLA_ICE_CREAM);
 
             // API 29+ applies a translucent scrim over a transparent navigation
             // bar unless contrast enforcement is disabled. Without this the bar

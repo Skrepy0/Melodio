@@ -5,6 +5,7 @@ import android.media.AudioDeviceCallback;
 import android.media.AudioDeviceInfo;
 import android.media.AudioManager;
 import android.os.Bundle;
+import android.os.Build;
 import android.util.Log;
 import android.webkit.RenderProcessGoneDetail;
 import android.webkit.WebView;
@@ -116,10 +117,10 @@ public class MainActivity extends BridgeActivity {
         this.registerPlugin(MusicSignerPlugin.class);
         this.registerPlugin(DownloaderPlugin.class);
         super.load();
-        // 禁止内容绘制到状态栏/导航栏下方。
-        // Android 15 起系统强制 edge-to-edge，此调用不再生效；该版本由 Capacitor
-        // 的 SystemBars 插件按系统栏 inset 给 WebView 父容器补 padding 来实现同样的效果。
-        WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
+        // Older WebViews may report zero CSS safe-area insets. Let the system
+        // reserve bar space below Android 15; Capacitor handles insets on 15+.
+        WindowCompat.setDecorFitsSystemWindows(
+                getWindow(), Build.VERSION.SDK_INT < Build.VERSION_CODES.VANILLA_ICE_CREAM);
         // Re-set up crash handler after plugins are loaded (WebView is now ready)
         setupWebViewCrashHandler();
     }
