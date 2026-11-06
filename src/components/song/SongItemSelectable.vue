@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, ref } from 'vue'
+import { computed, onUnmounted, ref } from 'vue'
 import { Icon } from '@iconify/vue'
 import SongItem from './SongItem.vue'
 import type { Song, SongItemSelectableProps } from '@/utils/interface.ts'
@@ -28,6 +28,8 @@ const clearTimer = () => {
     longPressTimer = null
   }
 }
+
+onUnmounted(clearTimer)
 
 const onTouchStart = () => {
   clearTimer()

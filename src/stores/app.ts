@@ -252,7 +252,14 @@ export const useAppStore = defineStore('app', () => {
     }
   }
 
+  function prepareForBackupReload() {
+    // Lifecycle snapshots and pending progress must not overwrite the imported backup.
+    playerStore.suspendPersistenceForReload()
+    downloadsStore.suspendPersistenceForReload()
+  }
+
   return {
+    prepareForBackupReload,
     isI18nReady,
     initLanguage,
     getBlacklist,

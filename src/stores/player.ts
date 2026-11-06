@@ -17,6 +17,10 @@ import { App } from '@capacitor/app'
 
 export const usePlayerStore = defineStore('player', () => {
   const settings = useSettingsStore()
+  let persistenceSuspended = false
+  function suspendPersistenceForReload() {
+    persistenceSuspended = true
+  }
 
   const { getAutoPauseOnDisconnect, getAutoPlayOnConnect } = settings
 
@@ -37,11 +41,12 @@ export const usePlayerStore = defineStore('player', () => {
   }
 
   function initBlacklist() {
-    const obj = localStorage.getItem('blacklist')
-    if (obj) {
-      const parsed = JSON.parse(obj)
-      if (Array.isArray(parsed)) blacklist.value = parsed
-      else if (Array.isArray(parsed.data)) blacklist.value = parsed.data
+    try {
+      const parsed = JSON.parse(localStorage.getItem('blacklist') || '[]')
+      const data = Array.isArray(parsed) ? parsed : parsed?.data
+      if (Array.isArray(data)) blacklist.value = data
+    } catch (error) {
+      console.error('Invalid blacklist', error)
     }
   }
 
@@ -78,10 +83,12 @@ export const usePlayerStore = defineStore('player', () => {
       // Pick up web artwork for the current queue now that it is allowed.
       void resolveQueueCovers(playQueue.value, updateVersion)
     } else {
+      ++coverLookupVersion
       coverLookupAbort?.abort()
       coverLookupAbort = null
       // Drop any web URL that was previously handed to the native player.
-      void audio.setPlaylist(await buildNativePlaylist(playQueue.value))
+      await audio.setPlaylist(await buildNativePlaylist(playQueue.value))
+      void resolveQueueCovers(playQueue.value, updateVersion)
     }
   }
 
@@ -227,19 +234,30 @@ export const usePlayerStore = defineStore('player', () => {
   }
 
   function setSongListById(val: number, list: Playlist) {
-    list.songCount = list.data.length
-    songLists.value[val - 1] = list
+    if (val === 0) {
+      likeList.value = { ...list, id: 0, songCount: list.data.length }
+      saveLikeList()
+      return
+    }
+    const index = songLists.value.findIndex((item) => item.id === val)
+    if (index < 0) return
+    songLists.value[index] = { ...list, id: val, songCount: list.data.length }
     saveSongLists()
   }
 
   function setSongListDataById(val: number, data: Song[]) {
-    songLists.value[val - 1].data = data
-    songLists.value[val - 1].songCount = data.length
+    if (val === 0) return setLikeListData(data)
+    const list = songLists.value.find((item) => item.id === val)
+    if (!list) return
+    list.data = data
+    list.songCount = data.length
     saveSongLists()
   }
 
   function delectSongListById(val: number) {
-    songLists.value.splice(val - 1, 1)
+    const index = songLists.value.findIndex((item) => item.id === val)
+    if (index < 0) return
+    songLists.value.splice(index, 1)
     saveSongLists()
   }
 
@@ -282,6 +300,7 @@ export const usePlayerStore = defineStore('player', () => {
   const currentPlayListIndex = ref(0)
 
   function savePlayData() {
+    if (persistenceSuspended) return
     localStorage.setItem(
       'playData',
       JSON.stringify({
@@ -293,6 +312,7 @@ export const usePlayerStore = defineStore('player', () => {
   }
 
   function savePlayQueue() {
+    if (persistenceSuspended) return
     localStorage.setItem('playQueue', JSON.stringify(playQueue.value))
   }
 
@@ -319,6 +339,8 @@ export const usePlayerStore = defineStore('player', () => {
   // 播放队列更新
   let updateVersion = 0
 
+  let coverLookupVersion = 0
+
   let coverLookupAbort: AbortController | null = null
 
   /** How many queue entries to look up online per sync (current song first). */
@@ -326,20 +348,16 @@ export const usePlayerStore = defineStore('player', () => {
 
   async function buildNativePlaylist(queue: Song[]) {
     const allowWeb = canFetchCoverFromWeb.value
-    return Promise.all(
-      queue.map(async (s) => ({
-        url: getAccessibleUrl(s.uri),
-        title: s.title,
-        artist: s.artist || 'Unknown',
-        album: s.album || '',
-        lyric: s.lyric,
-        duration: s.duration,
-        // Native cannot decode albumart URIs. `resolveNativeCoverUrl` hands over
-        // a real file/data/https URL: web cache first, then the stored
-        // file:/data: reference, then the artwork extracted from the audio file.
-        coverUrl: await resolveNativeCoverUrl(s, allowWeb),
-      }))
-    )
+    return queue.map((s) => ({
+      url: getAccessibleUrl(s.uri),
+      title: s.title,
+      artist: s.artist || 'Unknown',
+      album: s.album || '',
+      lyric: s.lyric,
+      duration: s.duration,
+      // Submit cached artwork immediately; extract missing covers in the bounded background pass.
+      coverUrl: cachedNativeCoverUrl(s, allowWeb),
+    }))
   }
 
   /**
@@ -348,6 +366,7 @@ export const usePlayerStore = defineStore('player', () => {
    * 只缓存 local/embedded 结果；web 封面由 coverCache 自己缓存，且优先级更高。
    */
   const nativeLocalCoverCache = new Map<string, string>()
+  const pendingNativeCovers = new Map<string, Promise<string>>()
 
   /**
    * 原生侧封面解析。Android 通知栏的 BitmapFactory 无法解码 MediaStore 的
@@ -359,6 +378,15 @@ export const usePlayerStore = defineStore('player', () => {
    *
    * 全部失败返回 ''，由原生侧回退到默认图标。
    */
+  function cachedNativeCoverUrl(song: Song, allowWeb: boolean): string {
+    const web = allowWeb ? getCachedCover(song.title, song.artist || '') : ''
+    const local = (song.albumArtUri || '').trim()
+    return (
+      web ||
+      (local && !local.startsWith('content://') ? local : nativeLocalCoverCache.get(song.id) || '')
+    )
+  }
+
   async function resolveNativeCoverUrl(song: Song, allowWeb: boolean): Promise<string> {
     if (allowWeb) {
       const web = getCachedCover(song.title, song.artist || '')
@@ -370,15 +398,25 @@ export const usePlayerStore = defineStore('player', () => {
 
     if (nativeLocalCoverCache.has(song.id)) return nativeLocalCoverCache.get(song.id)!
 
-    let path = ''
+    const pending = pendingNativeCovers.get(song.id)
+    if (pending) return pending
+    const lookup = (async () => {
+      let path = ''
+      try {
+        const result = await getEmbeddedCover(song.uri, song.id)
+        path = typeof result === 'string' ? result : result?.path || ''
+      } catch {
+        path = ''
+      }
+      nativeLocalCoverCache.set(song.id, path)
+      return path
+    })()
+    pendingNativeCovers.set(song.id, lookup)
     try {
-      const result = await getEmbeddedCover(song.uri, song.id)
-      path = typeof result === 'string' ? result : result?.path || ''
-    } catch {
-      path = ''
+      return await lookup
+    } finally {
+      pendingNativeCovers.delete(song.id)
     }
-    nativeLocalCoverCache.set(song.id, path)
-    return path
   }
 
   /**
@@ -388,24 +426,29 @@ export const usePlayerStore = defineStore('player', () => {
    * side doing any lookup of its own.
    */
   async function resolveQueueCovers(queue: Song[], version: number) {
+    const lookupVersion = ++coverLookupVersion
     coverLookupAbort?.abort()
     coverLookupAbort = null
     if (queue.length === 0) return
 
     const allowWeb = canFetchCoverFromWeb.value
-    const current = playData.value.currentIndex
-    const order = queue
-      .map((_, index) => index)
-      .sort((a, b) => Math.abs(a - current) - Math.abs(b - current))
+    const current = Math.max(0, Math.min(queue.length - 1, playData.value.currentIndex))
+    const warmup: number[] = []
+    const limit = Math.min(queue.length, MAX_QUEUE_COVER_LOOKUPS)
+    for (let distance = 0; warmup.length < limit; distance++) {
+      if (current - distance >= 0) warmup.push(current - distance)
+      if (distance > 0 && current + distance < queue.length && warmup.length < limit) {
+        warmup.push(current + distance)
+      }
+    }
 
     // Stage 1: warm the native cover cache for the current track and its
     // neighbours. Native BitmapFactory cannot decode albumart URIs, so every
     // track without a directly-usable cover has its embedded artwork extracted.
     let anyResolved = false
-    const warmup = order.slice(0, MAX_QUEUE_COVER_LOOKUPS)
     await Promise.all(
       warmup.map(async (index) => {
-        if (version !== updateVersion) return
+        if (version !== updateVersion || lookupVersion !== coverLookupVersion) return
         try {
           const url = await resolveNativeCoverUrl(queue[index], allowWeb)
           if (url) anyResolved = true
@@ -414,14 +457,14 @@ export const usePlayerStore = defineStore('player', () => {
         }
       })
     )
-    if (version !== updateVersion) return
+    if (version !== updateVersion || lookupVersion !== coverLookupVersion) return
 
     // Stage 2: online lookup for tracks that still have no local cover.
     // `undefined` means "never looked up"; a cached miss (null) must not be
     // retried, or every offline start walks the provider chain again.
     if (allowWeb) {
-      const pending = order
-        .filter((index) => !nativeLocalCoverCache.get(queue[index].id))
+      const pending = warmup
+        .filter((index) => !cachedNativeCoverUrl(queue[index], false))
         .filter(
           (index) => lookupCoverUrl(queue[index].title, queue[index].artist || '') === undefined
         )
@@ -433,7 +476,12 @@ export const usePlayerStore = defineStore('player', () => {
 
         let webResolved = false
         for (const index of pending) {
-          if (controller.signal.aborted || version !== updateVersion) return
+          if (
+            controller.signal.aborted ||
+            version !== updateVersion ||
+            lookupVersion !== coverLookupVersion
+          )
+            return
           try {
             const url = await fetchCoverFromWeb(
               queue[index].title,
@@ -446,7 +494,12 @@ export const usePlayerStore = defineStore('player', () => {
           }
         }
 
-        if (controller.signal.aborted || version !== updateVersion) return
+        if (
+          controller.signal.aborted ||
+          version !== updateVersion ||
+          lookupVersion !== coverLookupVersion
+        )
+          return
         if (webResolved) anyResolved = true
       }
     }
@@ -510,6 +563,13 @@ export const usePlayerStore = defineStore('player', () => {
       }
     },
     { deep: true, immediate: true }
+  )
+
+  watch(
+    () => playData.value.currentIndex,
+    () => {
+      void resolveQueueCovers(playQueue.value, updateVersion)
+    }
   )
 
   watch(playMode, (newMode) => {
@@ -842,11 +902,12 @@ export const usePlayerStore = defineStore('player', () => {
   }
 
   function initAllSongs() {
-    const obj = localStorage.getItem('allSongs')
-    if (obj) {
-      const parsed = JSON.parse(obj)
-      if (Array.isArray(parsed)) allSongs.value = parsed
-      else if (Array.isArray(parsed.data)) allSongs.value = parsed.data
+    try {
+      const parsed = JSON.parse(localStorage.getItem('allSongs') || '[]')
+      const data = Array.isArray(parsed) ? parsed : parsed?.data
+      if (Array.isArray(data)) allSongs.value = data
+    } catch (error) {
+      console.error('Invalid allSongs', error)
     }
   }
 
@@ -919,6 +980,7 @@ export const usePlayerStore = defineStore('player', () => {
     }
   }
   return {
+    suspendPersistenceForReload,
     playQueueRepeat,
     canFetchCoverFromWeb,
     blacklist,

@@ -29,7 +29,19 @@ export const useMusicClientStore = defineStore('musicClient', () => {
     ) as MusicClientStatus
     defaultStatus.Migu = true
     const stored = localStorage.getItem('music_client_status')
-    musicClientStatus.value = stored ? (JSON.parse(stored) as MusicClientStatus) : defaultStatus
+    musicClientStatus.value = defaultStatus
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored)
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+          for (const key of Object.keys(defaultStatus) as ClientKey[]) {
+            if (typeof parsed[key] === 'boolean') musicClientStatus.value[key] = parsed[key]
+          }
+        }
+      } catch (error) {
+        console.error('Invalid music client settings', error)
+      }
+    }
   }
 
   function getMusicClientStatus() {

@@ -58,6 +58,26 @@ describe('PlayList', () => {
     expect(wrapper.findAll('.song-item')).toHaveLength(3)
   })
 
+  it('bounds a large library, scrolls to the end and selects across hidden rows', async () => {
+    const { wrapper, songs } = mountList(makeSongs(5000))
+    expect(wrapper.findAllComponents(SongItemSelectable).length).toBeLessThan(40)
+    await enterSelectMode(wrapper, songs[0].id)
+    await actionButtons(wrapper)[0].trigger('click')
+    const viewport = wrapper.find('.playlist')
+    ;(viewport.element as HTMLElement).scrollTop = 4990 * 60
+    await viewport.trigger('scroll')
+    const rows = wrapper.findAllComponents(SongItemSelectable)
+    expect(rows.length).toBeLessThan(40)
+    expect(rows.at(-1)?.props('song').id).toBe(songs.at(-1)!.id)
+    expect(rows.every((row) => row.props('selected'))).toBe(true)
+    await actionButtons(wrapper)[4].trigger('click')
+    expect(wrapper.emitted('batch-delete')![0][0]).toHaveLength(5000)
+    await wrapper.setProps({ songs: songs.slice(0, 3) })
+    expect(wrapper.findAllComponents(SongItemSelectable)).toHaveLength(3)
+    expect((viewport.element as HTMLElement).scrollTop).toBe(0)
+    wrapper.unmount()
+  })
+
   it('emits song-click when not selecting', async () => {
     const { wrapper, songs } = mountList()
     wrapper.findAllComponents(SongItemSelectable)[1].vm.$emit('click', songs[1])

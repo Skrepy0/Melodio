@@ -12,7 +12,8 @@ export const useSearchStore = defineStore('search', () => {
 
   const searchResults = ref<OnlineSong[]>([])
 
-  const searchHistory = ref<string[]>(JSON.parse(localStorage.getItem('searchHistory') || '[]'))
+  const searchHistory = ref<string[]>([])
+  initSearchHistory()
 
   const isLoading = ref(false)
 
@@ -159,7 +160,8 @@ export const useSearchStore = defineStore('search', () => {
     try {
       const parsed = JSON.parse(obj)
       if (Array.isArray(parsed)) searchHistory.value = parsed
-      else if (Array.isArray(parsed.data)) searchHistory.value = parsed.data
+      else if (Array.isArray(parsed?.data)) searchHistory.value = parsed.data
+      searchHistory.value = searchHistory.value.filter((item) => typeof item === 'string')
     } catch (e) {
       console.error(e)
     }

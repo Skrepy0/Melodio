@@ -1220,7 +1220,9 @@ onUnmounted(() => {
   // edge; the whole content block is translated by it so the pull is visible
   // even though --p itself is clamped.
   --pull: 0px;
-  --cover-size: min(72vw, 300px);
+  // Reserve room for lyrics, controls and the queue actions on short screens.
+  --cover-size: min(72vw, 300px, max(0px, calc(100vh - 560px)));
+  --cover-size: min(72vw, 300px, max(0px, calc(100dvh - 560px)));
 
   display: flex;
   flex-direction: column;

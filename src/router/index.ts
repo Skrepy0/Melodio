@@ -1,21 +1,22 @@
-import LyricsCachePage from '@/views/settings/LyricsCachePage.vue'
 import { createRouter, createWebHistory } from '@ionic/vue-router'
 import { RouteRecordRaw } from 'vue-router'
 import HomePage from '../views/HomePage.vue'
-import SettingsPage from '../views/SettingsPage.vue'
-import PlayerView from '../views/PlayerView.vue'
-import SortSongsPage from '../views/SortSongsPage.vue'
-import SongListPage from '@/views/SongListPage.vue'
-import AboutPage from '@/views/AboutPage.vue'
-import ScanBlacklistPage from '@/views/ScanBlacklistPage.vue'
-import AppearanceSettingsPage from '@/views/settings/AppearanceSettingsPage.vue'
-import LyricsSettingsPage from '@/views/settings/LyricsSettingsPage.vue'
-import PlaybackSettingsPage from '@/views/settings/PlaybackSettingsPage.vue'
-import DataSettingsPage from '@/views/settings/DataSettingsPage.vue'
-import LibrarySettingsPage from '@/views/settings/LibrarySettingsPage.vue'
-import MusicClientSettingsPage from '@/views/settings/MusicClientSettingsPage.vue'
-import OnlineSearchPage from '@/views/OnlineSearchPage.vue'
-import DownloadManagerPage from '@/views/DownloadManagerPage.vue'
+
+const LyricsCachePage = () => import('@/views/settings/LyricsCachePage.vue')
+const SettingsPage = () => import('../views/SettingsPage.vue')
+const PlayerView = () => import('../views/PlayerView.vue')
+const SortSongsPage = () => import('../views/SortSongsPage.vue')
+const SongListPage = () => import('@/views/SongListPage.vue')
+const AboutPage = () => import('@/views/AboutPage.vue')
+const ScanBlacklistPage = () => import('@/views/ScanBlacklistPage.vue')
+const AppearanceSettingsPage = () => import('@/views/settings/AppearanceSettingsPage.vue')
+const LyricsSettingsPage = () => import('@/views/settings/LyricsSettingsPage.vue')
+const PlaybackSettingsPage = () => import('@/views/settings/PlaybackSettingsPage.vue')
+const DataSettingsPage = () => import('@/views/settings/DataSettingsPage.vue')
+const LibrarySettingsPage = () => import('@/views/settings/LibrarySettingsPage.vue')
+const MusicClientSettingsPage = () => import('@/views/settings/MusicClientSettingsPage.vue')
+const OnlineSearchPage = () => import('@/views/OnlineSearchPage.vue')
+const DownloadManagerPage = () => import('@/views/DownloadManagerPage.vue')
 
 const routes: Array<RouteRecordRaw> = [
   {

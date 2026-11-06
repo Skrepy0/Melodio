@@ -1,5 +1,6 @@
 /// <reference types="vitest" />
 import pkg from './package.json'
+import { mdiIcons } from './build/mdiIcons'
 import legacy from '@vitejs/plugin-legacy'
 import vue from '@vitejs/plugin-vue'
 import path from 'path'
@@ -7,7 +8,7 @@ import { defineConfig } from 'vite'
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [vue(), legacy()],
+  plugins: [mdiIcons(), vue(), legacy()],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),

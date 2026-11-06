@@ -1,6 +1,7 @@
 /// <reference types="cypress" />
 
 import { visitLibrary } from '../support/app'
+import { seedSongs } from '../support/commands'
 
 describe('Library', () => {
   it('renders the song library', () => {
@@ -11,6 +12,28 @@ describe('Library', () => {
     cy.get('.song-item').eq(0).should('contain', 'Alpha').and('contain', 'Aria')
     cy.get('.song-item').eq(1).should('contain', 'Beta')
     cy.get('.count').should('contain', '3')
+  })
+
+  it('keeps a 5000-song library bounded and reaches the final song', () => {
+    const songs = Array.from({ length: 5000 }, (_, index) => ({
+      ...seedSongs[0],
+      id: `large-${index}`,
+      title: `Track ${index}`,
+      uri: `file:///music/${index}.mp3`,
+    }))
+    visitLibrary({ allSongs: songs })
+    cy.get('.song-item').should('have.length.lessThan', 50)
+    cy.get('.song-item').first().should('contain', 'Track 0')
+    cy.get('.song-item-wrapper')
+      .first()
+      .should(($row) => {
+        expect($row[0].getBoundingClientRect().height).to.eq(60)
+      })
+    cy.get('.playlist').scrollTo('bottom')
+    cy.get('.song-item').last().should('contain', 'Track 4999').and('be.visible')
+    cy.get('.song-item').should('have.length.lessThan', 50)
+    cy.get('.playlist').scrollTo('top')
+    cy.get('.song-item').first().should('contain', 'Track 0')
   })
 
   it('opens the player for a song and shows the queue', () => {

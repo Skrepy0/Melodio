@@ -1,17 +1,52 @@
 import { DownloadHistoryItem, DownloadTaskSnapshot } from '@/utils/interface'
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { onScopeDispose, ref } from 'vue'
+import { App } from '@capacitor/app'
 
 export const useDownloadsStore = defineStore('downloads', () => {
   const downloadTasks = ref<DownloadTaskSnapshot[]>([])
 
   const downloadHistory = ref<DownloadHistoryItem[]>([])
 
+  let persistenceSuspended = false
+  let checkpointTimer: ReturnType<typeof setTimeout> | undefined
+  function scheduleCheckpoint() {
+    if (persistenceSuspended) return
+    checkpointTimer ??= setTimeout(saveDownloadTasks, 1000)
+  }
+  const flush = () => {
+    if (checkpointTimer !== undefined) saveDownloadTasks()
+  }
+  const onVisibility = () => {
+    if (document.visibilityState === 'hidden') flush()
+  }
+  window.addEventListener('pagehide', flush)
+  document.addEventListener('visibilitychange', onVisibility)
+  const appListener = App.addListener('appStateChange', ({ isActive }) => {
+    if (!isActive) flush()
+  }).catch(() => null)
+  onScopeDispose(() => {
+    flush()
+    window.removeEventListener('pagehide', flush)
+    document.removeEventListener('visibilitychange', onVisibility)
+    void appListener.then((listener) => listener?.remove())
+  })
+
+  function suspendPersistenceForReload() {
+    persistenceSuspended = true
+    clearTimeout(checkpointTimer)
+    checkpointTimer = undefined
+  }
+
   function saveDownloadTasks() {
+    if (persistenceSuspended) return
+    clearTimeout(checkpointTimer)
+    checkpointTimer = undefined
     localStorage.setItem('downloadTasks', JSON.stringify(downloadTasks.value))
   }
 
   function saveDownloadHistory() {
+    if (persistenceSuspended) return
     localStorage.setItem('downloadHistory', JSON.stringify(downloadHistory.value))
   }
 
@@ -51,7 +86,8 @@ export const useDownloadsStore = defineStore('downloads', () => {
     task.progress = options.progress
     if (options.status) task.status = options.status
     task.updatedAt = Date.now()
-    saveDownloadTasks()
+    if (options.status && !['queued', 'downloading'].includes(options.status)) saveDownloadTasks()
+    else scheduleCheckpoint()
   }
 
   function setDownloadTaskStatus(
@@ -152,6 +188,7 @@ export const useDownloadsStore = defineStore('downloads', () => {
     }
   }
   return {
+    suspendPersistenceForReload,
     downloadTasks,
     downloadHistory,
     saveDownloadTasks,

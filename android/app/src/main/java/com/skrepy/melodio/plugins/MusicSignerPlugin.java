@@ -19,8 +19,6 @@ import org.json.JSONObject;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
@@ -100,29 +98,12 @@ public class MusicSignerPlugin extends Plugin {
         String path = "/api/v1/music/search_stream";
         String method = "GET";
         int totalTimeOut = Objects.requireNonNull(pluginCall.getInt("totalTimeOut", 30));
-        Collections.sort(clients);
-        List<ParamPair> params = new ArrayList<>();
-        params.add(new ParamPair("keyword", keyword));
-        params.add(new ParamPair("limit", String.valueOf(limit)));
-        params.add(new ParamPair("timeout", String.valueOf(totalTimeOut)));
-        for (String client : clients) {
-            params.add(new ParamPair("music_client", client));
-        }
-        params.sort(Comparator.comparing(a -> a.key));
-
-        StringBuilder querySb = new StringBuilder();
-        for (int i = 0; i < params.size(); i++) {
-            if (i > 0) querySb.append("&");
-            querySb.append(params.get(i).key).append("=").append(params.get(i).value);
-        }
-        String queryStr = querySb.toString();
-
-        String signStr = method + "&" + path + "&" + queryStr + "&" + timestamp + "&" + nonce;
+        MusicSearchQuery query = new MusicSearchQuery(keyword, limit, totalTimeOut, clients);
+        String signStr = method + "&" + path + "&" + query.canonical() + "&" + timestamp + "&" + nonce;
         String signature = hmacSha256(secretKey, signStr);
-        String url = backendUrl + path + "?" + queryStr;
 
         Request request = new Request.Builder()
-                .url(url)
+                .url(query.url(backendUrl + path))
                 .addHeader("X-Timestamp", String.valueOf(timestamp))
                 .addHeader("X-Nonce", nonce)
                 .addHeader("X-Signature", signature)
@@ -273,13 +254,5 @@ public class MusicSignerPlugin extends Plugin {
         }
     }
 
-    private static class ParamPair {
-        String key;
-        String value;
 
-        ParamPair(String key, String value) {
-            this.key = key;
-            this.value = value;
-        }
-    }
 }

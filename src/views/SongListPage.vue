@@ -41,7 +41,7 @@ const operations = computed<DropdownItem[]>(() => [
 const currentPlaylist = computed<Playlist | null>(() => {
   const index = appStore.getCurrentPlayListIndex()
   if (index === 0) return appStore.getLikeList()
-  return appStore.getSongLists()[index - 1] ?? null
+  return appStore.getSongLists().find((list) => list.id === index) ?? null
 })
 
 const synchroShowSongsList = () => {
@@ -54,10 +54,10 @@ if (appStore.getCurrentPlayListIndex() === 0) {
   synchroShowSongsList()
   title.value = t('playList.like.title')
 } else {
-  const list: Playlist = appStore.getSongLists()[appStore.getCurrentPlayListIndex() - 1]
-  songsList.value = list.data
+  const list = currentPlaylist.value
+  songsList.value = list?.data ?? []
   synchroShowSongsList()
-  title.value = list.name
+  title.value = list?.name ?? t('songList.defaultTitle')
 }
 
 const saveSongList = () => {
@@ -202,7 +202,8 @@ const onSelectOperation = async (item: DropdownItem) => {
       if (name === title.value) {
         toast.warning(t('playlist.warning.sameName'))
       } else {
-        const newList = appStore.getSongLists()[index - 1]
+        const newList = appStore.getSongLists().find((list) => list.id === index)
+        if (!newList) return
         newList.name = name
         appStore.setSongListById(newList.id, newList)
         toast.success(t('playlist.success.renamed'))

@@ -3,6 +3,9 @@ import { Capacitor } from '@capacitor/core'
 import { exportLocalStorage, importLocalStorage } from '@/utils/ioData'
 import { audio } from '@/utils/createAudio'
 import { useAppStore } from '@/stores/app'
+import { usePlayerStore } from '@/stores/player'
+import { useDownloadsStore } from '@/stores/downloads'
+import { makeSongs } from '../helpers/factories'
 import { freshPinia } from '../helpers/store'
 
 describe('exportLocalStorage', () => {
@@ -75,7 +78,7 @@ describe('importLocalStorage', () => {
     vi.spyOn(audio, 'openFile').mockResolvedValue(
       JSON.stringify({ obj: { a: 1 }, list: [1, 2], str: 'text', num: 5, flag: false })
     )
-    const init = vi.spyOn(useAppStore(), 'init').mockResolvedValue(undefined)
+    const prepare = vi.spyOn(useAppStore(), 'prepareForBackupReload')
 
     await importLocalStorage()
 
@@ -84,7 +87,7 @@ describe('importLocalStorage', () => {
     expect(localStorage.getItem('str')).toBe('text')
     expect(localStorage.getItem('num')).toBe('5')
     expect(localStorage.getItem('flag')).toBe('false')
-    expect(init).toHaveBeenCalled()
+    expect(prepare).toHaveBeenCalled()
   })
 
   it('rejects and leaves storage untouched for malformed JSON', async () => {
@@ -93,6 +96,89 @@ describe('importLocalStorage', () => {
 
     await expect(importLocalStorage()).rejects.toBeInstanceOf(SyntaxError)
     expect(localStorage.getItem('keep')).toBe('value')
+  })
+
+  it.each([
+    null,
+    [],
+    'text',
+    42,
+    { searchHistory: 'not-json' },
+    { searchHistory: [null] },
+    { songLists: [{}] },
+    { allSongs: null },
+    { playQueue: [{}] },
+    { songLists: [{ id: 1, name: 'Bad', data: [{}] }] },
+    { music_client_status: 'broken' },
+    { music_client_status: { Migu: 'yes' } },
+    { playData: { currentIndex: 'first' } },
+    { downloadTasks: [{ taskId: 123 }] },
+    { likeList: {} },
+  ])('rejects invalid backup before writing: %j', async (backup) => {
+    localStorage.setItem('keep', 'original')
+    vi.spyOn(audio, 'openFile').mockResolvedValue(JSON.stringify(backup))
+    await expect(importLocalStorage()).rejects.toThrow('Invalid backup')
+    expect(localStorage.getItem('keep')).toBe('original')
+    expect(localStorage.length).toBe(1)
+  })
+
+  it('rolls back updates and new keys if a storage write fails', async () => {
+    localStorage.setItem('keep', 'original')
+    vi.spyOn(audio, 'openFile').mockResolvedValue(
+      JSON.stringify({ added: 'new', keep: 'changed', fails: true })
+    )
+    const original = Storage.prototype.setItem
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (this: Storage, key, value) {
+      if (key === 'fails') throw new Error('quota exceeded')
+      original.call(this, key, value)
+    })
+    await expect(importLocalStorage()).rejects.toThrow('quota exceeded')
+    expect(localStorage.getItem('keep')).toBe('original')
+    expect(localStorage.getItem('added')).toBeNull()
+    expect(localStorage.length).toBe(1)
+  })
+
+  it('accepts legacy array wrappers and JSON-encoded fields', async () => {
+    vi.spyOn(audio, 'openFile').mockResolvedValue(
+      JSON.stringify({ searchHistory: { data: ['hello'] }, allSongs: '[]' })
+    )
+    await importLocalStorage()
+    expect(JSON.parse(localStorage.getItem('searchHistory')!)).toEqual({ data: ['hello'] })
+    expect(localStorage.getItem('allSongs')).toBe('[]')
+  })
+
+  it('keeps imported snapshots intact through background events and reload', async () => {
+    vi.useFakeTimers()
+    const player = usePlayerStore()
+    const downloads = useDownloadsStore()
+    try {
+      player.setPlayQueue(makeSongs(1, 'old'))
+      player.setMockCurrentTime(10)
+      downloads.upsertDownloadTask(downloads.normalizeDownloadTask({ taskId: 'old' }))
+      downloads.setDownloadTaskProgress({ taskId: 'old', loaded: 10, total: 100, progress: 10 })
+      const importedQueue = makeSongs(1, 'imported')
+      vi.spyOn(audio, 'openFile').mockResolvedValue(
+        JSON.stringify({
+          playQueue: importedQueue,
+          playData: { currentIndex: 0, mockCurrentTime: 42 },
+          downloadTasks: [],
+        })
+      )
+      await importLocalStorage()
+      player.persistPlaybackSnapshot()
+      player.setMockCurrentTime(11)
+      downloads.setDownloadTaskProgress({ taskId: 'old', loaded: 20, total: 100, progress: 20 })
+      downloads.setDownloadTaskStatus('old', 'completed')
+      window.dispatchEvent(new Event('pagehide'))
+      vi.advanceTimersByTime(2000)
+      expect(JSON.parse(localStorage.getItem('playQueue')!)).toEqual(importedQueue)
+      expect(JSON.parse(localStorage.getItem('playData')!).mockCurrentTime).toBe(42)
+      expect(localStorage.getItem('downloadTasks')).toBe('[]')
+    } finally {
+      downloads.$dispose()
+      player.$dispose()
+      vi.useRealTimers()
+    }
   })
 
   it('rejects when the file picker is cancelled', async () => {

@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { nextTick, ref } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { Icon } from '@iconify/vue'
 import SongItemSelectable from '@/components/song/SongItemSelectable.vue'
 import { useDropdownManager } from '@/composables/useDropdownManager'
@@ -48,6 +48,51 @@ const emit = defineEmits<{
   (e: 'delete-song', song: Song): void
   (e: 'add-to-blacklist', songIds: string[]): void
 }>()
+
+// Rows use the shared 60px list layout. Keep a small overscan around the viewport.
+const ROW_HEIGHT = 60
+const OVERSCAN = 6
+const viewport = ref<HTMLElement | null>(null)
+const scrollTop = ref(0)
+const viewportHeight = ref(600)
+const virtual = computed(() => props.songs.length > 100)
+const start = computed(() =>
+  virtual.value
+    ? Math.min(
+        Math.max(0, props.songs.length - 1),
+        Math.max(0, Math.floor(scrollTop.value / ROW_HEIGHT) - OVERSCAN)
+      )
+    : 0
+)
+const end = computed(() =>
+  virtual.value
+    ? Math.min(
+        props.songs.length,
+        start.value + Math.ceil(viewportHeight.value / ROW_HEIGHT) + OVERSCAN * 2
+      )
+    : props.songs.length
+)
+const visibleSongs = computed(() => props.songs.slice(start.value, end.value))
+const onScroll = () => {
+  scrollTop.value = viewport.value?.scrollTop || 0
+  openDropdownId.value = null
+}
+let resizeObserver: ResizeObserver | undefined
+onMounted(() => {
+  if (typeof ResizeObserver === 'undefined' || !viewport.value) return
+  resizeObserver = new ResizeObserver(() => {
+    viewportHeight.value = viewport.value?.clientHeight || 600
+  })
+  resizeObserver.observe(viewport.value)
+})
+onUnmounted(() => resizeObserver?.disconnect())
+watch(
+  () => props.songs,
+  () => {
+    scrollTop.value = 0
+    if (viewport.value) viewport.value.scrollTop = 0
+  }
+)
 
 const isSelectMode = ref(false)
 const selectedIds = ref<Set<string>>(new Set())
@@ -185,10 +230,15 @@ const handleSongClick = (song: Song) => {
 </script>
 
 <template>
-  <div class="playlist">
-    <div class="song-list">
+  <div ref="viewport" class="playlist" @scroll.passive="onScroll">
+    <div class="song-list" :class="{ 'virtual-list': virtual }">
+      <div
+        v-if="virtual"
+        aria-hidden="true"
+        :style="{ height: `${start * ROW_HEIGHT}px`, flexShrink: 0 }"
+      />
       <SongItemSelectable
-        v-for="song in songs"
+        v-for="song in visibleSongs"
         :key="song.id"
         :dropdown-open="openDropdownId === song.id"
         :on-delete="handleDeleteSong"
@@ -202,6 +252,11 @@ const handleSongClick = (song: Song) => {
         @long-press="enterSelectMode"
         @toggle-select="toggleSelect(song.id)"
         @update:dropdown-open="(open) => handleDropdownToggle(song.id, open)"
+      />
+      <div
+        v-if="virtual"
+        aria-hidden="true"
+        :style="{ height: `${(songs.length - end) * ROW_HEIGHT}px`, flexShrink: 0 }"
       />
     </div>
 
@@ -247,6 +302,7 @@ const handleSongClick = (song: Song) => {
   position: relative;
   height: 100%;
   overflow-y: auto;
+  overflow-anchor: none;
   padding-bottom: 96px;
   @include custom-scrollbar(3px);
 }
@@ -255,6 +311,11 @@ const handleSongClick = (song: Song) => {
   display: flex;
   flex-direction: column;
   padding: 0;
+}
+
+.virtual-list :deep(.song-item-wrapper) {
+  height: 60px;
+  flex-shrink: 0;
 }
 
 .bottom-actions {

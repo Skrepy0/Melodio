@@ -884,6 +884,28 @@ describe('like list and blacklist', () => {
   })
 })
 
+describe('playlist identity after deletion', () => {
+  it('updates non-contiguous IDs and deletes the requested IDs in a batch', () => {
+    const store = useAppStore()
+    store.setSongLists([1, 2, 3].map((id) => makePlaylist({ id })))
+    store.delectSongListById(1)
+    store.setSongListDataById(3, makeSongs(2))
+    store.setSongListById(3, makePlaylist({ id: 3, name: 'Third', data: makeSongs(2) }))
+    expect(store.getSongLists().map((list) => list.id)).toEqual([2, 3])
+    expect(store.getSongLists()[1]).toMatchObject({ name: 'Third', songCount: 2 })
+    store.setSongListDataById(99, [])
+    store.delectSongListById(99)
+    expect(store.getSongLists()).toHaveLength(2)
+    store.setSongLists([1, 2, 3].map((id) => makePlaylist({ id })))
+    ;[1, 2].forEach(store.delectSongListById)
+    expect(store.getSongLists().map((list) => list.id)).toEqual([3])
+    store.setSongListById(0, makePlaylist({ id: 0, data: makeSongs(1) }))
+    expect(store.getLikeList().songCount).toBe(1)
+    expect(JSON.parse(localStorage.getItem('likeList')!).data).toHaveLength(1)
+    expect(JSON.parse(localStorage.getItem('songLists')!)).toHaveLength(1)
+  })
+})
+
 describe('download task state', () => {
   it('upserts tasks newest first and updates them in place', () => {
     const store = useAppStore()

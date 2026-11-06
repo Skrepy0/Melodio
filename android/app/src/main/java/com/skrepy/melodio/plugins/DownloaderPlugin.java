@@ -7,6 +7,7 @@ import android.media.MediaScannerConnection;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Environment;
+import android.os.ParcelFileDescriptor;
 import android.provider.MediaStore;
 import android.util.Log;
 
@@ -117,6 +118,7 @@ public class DownloaderPlugin extends Plugin {
 
         DownloadTaskState state = existing != null ? existing : new DownloadTaskState();
         state.taskId = taskId;
+        if (existing == null) restoreTaskFiles(state);
         state.url = url;
         state.fileName = fileName;
         state.pauseRequested = false;
@@ -156,7 +158,6 @@ public class DownloaderPlugin extends Plugin {
         String taskId = call.getString("taskId");
         String url = call.getString("url");
         String fileName = call.getString("fileName");
-        Long loaded = call.getLong("loaded");
         DownloadTaskState state = taskId == null ? null : taskStates.get(taskId);
         if (state == null) {
             if (taskId == null || url == null || fileName == null) {
@@ -165,7 +166,13 @@ public class DownloaderPlugin extends Plugin {
             }
             state = new DownloadTaskState();
             state.taskId = taskId;
+            restoreTaskFiles(state);
             taskStates.put(taskId, state);
+        }
+
+        if ("queued".equals(state.status) || "downloading".equals(state.status) || state.currentCall != null) {
+            call.reject("Task is already downloading");
+            return;
         }
 
         if (url != null) {
@@ -173,9 +180,6 @@ public class DownloaderPlugin extends Plugin {
         }
         if (fileName != null) {
             state.fileName = fileName;
-        }
-        if (loaded != null && loaded >= 0) {
-            state.loaded = loaded;
         }
 
         if (state.url == null || state.fileName == null) {
@@ -206,7 +210,7 @@ public class DownloaderPlugin extends Plugin {
         if (tryResume) {
             requestBuilder.addHeader("Range", "bytes=" + downloaded + "-");
             state.loaded = downloaded;
-        } else if (!resume) {
+        } else {
             resetTaskFiles(state);
             state.loaded = 0;
         }
@@ -215,6 +219,13 @@ public class DownloaderPlugin extends Plugin {
         state.currentCall = currentCall;
 
         try (Response response = currentCall.execute()) {
+            if (tryResume && response.code() == 416) {
+                response.close();
+                resetTaskFiles(state);
+                state.loaded = 0;
+                performDownload(call, state, false);
+                return;
+            }
             if (!response.isSuccessful() && response.code() != 206) {
                 sendError(call, state, "Download failed: " + response.code());
                 return;
@@ -224,12 +235,18 @@ public class DownloaderPlugin extends Plugin {
                 return;
             }
 
-            if (tryResume && response.code() == 200) {
+            if (tryResume && (response.code() != 206 || !DownloadRange.matches(response.header("Content-Range"), downloaded))) {
                 Log.w(TAG, "Server does not support range resume, restarting task: " + state.taskId);
+                response.close();
                 resetTaskFiles(state);
                 state.loaded = 0;
                 state.pauseRequested = false;
                 performDownload(call, state, false);
+                return;
+            }
+
+            if (!tryResume && response.code() == 206 && !DownloadRange.matches(response.header("Content-Range"), 0)) {
+                sendError(call, state, "Invalid Content-Range");
                 return;
             }
 
@@ -240,7 +257,8 @@ public class DownloaderPlugin extends Plugin {
             state.mimeType = mimeType;
 
             long responseLength = response.body().contentLength();
-            state.total = responseLength > 0 ? state.loaded + responseLength : -1;
+            long rangeTotal = response.code() == 206 ? DownloadRange.total(response.header("Content-Range")) : -1;
+            state.total = rangeTotal > 0 ? rangeTotal : responseLength > 0 ? state.loaded + responseLength : -1;
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 downloadViaMediaStore(call, state, response, tryResume);
@@ -289,11 +307,16 @@ public class DownloaderPlugin extends Plugin {
             result.put("path", state.mediaStoreUri.toString());
             result.put("size", state.loaded);
             state.status = "completed";
+            forgetFile(state);
             notifyProgress(state);
             call.resolve(result);
         } catch (Exception e) {
             if (!state.pauseRequested && state.mediaStoreUri != null) {
-                getContext().getContentResolver().delete(state.mediaStoreUri, null, null);
+                try {
+                    getContext().getContentResolver().delete(state.mediaStoreUri, null, null);
+                } catch (Exception error) {
+                    Log.w(TAG, "Unable to remove stale download", error);
+                }
                 state.mediaStoreUri = null;
             }
             if (state.pauseRequested) {
@@ -316,12 +339,6 @@ public class DownloaderPlugin extends Plugin {
             state.outputFile = new File(downloadDir, state.fileName);
         }
 
-        try (BufferedSink sink = Okio.buffer(Okio.appendingSink(state.outputFile))) {
-            if (!resume && state.outputFile.exists() && !state.outputFile.delete()) {
-                Log.w(TAG, "Unable to delete existing output file before restart: " + state.outputFile.getAbsolutePath());
-            }
-        }
-
         if (!resume) {
             state.outputFile = new File(downloadDir, state.fileName);
             if (state.outputFile.exists() && !state.outputFile.delete()) {
@@ -329,7 +346,8 @@ public class DownloaderPlugin extends Plugin {
             }
         }
 
-        try (BufferedSink sink = Okio.buffer(Okio.appendingSink(state.outputFile))) {
+        rememberFile(state);
+        try (BufferedSink sink = Okio.buffer(resume ? Okio.appendingSink(state.outputFile) : Okio.sink(state.outputFile))) {
             writeResponseToSink(call, state, response.body().source(), sink);
 
             if ("paused".equals(state.status)) {
@@ -347,6 +365,7 @@ public class DownloaderPlugin extends Plugin {
         result.put("path", state.outputFile.getAbsolutePath());
         result.put("size", state.outputFile.length());
         state.status = "completed";
+        forgetFile(state);
         notifyProgress(state);
         call.resolve(result);
     }
@@ -377,6 +396,9 @@ public class DownloaderPlugin extends Plugin {
             }
         }
         sink.flush();
+        if (state.total >= 0 && state.loaded != state.total) {
+            throw new IOException("Incomplete download: expected " + state.total + " bytes, received " + state.loaded);
+        }
         notifyProgress(state);
     }
 
@@ -392,16 +414,22 @@ public class DownloaderPlugin extends Plugin {
 
         Uri collection = MediaStore.Audio.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY);
         state.mediaStoreUri = getContext().getContentResolver().insert(collection, values);
+        rememberFile(state);
     }
 
     private void resetTaskFiles(DownloadTaskState state) {
+        forgetFile(state);
         state.pauseRequested = false;
         state.shouldResume = false;
         state.total = -1;
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             if (state.mediaStoreUri != null) {
-                getContext().getContentResolver().delete(state.mediaStoreUri, null, null);
+                try {
+                    getContext().getContentResolver().delete(state.mediaStoreUri, null, null);
+                } catch (Exception error) {
+                    Log.w(TAG, "Unable to remove stale download", error);
+                }
                 state.mediaStoreUri = null;
             }
         } else if (state.outputFile != null && state.outputFile.exists() && !state.outputFile.delete()) {
@@ -409,14 +437,33 @@ public class DownloaderPlugin extends Plugin {
         }
     }
 
+    private void restoreTaskFiles(DownloadTaskState state) {
+        String savedFile = getContext().getSharedPreferences("downloadFiles", 0).getString(state.taskId, null);
+        if (savedFile == null) return;
+        if (savedFile.startsWith("content://")) state.mediaStoreUri = Uri.parse(savedFile);
+        else state.outputFile = new File(savedFile);
+    }
+
+    private void rememberFile(DownloadTaskState state) {
+        String path = state.mediaStoreUri != null ? state.mediaStoreUri.toString()
+                : state.outputFile != null ? state.outputFile.getAbsolutePath() : null;
+        if (path != null) getContext().getSharedPreferences("downloadFiles", 0).edit().putString(state.taskId, path).commit();
+    }
+
+    private void forgetFile(DownloadTaskState state) {
+        getContext().getSharedPreferences("downloadFiles", 0).edit().remove(state.taskId).apply();
+    }
+
     private long getDownloadedBytes(DownloadTaskState state) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            return state.loaded;
+            if (state.mediaStoreUri == null) return 0;
+            try (ParcelFileDescriptor file = getContext().getContentResolver().openFileDescriptor(state.mediaStoreUri, "r")) {
+                return file == null ? 0 : Math.max(0, file.getStatSize());
+            } catch (Exception e) {
+                return 0;
+            }
         }
-        if (state.outputFile != null && state.outputFile.exists()) {
-            return state.outputFile.length();
-        }
-        return state.loaded;
+        return state.outputFile != null && state.outputFile.exists() ? state.outputFile.length() : 0;
     }
 
     private void notifyProgress(DownloadTaskState state) {
@@ -456,7 +503,7 @@ public class DownloaderPlugin extends Plugin {
         String taskId;
         String url;
         String fileName;
-        volatile String status = "queued";
+        volatile String status = "paused";
         volatile long loaded = 0;
         volatile long total = -1;
         volatile boolean pauseRequested = false;

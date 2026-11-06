@@ -33,6 +33,23 @@ describe('Playlists', () => {
     cy.get('.now-playing-bar').should('contain', 'Alpha')
   })
 
+  it('opens and renames a playlist whose ID differs from its position', () => {
+    visitLibrary({ songLists: [{ id: 3, name: 'Remaining', data: [] }] })
+    cy.get('.select-item').contains('播放列表').click()
+    cy.contains('.playlist-item', 'Remaining').click()
+    cy.get('.song-list-page .title').should('have.text', 'Remaining')
+    cy.get('.song-list-page .circle-button').click()
+    cy.get('.dropdown-menu').contains('重命名').click()
+    cy.get('.prompt-container .prompt-input').clear().type('Updated')
+    cy.get('.prompt-container .prompt-btn.confirm').click()
+    cy.get('.song-list-page .title').should('have.text', 'Updated')
+    cy.window().then((win) => {
+      const lists = JSON.parse(win.localStorage.getItem('songLists') || '[]')
+      expect(lists).to.have.length(1)
+      expect(lists[0]).to.include({ id: 3, name: 'Updated' })
+    })
+  })
+
   it('renames a playlist from its menu', () => {
     visitLibrary({ songLists: [{ id: 1, name: 'Mix', data: [] }] })
     cy.get('.select-item').contains('播放列表').click()
