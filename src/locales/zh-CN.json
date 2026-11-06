@@ -237,13 +237,7 @@
   },
   "settings": {
     "title": "设置",
-    "groups": {
-      "appearance": "外观",
-      "playback": "播放",
-      "data": "数据",
-      "about": "关于"
-    },
-    "blacklist": "黑名单",
+    "blacklist": "扫描黑名单",
     "blacklistDesc": "查看黑名单歌曲,被加入黑名单的歌曲在扫描曲库时会被排除",
     "languageSelectorHeader": "选择语言",
     "language": "语言",
@@ -251,11 +245,9 @@
     "about": "关于",
     "aboutDesc": "查看应用信息",
     "other": {
-      "title": "杂项",
-      "desc": "其他设置项",
-      "exportData": "数据备份",
+      "exportData": "导出备份",
       "exportDataDesc": "导出Melodio的所有数据包括歌曲信息,歌单,设置等到Json文件",
-      "importData": "导入数据",
+      "importData": "导入备份",
       "importDataDesc": "导入Json数据, 注意会覆盖当前数据! 会导致当前数据丢失",
       "io": {
         "successExport": "已保存数据",
@@ -294,17 +286,15 @@
       "music_client": {
         "title": "音乐源配置",
         "desc": "配置在线音乐源, 过多的音乐源会导致搜索速度下降",
-        "client_limit": "客户端请求限制",
+        "client_limit": "每源歌曲数量上限（首）",
         "client_limit_desc": "每个客户端请求的歌曲数量限制, 过大会使搜索速度显著下降"
       },
-      "fetch_timeout": "搜索时间限制",
+      "fetch_timeout": "搜索时间限制（秒）",
       "fetch_timeout_desc": "后端搜索歌曲的最长时长, 超过此时间没搜索完成的源将停止搜索, 返回已经搜索到的内容;值过低会导致搜索到的内容较少",
-      "each_song_ave_timeout": "单首歌的搜索时长",
+      "each_song_ave_timeout": "单首歌曲搜索时长（秒）",
       "each_song_ave_timeout_desc": "分配给每个歌曲的平均搜索时间限制, 单位为秒"
     },
     "accessibility": {
-      "title": "辅助功能",
-      "desc": "应用提供的相关功能开关",
       "lyricsRetryCount": "歌词搜索自动重试次数",
       "lyricsRetryCountDesc": "搜索失败或未找到歌词时自动重试，范围 0～10 次；0 为关闭，不含首次搜索。",
       "searchLyricsOnline": "联网搜索歌词",
@@ -312,7 +302,7 @@
       "showLyrics": "显示歌词",
       "showLyricsDesc": "在播放界面显示同步歌词",
       "pinyinSearch": "拼音搜索",
-      "pinyinSearchDesc": "开启后，所有搜索将支持拼音模糊匹配",
+      "pinyinSearchDesc": "支持在本地歌曲、歌单和黑名单中使用拼音模糊匹配",
       "autoPauseOnDisconnect": "设备断开时自动暂停",
       "autoPauseOnDisconnectDesc": "当拔出耳机或断开蓝牙设备时自动暂停播放",
       "autoPlayOnConnect": "设备连接时自动播放",
@@ -321,7 +311,7 @@
       "autoCleanInvalidSongsDesc": "自动移除已被移动或删除的歌曲条目",
       "canFetchCoverFromWeb": "在线获取歌曲封面",
       "canFetchCoverFromWebDesc": "开启后，系统将自动联网为缺少封面的歌曲补充封面",
-      "audioFocusPause": "失去焦点时暂停播放",
+      "audioFocusPause": "其他应用播放音频时暂停",
       "audioFocusPauseDesc": "当其他应用开始播放音频时，自动暂停当前播放。",
       "clearCoverCache": "清除封面缓存",
       "clearCoverCacheDesc": "删除已缓存的封面地址与图片。清除后下次播放会重新联网查找封面。",
@@ -329,6 +319,47 @@
       "clearCoverCacheSuccess": "已清除已缓存的封面数据",
       "playQueueRepeat": "播放队列循环",
       "playQueueRepeatDesc": "播放到队尾后回到第一首继续，第一首的上一首为最后一首，整个队列双向循环"
+    },
+    "categories": {
+      "appearance": {
+        "title": "外观与语言",
+        "desc": "主题、背景图片与界面语言"
+      },
+      "playback": {
+        "title": "播放",
+        "desc": "播放队列、设备连接与音频打断"
+      },
+      "lyrics": {
+        "title": "歌词与封面",
+        "desc": "歌词显示、歌词搜索与封面获取"
+      },
+      "library": {
+        "title": "曲库与搜索",
+        "desc": "本地曲库、扫描黑名单与在线音乐源"
+      },
+      "data": {
+        "title": "数据与存储",
+        "desc": "缓存管理、数据备份与恢复"
+      },
+      "about": {
+        "title": "关于",
+        "desc": "版本信息、开源仓库与许可证"
+      }
+    },
+    "sections": {
+      "theme": "主题",
+      "background": "背景",
+      "language": "语言",
+      "queue": "播放队列",
+      "devices": "设备连接",
+      "interruptions": "音频打断",
+      "lyrics": "歌词",
+      "cover": "封面",
+      "localLibrary": "本地曲库",
+      "onlineSearch": "在线搜索",
+      "cache": "缓存管理",
+      "backup": "备份与恢复",
+      "advanced": "高级选项"
     }
   },
   "common": {

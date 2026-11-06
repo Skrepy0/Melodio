@@ -8,10 +8,11 @@ import SortSongsPage from '../views/SortSongsPage.vue'
 import SongListPage from '@/views/SongListPage.vue'
 import AboutPage from '@/views/AboutPage.vue'
 import ScanBlacklistPage from '@/views/ScanBlacklistPage.vue'
-import InterfaceSettingsPage from '@/views/settings/InterfaceSettingsPage.vue'
-import AccessibilityPage from '@/views/settings/AccessibilityPage.vue'
-import OtherSettingsPage from '@/views/settings/OtherSettingsPage.vue'
-import OnlineSearchSettingsPage from '@/views/settings/OnlineSearchSettingsPage.vue'
+import AppearanceSettingsPage from '@/views/settings/AppearanceSettingsPage.vue'
+import LyricsSettingsPage from '@/views/settings/LyricsSettingsPage.vue'
+import PlaybackSettingsPage from '@/views/settings/PlaybackSettingsPage.vue'
+import DataSettingsPage from '@/views/settings/DataSettingsPage.vue'
+import LibrarySettingsPage from '@/views/settings/LibrarySettingsPage.vue'
 import MusicClientSettingsPage from '@/views/settings/MusicClientSettingsPage.vue'
 import OnlineSearchPage from '@/views/OnlineSearchPage.vue'
 import DownloadManagerPage from '@/views/DownloadManagerPage.vue'
@@ -29,24 +30,31 @@ const routes: Array<RouteRecordRaw> = [
   { path: '/search', name: 'Search', component: OnlineSearchPage },
   { path: '/downloads', name: 'Downloads', component: DownloadManagerPage },
   { path: '/settings', name: 'Settings', component: SettingsPage },
-  { path: '/settings/interface', name: 'Interface Settings', component: InterfaceSettingsPage },
+  { path: '/settings/appearance', name: 'Appearance Settings', component: AppearanceSettingsPage },
   {
-    path: '/settings/online_search',
-    name: 'Online Search Settings',
-    component: OnlineSearchSettingsPage,
+    path: '/settings/library',
+    name: 'Library Settings',
+    component: LibrarySettingsPage,
   },
   {
-    path: '/settings/online_search/music_client',
+    path: '/settings/library/music-sources',
     name: 'Music Client Settings',
     component: MusicClientSettingsPage,
   },
   {
-    path: '/settings/accessibility/lyrics-cache',
+    path: '/settings/data/lyrics-cache',
     name: 'Lyrics Cache',
     component: LyricsCachePage,
   },
-  { path: '/settings/accessibility', name: 'Accessibility', component: AccessibilityPage },
-  { path: '/settings/other', name: 'Other', component: OtherSettingsPage },
+  { path: '/settings/playback', name: 'Playback Settings', component: PlaybackSettingsPage },
+  { path: '/settings/data', name: 'Data Settings', component: DataSettingsPage },
+  { path: '/settings/lyrics', name: 'Lyrics Settings', component: LyricsSettingsPage },
+  { path: '/settings/interface', redirect: '/settings/appearance' },
+  { path: '/settings/online_search', redirect: '/settings/library' },
+  { path: '/settings/online_search/music_client', redirect: '/settings/library/music-sources' },
+  { path: '/settings/accessibility/lyrics-cache', redirect: '/settings/data/lyrics-cache' },
+  { path: '/settings/other', redirect: '/settings/data' },
+  { path: '/settings/accessibility', redirect: '/settings' },
   { path: '/player-view', name: 'PlayerView', component: PlayerView },
   { path: '/song-list', name: 'SongList', component: SongListPage },
   { path: '/sort-song', name: 'SortSongs', component: SortSongsPage },

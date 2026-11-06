@@ -4,11 +4,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { nextTick } from 'vue'
 import SettingsPage from '@/views/SettingsPage.vue'
 import AboutPage from '@/views/AboutPage.vue'
-import AccessibilityPage from '@/views/settings/AccessibilityPage.vue'
-import OnlineSearchSettingsPage from '@/views/settings/OnlineSearchSettingsPage.vue'
+import PlaybackSettingsPage from '@/views/settings/PlaybackSettingsPage.vue'
+import LyricsSettingsPage from '@/views/settings/LyricsSettingsPage.vue'
+import LibrarySettingsPage from '@/views/settings/LibrarySettingsPage.vue'
 import MusicClientSettingsPage from '@/views/settings/MusicClientSettingsPage.vue'
-import OtherSettingsPage from '@/views/settings/OtherSettingsPage.vue'
-import InterfaceSettingsPage from '@/views/settings/InterfaceSettingsPage.vue'
+import DataSettingsPage from '@/views/settings/DataSettingsPage.vue'
+import AppearanceSettingsPage from '@/views/settings/AppearanceSettingsPage.vue'
 import FunctionSwitch from '@/components/settings/FunctionSwitch.vue'
 import MusicClientConfig from '@/components/settings/MusicClientConfig.vue'
 import HorizontalSelect from '@/components/HorizontalSelect.vue'
@@ -81,6 +82,7 @@ beforeEach(() => {
   mockMethod('Filesystem', 'deleteFile', async () => undefined)
   clearStorage()
   freshPinia()
+  useAppStore().setLanguage('zh-CN')
   vi.clearAllMocks()
   resetCoverCacheForTests()
   localStorage.removeItem(COVER_CACHE_STORAGE_KEY)
@@ -113,23 +115,11 @@ function link(wrapper: any, title: string) {
 }
 
 describe('SettingsPage', () => {
-  it('renders every group', async () => {
+  it('renders six categories without redundant groups', async () => {
     const wrapper = mountPage(SettingsPage)
     await nextTick()
-    expect(wrapper.findAll('.settings-group')).toHaveLength(4)
+    expect(wrapper.findAll('.settings-group')).toHaveLength(0)
     expect(wrapper.findAllComponents(SettingsPageLink)).toHaveLength(6)
-  })
-
-  it('shows the current language name', async () => {
-    const store = useAppStore()
-    store.setLanguage('en-US')
-    const wrapper = mountPage(SettingsPage)
-    await nextTick()
-    expect(wrapper.find('.item-value').text()).toBe('English')
-
-    store.setLanguage('zh-CN')
-    await nextTick()
-    expect(wrapper.find('.item-value').text()).toBe('简体中文')
   })
 
   it('navigates to each settings subpage', async () => {
@@ -137,12 +127,12 @@ describe('SettingsPage', () => {
     await nextTick()
 
     const expected: Array<[string, string]> = [
-      ['settings.interface.title', '/settings/interface'],
-      ['settings.online_search.title', '/settings/online_search'],
-      ['settings.accessibility.title', '/settings/accessibility'],
-      ['settings.blacklist', '/blacklist'],
-      ['settings.other.title', '/settings/other'],
-      ['settings.about', '/about'],
+      ['settings.categories.appearance.title', '/settings/appearance'],
+      ['settings.categories.playback.title', '/settings/playback'],
+      ['settings.categories.lyrics.title', '/settings/lyrics'],
+      ['settings.categories.library.title', '/settings/library'],
+      ['settings.categories.data.title', '/settings/data'],
+      ['settings.categories.about.title', '/about'],
     ]
     for (const [key, path] of expected) {
       router.push.mockClear()
@@ -156,42 +146,6 @@ describe('SettingsPage', () => {
     await nextTick()
     await wrapper.find('.header-back').trigger('click')
     expect(router.back).toHaveBeenCalled()
-  })
-
-  it('offers both languages in an action sheet', async () => {
-    const store = useAppStore()
-    store.setLanguage('zh-CN')
-    const wrapper = mountPage(SettingsPage)
-    await nextTick()
-
-    const languageButton = wrapper
-      .findAll('button')
-      .find((b: any) => b.text().includes('settings.language') || b.text().includes('语言'))
-    await languageButton!.trigger('click')
-    await vi.waitFor(() => expect(actionSheetCreate).toHaveBeenCalled())
-    const options = actionSheetCreate.mock.calls[0][0]
-    expect(options.header).toBeTruthy()
-    expect(options.buttons.map((b: any) => b.text)).toEqual(['简体中文', 'English', '取消'])
-    expect(actionSheet.present).toHaveBeenCalled()
-  })
-
-  it('changes the language from the action sheet', async () => {
-    const store = useAppStore()
-    store.setLanguage('zh-CN')
-    const wrapper = mountPage(SettingsPage)
-    await nextTick()
-
-    const languageButton = wrapper
-      .findAll('button')
-      .find((b: any) => b.text().includes('settings.language') || b.text().includes('语言'))
-    await languageButton!.trigger('click')
-    await vi.waitFor(() => expect(actionSheetCreate).toHaveBeenCalled())
-    const buttons = actionSheetCreate.mock.calls[0][0].buttons
-    buttons[1].handler()
-    await nextTick()
-
-    expect(store.getLanguage()).toBe('en-US')
-    expect(localStorage.getItem('appLanguage')).toBe('en-US')
   })
 })
 
@@ -252,11 +206,11 @@ describe('AboutPage', () => {
   })
 })
 
-describe('AccessibilityPage', () => {
+describe('LyricsSettingsPage', () => {
   it('edits, validates and resets the lyric retry count with InputBox', async () => {
     const store = useAppStore()
     store.setLyricsRetryCount(4)
-    const wrapper = mountPage(AccessibilityPage)
+    const wrapper = mountPage(LyricsSettingsPage)
     const box = wrapper.findComponent(InputBox)
     expect(box.props('modelValue')).toBe(4)
     expect(box.props('min')).toBe(0)
@@ -276,139 +230,22 @@ describe('AccessibilityPage', () => {
     expect(store.getLyricsRetryCount()).toBe(2)
   })
 
-  it('renders every switch with its stored value', async () => {
-    const store = useAppStore()
-    store.setPinyinSearch(true)
-    store.setAutoPauseOnDisconnect(false)
-    store.setAutoPlayOnConnect(true)
-    store.setAutoDelInvalidSongs(false)
-    store.setCanFetchCoverFromWeb(false)
-    store.setPlayQueueRepeat(false)
-    await store.setAudioFocusPause(false)
-
-    const wrapper = mountPage(AccessibilityPage)
-    await nextTick()
-
-    const switches = wrapper.findAllComponents(FunctionSwitch)
-    expect(switches).toHaveLength(9)
-    expect(switches.map((s: any) => s.props('checked'))).toEqual([
-      true,
-      false,
-      true,
-      false,
-      false,
-      false,
-      false,
-      true,
-      true,
-    ])
-  })
-
-  it('persists each toggle', async () => {
-    const store = useAppStore()
-    const wrapper = mountPage(AccessibilityPage)
-    await nextTick()
-
-    const toggles = wrapper.findAll('input[type="checkbox"]')
-    // FunctionSwitch emits a DOM change; flip the native checkbox first.
-    const flip = async (index: number) => {
-      const input = toggles[index].element as HTMLInputElement
-      input.checked = !input.checked
-      await toggles[index].trigger('change')
-      await nextTick()
-    }
-
-    await flip(7)
-    expect(store.getShowLyrics()).toBe(false)
-    expect(localStorage.getItem('showLyrics')).toBe('false')
-    await flip(7)
-    expect(store.getShowLyrics()).toBe(true)
-    expect(localStorage.getItem('showLyrics')).toBe('true')
-    await flip(8)
-    expect(store.getSearchLyricsOnline()).toBe(false)
-    expect(localStorage.getItem('searchLyricsOnline')).toBe('false')
-    await flip(8)
-    expect(store.getSearchLyricsOnline()).toBe(true)
-
-    await flip(0)
-    expect(store.getPinyinSearch()).toBe(true)
-    expect(localStorage.getItem('pinyinSearch')).toBe('true')
-
-    await flip(1)
-    expect(store.getAutoPauseOnDisconnect()).toBe(false)
-    expect(localStorage.getItem('autoPauseOnDisconnect')).toBe('false')
-
-    await flip(2)
-    expect(store.getAutoPlayOnConnect()).toBe(true)
-    expect(localStorage.getItem('autoPlayOnConnect')).toBe('true')
-
-    await flip(3)
-    expect(store.getAutoDelInvalidSongs()).toBe(false)
-    expect(localStorage.getItem('autoDelInvalidSongs')).toBe('false')
-
-    await flip(4)
-    expect(store.getCanFetchCoverFromWeb()).toBe(false)
-    expect(localStorage.getItem('canFetchCoverFromWeb')).toBe('false')
-
-    const audioFocus = mockMethod('NativeAudio', 'setAudioFocusEnabled')
-    await flip(5)
-    await vi.waitFor(() => expect(audioFocus).toHaveBeenCalledWith({ enabled: false }))
-    expect(store.getAudioFocusPause()).toBe(false)
-    expect(localStorage.getItem('audioFocusPause')).toBe('false')
-  })
-
   it('goes back', async () => {
-    const wrapper = mountPage(AccessibilityPage)
+    const wrapper = mountPage(LyricsSettingsPage)
     await nextTick()
     wrapper.findComponent(PageTitle).props('goBack')()
     expect(router.back).toHaveBeenCalled()
   })
-
-  it('clears the cover caches after confirmation', async () => {
-    vi.mocked(showConfirm).mockResolvedValueOnce(true)
-    const nativeClear = mockMethod('NativeAudio', 'clearCoverCache')
-    rememberCoverUrl('Song', 'Artist', 'https://cdn.example.com/cover.jpg')
-
-    const wrapper = mountPage(AccessibilityPage)
-    await nextTick()
-
-    const link = wrapper
-      .findAllComponents(SettingsPageLink)
-      .find((l: any) => l.props('icon') === 'mdi:image-off-outline')
-    expect(link).toBeTruthy()
-    await (link!.props('click') as () => Promise<void>)()
-
-    expect(lookupCoverUrl('Song', 'Artist')).toBeUndefined()
-    await vi.waitFor(() => expect(nativeClear).toHaveBeenCalled())
-    expect(toast.success).toHaveBeenCalled()
-  })
-
-  it('keeps the cover cache when the confirmation is dismissed', async () => {
-    vi.mocked(showConfirm).mockResolvedValueOnce(false)
-    const nativeClear = mockMethod('NativeAudio', 'clearCoverCache')
-    rememberCoverUrl('Song', 'Artist', 'https://cdn.example.com/cover.jpg')
-
-    const wrapper = mountPage(AccessibilityPage)
-    await nextTick()
-
-    const link = wrapper
-      .findAllComponents(SettingsPageLink)
-      .find((l: any) => l.props('icon') === 'mdi:image-off-outline')
-    await (link!.props('click') as () => Promise<void>)()
-
-    expect(lookupCoverUrl('Song', 'Artist')).toBe('https://cdn.example.com/cover.jpg')
-    expect(nativeClear).not.toHaveBeenCalled()
-  })
 })
 
-describe('OnlineSearchSettingsPage', () => {
+describe('LibrarySettingsPage', () => {
   it('renders the stored values', async () => {
     const store = useAppStore()
     store.setMusicClientLimitation(7)
     store.setFetchTimeOut(45)
     store.setEachSongAveTimeOut(12)
 
-    const wrapper = mountPage(OnlineSearchSettingsPage)
+    const wrapper = mountPage(LibrarySettingsPage)
     await nextTick()
 
     const boxes = wrapper.findAllComponents(InputBox)
@@ -419,7 +256,7 @@ describe('OnlineSearchSettingsPage', () => {
 
   it('saves edited values', async () => {
     const store = useAppStore()
-    const wrapper = mountPage(OnlineSearchSettingsPage)
+    const wrapper = mountPage(LibrarySettingsPage)
     await nextTick()
 
     const boxes = wrapper.findAllComponents(InputBox)
@@ -437,14 +274,14 @@ describe('OnlineSearchSettingsPage', () => {
   })
 
   it('navigates to the music client page', async () => {
-    const wrapper = mountPage(OnlineSearchSettingsPage)
+    const wrapper = mountPage(LibrarySettingsPage)
     await nextTick()
     link(wrapper, t('settings.online_search.music_client.title')).props('click')()
-    expect(router.push).toHaveBeenCalledWith('/settings/online_search/music_client')
+    expect(router.push).toHaveBeenCalledWith('/settings/library/music-sources')
   })
 
   it('goes back', async () => {
-    const wrapper = mountPage(OnlineSearchSettingsPage)
+    const wrapper = mountPage(LibrarySettingsPage)
     await nextTick()
     wrapper.findComponent(PageTitle).props('goBack')()
     expect(router.back).toHaveBeenCalled()
@@ -518,9 +355,44 @@ describe('MusicClientSettingsPage', () => {
   })
 })
 
-describe('OtherSettingsPage', () => {
+describe('DataSettingsPage', () => {
+  it('clears the cover caches after confirmation', async () => {
+    vi.mocked(showConfirm).mockResolvedValueOnce(true)
+    const nativeClear = mockMethod('NativeAudio', 'clearCoverCache')
+    rememberCoverUrl('Song', 'Artist', 'https://cdn.example.com/cover.jpg')
+
+    const wrapper = mountPage(DataSettingsPage)
+    await nextTick()
+
+    const link = wrapper
+      .findAllComponents(SettingsPageLink)
+      .find((l: any) => l.props('icon') === 'mdi:image-off-outline')
+    expect(link).toBeTruthy()
+    await (link!.props('click') as () => Promise<void>)()
+
+    expect(lookupCoverUrl('Song', 'Artist')).toBeUndefined()
+    await vi.waitFor(() => expect(nativeClear).toHaveBeenCalled())
+    expect(toast.success).toHaveBeenCalled()
+  })
+
+  it('keeps the cover cache when the confirmation is dismissed', async () => {
+    vi.mocked(showConfirm).mockResolvedValueOnce(false)
+    const nativeClear = mockMethod('NativeAudio', 'clearCoverCache')
+    rememberCoverUrl('Song', 'Artist', 'https://cdn.example.com/cover.jpg')
+
+    const wrapper = mountPage(DataSettingsPage)
+    await nextTick()
+
+    const link = wrapper
+      .findAllComponents(SettingsPageLink)
+      .find((l: any) => l.props('icon') === 'mdi:image-off-outline')
+    await (link!.props('click') as () => Promise<void>)()
+
+    expect(lookupCoverUrl('Song', 'Artist')).toBe('https://cdn.example.com/cover.jpg')
+    expect(nativeClear).not.toHaveBeenCalled()
+  })
   it('exports data and reports success', async () => {
-    const wrapper = mountPage(OtherSettingsPage)
+    const wrapper = mountPage(DataSettingsPage)
     await nextTick()
 
     link(wrapper, t('settings.other.exportData')).props('click')()
@@ -530,7 +402,7 @@ describe('OtherSettingsPage', () => {
 
   it('reports an export failure', async () => {
     vi.mocked(exportLocalStorage).mockRejectedValueOnce(new Error('denied'))
-    const wrapper = mountPage(OtherSettingsPage)
+    const wrapper = mountPage(DataSettingsPage)
     await nextTick()
 
     link(wrapper, t('settings.other.exportData')).props('click')()
@@ -546,7 +418,7 @@ describe('OtherSettingsPage', () => {
       value: { ...originalLocation, reload },
     })
     try {
-      const wrapper = mountPage(OtherSettingsPage)
+      const wrapper = mountPage(DataSettingsPage)
       await nextTick()
 
       link(wrapper, t('settings.other.importData')).props('click')()
@@ -568,7 +440,7 @@ describe('OtherSettingsPage', () => {
   it('reports an import failure without reloading', async () => {
     vi.useFakeTimers()
     vi.mocked(importLocalStorage).mockRejectedValueOnce(new Error('bad file'))
-    const wrapper = mountPage(OtherSettingsPage)
+    const wrapper = mountPage(DataSettingsPage)
     await nextTick()
 
     link(wrapper, t('settings.other.importData')).props('click')()
@@ -578,18 +450,65 @@ describe('OtherSettingsPage', () => {
   })
 
   it('goes back', async () => {
-    const wrapper = mountPage(OtherSettingsPage)
+    const wrapper = mountPage(DataSettingsPage)
     await nextTick()
     wrapper.findComponent(PageTitle).props('goBack')()
     expect(router.back).toHaveBeenCalled()
   })
 })
 
-describe('InterfaceSettingsPage', () => {
+describe('AppearanceSettingsPage', () => {
+  it('shows the current language name', async () => {
+    const store = useAppStore()
+    store.setLanguage('en-US')
+    const wrapper = mountPage(AppearanceSettingsPage)
+    await nextTick()
+    expect(wrapper.find('.item-value').text()).toBe('English')
+
+    store.setLanguage('zh-CN')
+    await nextTick()
+    expect(wrapper.find('.item-value').text()).toBe('简体中文')
+  })
+
+  it('offers both languages in an action sheet', async () => {
+    const store = useAppStore()
+    store.setLanguage('zh-CN')
+    const wrapper = mountPage(AppearanceSettingsPage)
+    await nextTick()
+
+    const languageButton = wrapper
+      .findAll('button')
+      .find((b: any) => b.text().includes('settings.language') || b.text().includes('语言'))
+    await languageButton!.trigger('click')
+    await vi.waitFor(() => expect(actionSheetCreate).toHaveBeenCalled())
+    const options = actionSheetCreate.mock.calls[0][0]
+    expect(options.header).toBeTruthy()
+    expect(options.buttons.map((b: any) => b.text)).toEqual(['简体中文', 'English', '取消'])
+    expect(actionSheet.present).toHaveBeenCalled()
+  })
+
+  it('changes the language from the action sheet', async () => {
+    const store = useAppStore()
+    store.setLanguage('zh-CN')
+    const wrapper = mountPage(AppearanceSettingsPage)
+    await nextTick()
+
+    const languageButton = wrapper
+      .findAll('button')
+      .find((b: any) => b.text().includes('settings.language') || b.text().includes('语言'))
+    await languageButton!.trigger('click')
+    await vi.waitFor(() => expect(actionSheetCreate).toHaveBeenCalled())
+    const buttons = actionSheetCreate.mock.calls[0][0].buttons
+    buttons[1].handler()
+    await nextTick()
+
+    expect(store.getLanguage()).toBe('en-US')
+    expect(localStorage.getItem('appLanguage')).toBe('en-US')
+  })
   it('toggles dark mode', async () => {
     const store = useAppStore()
     store.darkMode = false
-    const wrapper = mountPage(InterfaceSettingsPage)
+    const wrapper = mountPage(AppearanceSettingsPage)
     await nextTick()
 
     const toggle = wrapper.findComponent(FunctionSwitch)
@@ -606,7 +525,7 @@ describe('InterfaceSettingsPage', () => {
 
   it('applies a preset theme color', async () => {
     const store = useAppStore()
-    const wrapper = mountPage(InterfaceSettingsPage)
+    const wrapper = mountPage(AppearanceSettingsPage)
     await nextTick()
 
     const swatches = wrapper.findAll('.preset-color-item')
@@ -620,7 +539,7 @@ describe('InterfaceSettingsPage', () => {
 
   it('applies a custom theme color', async () => {
     const store = useAppStore()
-    const wrapper = mountPage(InterfaceSettingsPage)
+    const wrapper = mountPage(AppearanceSettingsPage)
     await nextTick()
 
     const input = wrapper.find('.color-picker-input')
@@ -632,7 +551,7 @@ describe('InterfaceSettingsPage', () => {
 
   it('follows external theme color changes', async () => {
     const store = useAppStore()
-    const wrapper = mountPage(InterfaceSettingsPage)
+    const wrapper = mountPage(AppearanceSettingsPage)
     await nextTick()
 
     store.setThemeColor('#abcdef')
@@ -641,7 +560,7 @@ describe('InterfaceSettingsPage', () => {
   })
 
   it('has no wallpaper controls before an image is set', async () => {
-    const wrapper = mountPage(InterfaceSettingsPage)
+    const wrapper = mountPage(AppearanceSettingsPage)
     await nextTick()
     expect(wrapper.find('.wallpaper-preview').exists()).toBe(false)
     expect(wrapper.find('.wallpaper-fit').exists()).toBe(false)
@@ -651,7 +570,7 @@ describe('InterfaceSettingsPage', () => {
   it('removes an existing wallpaper', async () => {
     const store = useAppStore()
     await store.setWallpaper('wallpaper.jpg')
-    const wrapper = mountPage(InterfaceSettingsPage)
+    const wrapper = mountPage(AppearanceSettingsPage)
     await nextTick()
 
     expect(wrapper.find('.wallpaper-preview').exists()).toBe(true)
@@ -665,7 +584,7 @@ describe('InterfaceSettingsPage', () => {
   it('updates transparency, blur and fit', async () => {
     const store = useAppStore()
     await store.setWallpaper('wallpaper.jpg')
-    const wrapper = mountPage(InterfaceSettingsPage)
+    const wrapper = mountPage(AppearanceSettingsPage)
     await nextTick()
 
     const ranges = wrapper.findAll('.range-input')
@@ -685,7 +604,7 @@ describe('InterfaceSettingsPage', () => {
   })
 
   it('rejects a non-image upload', async () => {
-    const wrapper = mountPage(InterfaceSettingsPage)
+    const wrapper = mountPage(AppearanceSettingsPage)
     await nextTick()
 
     const input = wrapper.find('.file-input')
@@ -698,7 +617,7 @@ describe('InterfaceSettingsPage', () => {
 
   it('stores a downscaled uploaded image', async () => {
     const store = useAppStore()
-    const wrapper = mountPage(InterfaceSettingsPage)
+    const wrapper = mountPage(AppearanceSettingsPage)
     await nextTick()
 
     class FakeReader {
@@ -767,7 +686,7 @@ describe('InterfaceSettingsPage', () => {
 
   it('reports a wallpaper that cannot be stored', async () => {
     const store = useAppStore()
-    const wrapper = mountPage(InterfaceSettingsPage)
+    const wrapper = mountPage(AppearanceSettingsPage)
     await nextTick()
 
     class FakeReader {
@@ -832,7 +751,7 @@ describe('InterfaceSettingsPage', () => {
   })
 
   it('reports a failed wallpaper decode', async () => {
-    const wrapper = mountPage(InterfaceSettingsPage)
+    const wrapper = mountPage(AppearanceSettingsPage)
     await nextTick()
 
     class FailingReader {
@@ -860,7 +779,7 @@ describe('InterfaceSettingsPage', () => {
   })
 
   it('goes back', async () => {
-    const wrapper = mountPage(InterfaceSettingsPage)
+    const wrapper = mountPage(AppearanceSettingsPage)
     await nextTick()
     wrapper.findComponent(PageTitle).props('goBack')()
     expect(router.back).toHaveBeenCalled()
@@ -882,10 +801,10 @@ describe('LyricsCachePage', () => {
       })
     )
   }
-  it('opens the cache manager from accessibility settings', async () => {
-    const wrapper = mountPage(AccessibilityPage)
+  it('opens the cache manager from data settings', async () => {
+    const wrapper = mountPage(DataSettingsPage)
     link(wrapper, t('lyricsCache.title')).props('click')()
-    expect(router.push).toHaveBeenCalledWith('/settings/accessibility/lyrics-cache')
+    expect(router.push).toHaveBeenCalledWith('/settings/data/lyrics-cache')
   })
   it('previews lyrics and deletes only the chosen cache after confirmation', async () => {
     seedCache()
@@ -910,5 +829,132 @@ describe('LyricsCachePage', () => {
     await wrapper.findAll('.cache-toolbar button')[1].trigger('click')
     await vi.waitFor(() => expect(wrapper.findAll('.cache-entry')).toHaveLength(0))
     expect(wrapper.find('.cache-status').text()).toBe(t('lyricsCache.empty'))
+  })
+})
+
+const switchCases = [
+  [
+    PlaybackSettingsPage,
+    'playQueueRepeat',
+    'getPlayQueueRepeat',
+    'setPlayQueueRepeat',
+    'playQueueRepeat',
+  ],
+  [
+    PlaybackSettingsPage,
+    'autoPauseOnDisconnect',
+    'getAutoPauseOnDisconnect',
+    'setAutoPauseOnDisconnect',
+    'autoPauseOnDisconnect',
+  ],
+  [
+    PlaybackSettingsPage,
+    'autoPlayOnConnect',
+    'getAutoPlayOnConnect',
+    'setAutoPlayOnConnect',
+    'autoPlayOnConnect',
+  ],
+  [
+    PlaybackSettingsPage,
+    'audioFocusPause',
+    'getAudioFocusPause',
+    'setAudioFocusPause',
+    'audioFocusPause',
+  ],
+  [LyricsSettingsPage, 'showLyrics', 'getShowLyrics', 'setShowLyrics', 'showLyrics'],
+  [
+    LyricsSettingsPage,
+    'searchLyricsOnline',
+    'getSearchLyricsOnline',
+    'setSearchLyricsOnline',
+    'searchLyricsOnline',
+  ],
+  [
+    LyricsSettingsPage,
+    'canFetchCoverFromWeb',
+    'getCanFetchCoverFromWeb',
+    'setCanFetchCoverFromWeb',
+    'canFetchCoverFromWeb',
+  ],
+  [LibrarySettingsPage, 'pinyinSearch', 'getPinyinSearch', 'setPinyinSearch', 'pinyinSearch'],
+  [
+    LibrarySettingsPage,
+    'autoCleanInvalidSongs',
+    'getAutoDelInvalidSongs',
+    'setAutoDelInvalidSongs',
+    'autoDelInvalidSongs',
+  ],
+] as const
+
+describe('Reclassified settings', () => {
+  it.each(switchCases)(
+    'persists and restores a switch in its category: %s / %s',
+    async (component, key, getter, setter, storageKey) => {
+      const store = useAppStore() as any
+      await store[setter](false)
+      const wrapper = mountPage(component)
+      const findSwitch = (page: any) =>
+        page
+          .findAllComponents(FunctionSwitch)
+          .find((item: any) => item.props('title') === t(`settings.accessibility.${key}`))!
+      expect(findSwitch(wrapper).props('checked')).toBe(false)
+      await findSwitch(wrapper).find('input').setValue(true)
+      await vi.waitFor(() => expect(localStorage.getItem(storageKey)).toBe('true'))
+      expect(store[getter]()).toBe(true)
+      expect(findSwitch(wrapper).props('checked')).toBe(true)
+      // A fresh Pinia reproduces app startup against the saved storage.
+      freshPinia()
+      const restored = useAppStore() as any
+      await restored.init()
+      expect(restored[getter]()).toBe(true)
+      expect(findSwitch(mountPage(component)).props('checked')).toBe(true)
+    }
+  )
+
+  it.each([LyricsSettingsPage, LibrarySettingsPage])(
+    'keeps advanced values when collapsed and reopened',
+    async (component) => {
+      const store = useAppStore()
+      store.setLyricsRetryCount(4)
+      store.setFetchTimeOut(45)
+      const wrapper = mountPage(component)
+      const details = wrapper.find('details').element as HTMLDetailsElement
+      const values = wrapper.findAllComponents(InputBox).map((box: any) => box.props('modelValue'))
+      expect(details.open).toBe(false)
+      details.open = true
+      details.open = false
+      details.open = true
+      await nextTick()
+      expect(
+        wrapper.findAllComponents(InputBox).map((box: any) => box.props('modelValue'))
+      ).toEqual(values)
+      expect(store.getLyricsRetryCount()).toBe(4)
+      expect(store.getFetchTimeOut()).toBe(45)
+    }
+  )
+
+  it('keeps cache and backup operations together, separate from lyrics preferences', () => {
+    const data = mountPage(DataSettingsPage)
+    expect(data.findAllComponents(SettingsPageLink)).toHaveLength(4)
+    expect(mountPage(LyricsSettingsPage).findAllComponents(SettingsPageLink)).toHaveLength(0)
+    const library = mountPage(LibrarySettingsPage)
+    link(library, t('settings.blacklist')).props('click')()
+    expect(router.push).toHaveBeenCalledWith('/blacklist')
+  })
+
+  it.each([
+    PlaybackSettingsPage,
+    LyricsSettingsPage,
+    LibrarySettingsPage,
+    AppearanceSettingsPage,
+    DataSettingsPage,
+  ])('has translated sections in both languages', async (component) => {
+    const wrapper = mountPage(component)
+    for (const language of ['zh-CN', 'en-US']) {
+      useAppStore().setLanguage(language)
+      await nextTick()
+      expect(wrapper.find('.header-title').text()).toBeTruthy()
+      expect(wrapper.text()).not.toMatch(/settings\.(categories|sections)\./)
+    }
   })
 })

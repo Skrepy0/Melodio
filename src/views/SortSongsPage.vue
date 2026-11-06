@@ -531,7 +531,9 @@ const backWithoutSave = async () => {
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  padding-bottom: calc(var(--space-6) + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
+  padding-bottom: calc(
+    var(--space-6) + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))
+  );
   @include custom-scrollbar(3px);
 }
 

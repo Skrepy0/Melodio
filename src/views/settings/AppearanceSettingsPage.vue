@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { useAppStore } from '@/stores/app'
-import { IonPage } from '@ionic/vue'
+import { actionSheetController, IonPage } from '@ionic/vue'
 import { Icon } from '@iconify/vue'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
@@ -20,6 +20,43 @@ const WALLPAPER_FILENAME = 'wallpaper.jpg'
 const { t } = useI18n()
 const appStore = useAppStore()
 const router = useRouter()
+const currentLanguage = computed(() => appStore.getLanguage())
+const currentLanguageName = computed(() => {
+  switch (currentLanguage.value) {
+    case 'zh-CN':
+      return '简体中文'
+    case 'en-US':
+      return 'English'
+    default:
+      return currentLanguage.value
+  }
+})
+
+const showLanguageSelector = async () => {
+  const actionSheet = await actionSheetController.create({
+    header: t('settings.languageSelectorHeader'),
+    buttons: [
+      {
+        text: '简体中文',
+        handler: () => changeLanguage('zh-CN'),
+      },
+      {
+        text: 'English',
+        handler: () => changeLanguage('en-US'),
+      },
+      {
+        text: t('common.cancel', '取消'),
+        role: 'cancel',
+      },
+    ],
+  })
+  await actionSheet.present()
+}
+
+const changeLanguage = (lang: string) => {
+  appStore.setLanguage(lang)
+}
+
 const goBack = () => {
   router.back()
 }
@@ -196,62 +233,64 @@ onMounted(() => {
 <template>
   <ion-page>
     <div class="settings-page">
-      <PageTitle :go-back="goBack" :title="$t('settings.interface.title')" />
+      <PageTitle :go-back="goBack" :title="$t('settings.categories.appearance.title')" />
 
       <div class="settings-content">
-        <FunctionSwitch
-          :change="toggleDarkMode"
-          :checked="isDarkMode"
-          :desc="$t('settings.interface.darkModeDesc')"
-          :title="$t('settings.interface.darkMode')"
-          icon="mdi:weather-night"
-        />
+        <section class="settings-group">
+          <h2 class="group-title">{{ $t('settings.sections.theme') }}</h2>
+          <FunctionSwitch
+            :change="toggleDarkMode"
+            :checked="isDarkMode"
+            :desc="$t('settings.interface.darkModeDesc')"
+            :title="$t('settings.interface.darkMode')"
+            icon="mdi:weather-night"
+          />
 
-        <div class="setting-item theme-color-item">
-          <div class="setting-row">
-            <div class="item-left">
-              <Icon :width="22" class="item-icon" icon="mdi:palette-outline" />
-              <span class="item-label">{{ $t('settings.interface.themeColor') }}</span>
+          <div class="setting-item theme-color-item">
+            <div class="setting-row">
+              <div class="item-left">
+                <Icon :width="22" class="item-icon" icon="mdi:palette-outline" />
+                <span class="item-label">{{ $t('settings.interface.themeColor') }}</span>
+              </div>
+              <div class="color-picker-wrapper">
+                <label
+                  :aria-label="$t('settings.interface.themeColor')"
+                  :style="{ backgroundColor: currentColor }"
+                  class="color-picker-trigger"
+                >
+                  <input
+                    :value="currentColor"
+                    class="color-picker-input"
+                    type="color"
+                    @input="handleColorPicker"
+                  />
+                </label>
+              </div>
             </div>
-            <div class="color-picker-wrapper">
-              <label
-                :aria-label="$t('settings.interface.themeColor')"
-                :style="{ backgroundColor: currentColor }"
-                class="color-picker-trigger"
+            <div class="setting-desc">
+              {{ $t('settings.interface.themeColorDesc') }}
+            </div>
+            <div class="preset-colors" role="radiogroup">
+              <button
+                v-for="color in presetColors"
+                :key="color"
+                :aria-checked="currentColor === color"
+                :aria-label="color"
+                :style="{ '--swatch': color }"
+                class="preset-color-item"
+                role="radio"
+                type="button"
+                @click="selectPresetColor(color)"
               >
-                <input
-                  :value="currentColor"
-                  class="color-picker-input"
-                  type="color"
-                  @input="handleColorPicker"
-                />
-              </label>
+                <span class="preset-color-dot">
+                  <Icon v-if="currentColor === color" color="#fff" icon="mdi:check" width="16" />
+                </span>
+              </button>
             </div>
           </div>
-          <div class="setting-desc">
-            {{ $t('settings.interface.themeColorDesc') }}
-          </div>
-          <div class="preset-colors" role="radiogroup">
-            <button
-              v-for="color in presetColors"
-              :key="color"
-              :aria-checked="currentColor === color"
-              :aria-label="color"
-              :style="{ '--swatch': color }"
-              class="preset-color-item"
-              role="radio"
-              type="button"
-              @click="selectPresetColor(color)"
-            >
-              <span class="preset-color-dot">
-                <Icon v-if="currentColor === color" color="#fff" icon="mdi:check" width="16" />
-              </span>
-            </button>
-          </div>
-        </div>
-
-        <div class="settings-group">
-          <div class="group-title">{{ $t('settings.interface.wallpaperGroup') }}</div>
+        </section>
+        <section class="settings-group">
+          <h2 class="group-title">{{ $t('settings.sections.background') }}</h2>
 
           <div class="setting-item wallpaper-item">
             <div class="setting-row">
@@ -339,7 +378,23 @@ onMounted(() => {
               @change="onWallpaperChange"
             />
           </div>
-        </div>
+        </section>
+        <section class="settings-group">
+          <h2 class="group-title">{{ $t('settings.sections.language') }}</h2>
+          <button class="setting-item clickable" type="button" @click="showLanguageSelector">
+            <div class="setting-row">
+              <div class="item-left">
+                <Icon :width="22" class="item-icon" icon="mdi:translate" />
+                <span class="item-label">{{ $t('settings.language') }}</span>
+              </div>
+              <div class="item-right">
+                <span class="item-value">{{ currentLanguageName }}</span>
+                <Icon :width="20" icon="mdi:chevron-right" />
+              </div>
+            </div>
+            <div class="setting-desc">{{ $t('settings.languageDesc') }}</div>
+          </button>
+        </section>
       </div>
     </div>
   </ion-page>

@@ -237,13 +237,7 @@
   },
   "settings": {
     "title": "Settings",
-    "groups": {
-      "appearance": "Appearance",
-      "playback": "Playback",
-      "data": "Data",
-      "about": "About"
-    },
-    "blacklist": "Blacklist",
+    "blacklist": "Scan exclusions",
     "blacklistDesc": "View blacklisted songs. Songs added to the blacklist will be excluded when scanning the library.",
     "languageSelectorHeader": "Select Language",
     "language": "Language",
@@ -251,11 +245,9 @@
     "about": "About",
     "aboutDesc": "View application information.",
     "other": {
-      "title": "Miscellaneous",
-      "desc": "Other settings",
-      "exportData": "Export Data",
+      "exportData": "Export backup",
       "exportDataDesc": "Export all Melodio data including song information, playlists, settings, etc. to a JSON file.",
-      "importData": "Import Data",
+      "importData": "Import backup",
       "importDataDesc": "Import JSON data. Warning: This will overwrite current data and cause data loss!",
       "io": {
         "successExport": "Data saved",
@@ -294,17 +286,15 @@
       "music_client": {
         "title": "Music Source Configuration",
         "desc": "Configure online music sources. Too many sources may slow down search performance.",
-        "client_limit": "Client Request Limit",
+        "client_limit": "Song limit per source (songs)",
         "client_limit_desc": "Limit the number of songs requested per client. Too high a value may significantly reduce search speed."
       },
-      "fetch_timeout": "Search Timeout",
+      "fetch_timeout": "Search timeout (seconds)",
       "fetch_timeout_desc": "Maximum duration for backend to search songs. Sources that haven't completed search within this time will be stopped, returning only the already found content. Values too low may result in fewer search results.",
-      "each_song_ave_timeout": "Per-Song Search Timeout",
+      "each_song_ave_timeout": "Per-song search timeout (seconds)",
       "each_song_ave_timeout_desc": "Average time limit (in seconds) allocated to search each song."
     },
     "accessibility": {
-      "title": "Accessibility",
-      "desc": "Switches for related features provided by the app.",
       "lyricsRetryCount": "Automatic lyrics search retries",
       "lyricsRetryCountDesc": "Retry failed or empty searches 0–10 times. Set 0 to disable. Excludes the initial search.",
       "searchLyricsOnline": "Search lyrics online",
@@ -312,7 +302,7 @@
       "showLyrics": "Show lyrics",
       "showLyricsDesc": "Show synchronized lyrics on the playback screen",
       "pinyinSearch": "Pinyin Search",
-      "pinyinSearchDesc": "When enabled, all searches will support fuzzy Pinyin matching.",
+      "pinyinSearchDesc": "Match local songs, playlists and scan exclusions using Pinyin.",
       "autoPauseOnDisconnect": "Auto-pause on device disconnect",
       "autoPauseOnDisconnectDesc": "Automatically pause playback when headphones are unplugged or a Bluetooth device is disconnected.",
       "autoPlayOnConnect": "Auto-play on device connection",
@@ -321,7 +311,7 @@
       "autoCleanInvalidSongsDesc": "Automatically remove song entries that have been moved or deleted.",
       "canFetchCoverFromWeb": "Fetch song covers online",
       "canFetchCoverFromWebDesc": "When enabled, the system will automatically go online to fetch covers for songs that lack them.",
-      "audioFocusPause": "Pause when losing audio focus",
+      "audioFocusPause": "Pause when another app plays audio",
       "audioFocusPauseDesc": "Automatically pause playback when another app starts playing sound.",
       "clearCoverCache": "Clear cover cache",
       "clearCoverCacheDesc": "Deletes cached cover addresses and images. Covers are looked up online again the next time they are needed.",
@@ -329,6 +319,47 @@
       "clearCoverCacheSuccess": "Cached cover has been cleared",
       "playQueueRepeat": "Queue repeat",
       "playQueueRepeatDesc": "Wraps from the last track back to the first and from the first back to the last, looping the whole queue in both directions"
+    },
+    "categories": {
+      "appearance": {
+        "title": "Appearance & Language",
+        "desc": "Theme, wallpaper and interface language"
+      },
+      "playback": {
+        "title": "Playback",
+        "desc": "Queue, connected devices and audio interruptions"
+      },
+      "lyrics": {
+        "title": "Lyrics & Artwork",
+        "desc": "Lyrics display, lyrics search and online artwork"
+      },
+      "library": {
+        "title": "Library & Search",
+        "desc": "Local library, scan exclusions and online music sources"
+      },
+      "data": {
+        "title": "Data & Storage",
+        "desc": "Manage caches, export backups and restore data"
+      },
+      "about": {
+        "title": "About",
+        "desc": "Version, source code and license"
+      }
+    },
+    "sections": {
+      "theme": "Theme",
+      "background": "Background",
+      "language": "Language",
+      "queue": "Playback queue",
+      "devices": "Connected devices",
+      "interruptions": "Audio interruptions",
+      "lyrics": "Lyrics",
+      "cover": "Artwork",
+      "localLibrary": "Local library",
+      "onlineSearch": "Online search",
+      "cache": "Cache management",
+      "backup": "Backup & restore",
+      "advanced": "Advanced options"
     }
   },
   "common": {

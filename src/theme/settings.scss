@@ -70,6 +70,7 @@
 
 .group-title {
   @include section-label;
+  margin: 0;
 }
 
 .group-footer {
@@ -235,4 +236,15 @@ input:checked + .slider {
 
 input:checked + .slider:before {
   transform: translateX(18px);
+}
+
+.advanced-settings > summary {
+  cursor: pointer;
+  padding: var(--space-4);
+  margin: 0;
+
+  &:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: -2px;
+  }
 }
